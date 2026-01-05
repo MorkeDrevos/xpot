@@ -19,6 +19,9 @@ import {
   Users,
   Wand2,
   Zap,
+  Trophy,
+  LayoutGrid,
+  List as ListIcon,
 } from 'lucide-react';
 
 import JackpotPanel from '@/components/JackpotPanel';
@@ -52,6 +55,7 @@ import {
 } from './ui';
 
 const ROUTE_HUB = '/hub';
+const ROUTE_WINNERS = '/winners';
 const ROUTE_TOKENOMICS_RESERVE = '/tokenomics?tab=rewards&focus=reserve';
 
 const XPOT_CA =
@@ -91,6 +95,121 @@ function setMeta(name: string, content: string) {
     document.head.appendChild(tag);
   }
   tag.setAttribute('content', content);
+}
+
+function formatDateShort(iso?: string | null) {
+  try {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return null;
+  }
+}
+
+type LiveEntryRow = {
+  id?: string;
+  handle?: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+  verified?: boolean | null;
+  createdAt?: string | null;
+};
+
+function useLiveEntries(opts?: { limit?: number; pollMs?: number }) {
+  const limit = Math.max(6, Math.min(48, opts?.limit ?? 18));
+  const pollMs = Math.max(4000, Math.min(60000, opts?.pollMs ?? 12000));
+
+  const [rows, setRows] = useState<LiveEntryRow[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function load() {
+      try {
+        // We keep this resilient: if the endpoint doesn't exist, we just render the shell.
+        const r = await fetch(`/api/entries/recent?limit=${encodeURIComponent(String(limit))}`, {
+          cache: 'no-store',
+        });
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}`);
+        }
+        const j = await r.json();
+        const list: LiveEntryRow[] = Array.isArray(j?.entries) ? j.entries : Array.isArray(j) ? j : [];
+        if (!alive) return;
+        setRows(list.slice(0, limit));
+        setErr(null);
+      } catch (e: any) {
+        if (!alive) return;
+        setErr(String(e?.message || 'failed'));
+      }
+    }
+
+    load();
+    const t = window.setInterval(load, pollMs);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [limit, pollMs]);
+
+  const uniqueHandles = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of rows) {
+      const h = String(r?.handle || '').trim();
+      if (h) s.add(h.startsWith('@') ? h : `@${h}`);
+    }
+    return s.size;
+  }, [rows]);
+
+  return { rows, uniqueHandles, err };
+}
+
+function AvatarBubble({
+  row,
+  size = 44,
+  index = 0,
+}: {
+  row: LiveEntryRow;
+  size?: number;
+  index?: number;
+}) {
+  const handle = String(row?.handle || '').trim();
+  const label = handle ? (handle.startsWith('@') ? handle : `@${handle}`) : 'entrant';
+
+  const hue = (index * 47) % 360;
+
+  return (
+    <div
+      className="relative inline-flex items-center justify-center rounded-full border border-white/10 bg-slate-950/35 shadow-[0_18px_60px_rgba(0,0,0,0.55)]"
+      style={{ width: size, height: size }}
+      title={label}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-4 rounded-full opacity-70 blur-xl"
+        style={{
+          background: `radial-gradient(circle at 30% 30%, rgba(var(--xpot-gold),0.18), transparent 58%),
+                       radial-gradient(circle at 75% 25%, hsla(${hue}, 85%, 70%, 0.12), transparent 62%)`,
+        }}
+      />
+      {row?.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={row.avatarUrl}
+          alt={label}
+          className="relative z-10 h-full w-full rounded-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        <div className="relative z-10 grid h-full w-full place-items-center rounded-full bg-white/[0.03]">
+          <span className="text-[18px] text-white/85">:)</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function RoyalContractBar({ mint }: { mint: string }) {
@@ -224,11 +343,272 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
   );
 }
 
+function LiveActivityStage() {
+  const latestWinner = useLatestWinner();
+  const { rows, uniqueHandles } = useLiveEntries({ limit: 18, pollMs: 12000 });
+
+  const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
+
+  const winnerAmount =
+    (latestWinner as any)?.amountXpot ??
+    (latestWinner as any)?.payoutXpot ??
+    (latestWinner as any)?.amount ??
+    null;
+
+  const winnerHandle = (latestWinner as any)?.handle ? String((latestWinner as any).handle) : null;
+  const winnerWallet = (latestWinner as any)?.wallet ? String((latestWinner as any).wallet) : null;
+  const winnerTxUrl = (latestWinner as any)?.txUrl ? String((latestWinner as any).txUrl) : null;
+  const winnerDate = formatDateShort((latestWinner as any)?.drawDate ?? (latestWinner as any)?.claimedAt ?? null);
+
+  return (
+    <section className="mt-8">
+      <PremiumCard className="p-5 sm:p-6" halo sheen>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+              <span className="mr-2 inline-flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-amber-200/90" />
+                Live activity
+              </span>
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-50">The XPOT stage</h3>
+          </div>
+
+          <Link
+            href={ROUTE_HUB}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition shadow-[0_14px_55px_rgba(0,0,0,0.45)]"
+            title="Enter today's XPOT"
+          >
+            Enter today&apos;s XPOT
+            <ArrowRight className="h-4 w-4 text-slate-300" />
+          </Link>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          {/* LATEST WINNER */}
+          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl"
+              style={{
+                background:
+                  'radial-gradient(circle at 18% 30%, rgba(var(--xpot-gold),0.18), transparent 58%),' +
+                  'radial-gradient(circle at 85% 20%, rgba(56,189,248,0.10), transparent 62%)',
+              }}
+            />
+
+            <div className="relative flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <Crown className="h-3.5 w-3.5 text-amber-200/90" />
+                    Latest winner
+                  </span>
+                </p>
+                <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                  Winner just took home
+                </p>
+
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-4xl font-semibold tracking-tight text-amber-100">
+                    {winnerAmount ? Number(winnerAmount).toLocaleString() : '—'}
+                  </span>
+                  <span className="text-[12px] font-semibold text-slate-500">XPOT</span>
+                </div>
+
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Claimed {winnerDate ? winnerDate : '—'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {winnerTxUrl ? (
+                  <a
+                    href={winnerTxUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                    title="Open payout transaction"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                    Tx
+                  </a>
+                ) : null}
+
+                <Link
+                  href={ROUTE_WINNERS}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                  title="Open winners archive"
+                >
+                  <Trophy className="h-3.5 w-3.5 text-amber-200/90" />
+                  Archive
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative mt-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-semibold text-slate-100">
+                    {winnerHandle
+                      ? (winnerHandle.startsWith('@') ? winnerHandle : `@${winnerHandle}`)
+                      : winnerWallet
+                        ? shortenAddress(winnerWallet, 6, 6)
+                        : 'winner'}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Handle-first identity, wallet-native claim.
+                  </p>
+                </div>
+
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-200/90" />
+                  verified
+                </span>
+              </div>
+            </div>
+
+            <div className="relative mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">See more winners</p>
+                <p className="mt-1 text-[12px] text-slate-400">
+                  Full archive, TX links and history on the winners page.
+                </p>
+              </div>
+              <Link
+                href={ROUTE_WINNERS}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                title="Open winners page"
+              >
+                Open winners
+                <ArrowRight className="h-4 w-4 text-slate-400" />
+              </Link>
+            </div>
+          </div>
+
+          {/* ENTRIES */}
+          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/35 p-5 ring-1 ring-white/[0.05]">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl"
+              style={{
+                background:
+                  'radial-gradient(circle at 12% 25%, rgba(56,189,248,0.10), transparent 60%),' +
+                  'radial-gradient(circle at 85% 30%, rgba(var(--xpot-gold),0.14), transparent 62%)',
+              }}
+            />
+
+            <div className="relative flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-sky-200/90" />
+                    Entries
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMode('bubbles')}
+                  className={[
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                    mode === 'bubbles'
+                      ? 'border border-white/12 bg-white/[0.06] text-slate-100'
+                      : 'border border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]',
+                  ].join(' ')}
+                  title="Bubbles"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Bubbles
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode('list')}
+                  className={[
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                    mode === 'list'
+                      ? 'border border-white/12 bg-white/[0.06] text-slate-100'
+                      : 'border border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]',
+                  ].join(' ')}
+                  title="List"
+                >
+                  <ListIcon className="h-3.5 w-3.5" />
+                  List
+                </button>
+              </div>
+            </div>
+
+            <div className="relative mt-5">
+              {mode === 'bubbles' ? (
+                <div className="flex min-h-[132px] flex-wrap items-center justify-center gap-4">
+                  {(rows?.length ? rows : new Array(3).fill(null).map((_, i) => ({ id: `p${i}` } as LiveEntryRow))).map(
+                    (r, idx) => (
+                      <AvatarBubble key={(r?.id as any) ?? `${idx}`} row={r} index={idx} size={56} />
+                    ),
+                  )}
+                </div>
+              ) : (
+                <div className="max-h-[170px] overflow-auto rounded-2xl border border-white/10 bg-slate-950/40 p-3">
+                  <div className="space-y-2">
+                    {(rows?.length ? rows : []).map((r, idx) => {
+                      const h = String(r?.handle || '').trim();
+                      const label = h ? (h.startsWith('@') ? h : `@${h}`) : 'entrant';
+                      return (
+                        <div
+                          key={(r?.id as any) ?? `${idx}`}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
+                              {r?.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={r.avatarUrl} alt={label} className="h-full w-full object-cover" />
+                              ) : null}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate text-[12px] font-semibold text-slate-100">{label}</div>
+                              <div className="truncate text-[11px] text-slate-500">
+                                {r?.name ? String(r.name) : 'claimed in the hub'}
+                              </div>
+                            </div>
+                          </div>
+                          {r?.verified ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-200">
+                              <ShieldCheck className="h-3 w-3" />
+                              verified
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                    {!rows?.length ? (
+                      <p className="px-2 py-3 text-center text-[12px] text-slate-500">No entries yet.</p>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 flex items-center justify-between gap-3 text-[12px]">
+                <p className="text-slate-500">
+                  {uniqueHandles ? `${uniqueHandles} unique entrants` : 'Live entrants'}
+                </p>
+                <Link href={ROUTE_HUB} className="text-slate-300 hover:text-slate-100 transition" title="Claim in the hub">
+                  Claim in the hub
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </PremiumCard>
+    </section>
+  );
+}
+
 function HomeInner() {
   const bonusActive = useBonusActive();
-  const latestWinner = useLatestWinner(); // ready when you flip SHOW_LIVE_FEED
-
-  const SHOW_LIVE_FEED = false;
 
   const { countdown, cutoffLabel, nowMs } = useNextDraw();
   const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
@@ -453,25 +833,6 @@ function HomeInner() {
                           <ExternalLink className="ml-2 h-4 w-4 text-slate-500" />
                         </a>
                       </div>
-
-                      {SHOW_LIVE_FEED && latestWinner ? (
-                        <div className="mt-6 rounded-[24px] border border-white/10 bg-slate-950/30 p-5 ring-1 ring-white/[0.05]">
-                          <div className="flex items-center justify-between gap-3">
-                            <Pill tone="amber">
-                              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                              Latest winner
-                            </Pill>
-                            <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">live</span>
-                          </div>
-                          <div className="mt-3 text-sm text-slate-200">
-                            {latestWinner.handle
-                              ? latestWinner.handle
-                              : latestWinner.wallet
-                                ? shortenAddress(latestWinner.wallet, 6, 6)
-                                : 'winner'}
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
 
                     <div className="grid gap-4">
@@ -539,6 +900,9 @@ function HomeInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
+      {/* BRING BACK: Latest Winner + X bubbles (redesigned) */}
+      <LiveActivityStage />
+
       <section className="mt-7">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
