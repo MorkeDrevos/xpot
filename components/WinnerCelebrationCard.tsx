@@ -68,6 +68,20 @@ export default function WinnerCelebrationCard({
 
   const kindLabel = winner?.kind === 'BONUS' ? 'BONUS' : 'MAIN';
 
+  // Toggle: white border on identity card vs gold border
+  // User request: move the strong border highlight to the identity (img 2), not payout (img 3)
+  const IDENTITY_BORDER = 'white' as const; // 'white' | 'gold'
+
+  const identityBorderClass =
+    IDENTITY_BORDER === 'gold'
+      ? 'border-[rgba(var(--xpot-gold),0.28)]'
+      : 'border-white/15';
+
+  const identityBgClass =
+    IDENTITY_BORDER === 'gold'
+      ? 'bg-[rgba(var(--xpot-gold),0.06)]'
+      : 'bg-white/[0.04]';
+
   return (
     <section
       className={[
@@ -102,7 +116,9 @@ export default function WinnerCelebrationCard({
 
               {claimedLabel ? (
                 <p className="mt-2 text-[12px] text-slate-300">
-                  <span className="uppercase tracking-[0.22em] text-[10px] text-slate-500 mr-2">Claimed</span>
+                  <span className="mr-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                    Claimed
+                  </span>
                   <span className="text-slate-200">{claimedLabel}</span>
                 </p>
               ) : (
@@ -133,18 +149,34 @@ export default function WinnerCelebrationCard({
         </div>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
-          {/* identity */}
+          {/* identity (✅ now gets the strong border highlight) */}
           <div className="min-w-0">
-            {/* ✅ IMPORTANT: no wrapping <a> here (XAccountIdentity is already a link) */}
-            <XAccountIdentity
-              name={winner?.name ?? null}
-              handle={winner?.handle ?? null}
-              avatarUrl={winner?.avatarUrl ?? null}
-              verified={false} // ✅ kill the verified badge everywhere in this card
-              subtitle={winner?.kind === 'BONUS' ? 'Bonus winner' : null}
-              size={64} // ✅ bigger avatar (premium)
-              className="px-4 py-4"
-            />
+            <div
+              className={[
+                'relative overflow-hidden rounded-2xl',
+                'border',
+                identityBorderClass,
+                identityBgClass,
+                'ring-1 ring-white/[0.06]',
+                'shadow-[0_22px_70px_rgba(0,0,0,0.35)]',
+              ].join(' ')}
+            >
+              {/* subtle internal glow for the identity card */}
+              <div className="pointer-events-none absolute -inset-16 opacity-70 blur-2xl bg-[radial-gradient(circle_at_18%_24%,rgba(255,255,255,0.10),transparent_55%),radial-gradient(circle_at_84%_28%,rgba(var(--xpot-gold),0.12),transparent_60%)]" />
+
+              {/* ✅ IMPORTANT: no wrapping <a> here (XAccountIdentity is already a link) */}
+              <div className="relative">
+                <XAccountIdentity
+                  name={winner?.name ?? null}
+                  handle={winner?.handle ?? null}
+                  avatarUrl={winner?.avatarUrl ?? null}
+                  verified={false} // ✅ kill the verified badge everywhere in this card
+                  subtitle={winner?.kind === 'BONUS' ? 'Bonus winner' : null}
+                  size={64} // ✅ bigger avatar (premium)
+                  className="px-4 py-4"
+                />
+              </div>
+            </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[12px] text-slate-400">
@@ -157,11 +189,11 @@ export default function WinnerCelebrationCard({
             {!hasWinner ? <div className="mt-2 text-[12px] text-slate-500">Awaiting publish</div> : null}
           </div>
 
-          {/* payout */}
-          <div className="relative overflow-hidden rounded-2xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.08)] p-4 ring-1 ring-white/[0.06]">
-            <div className="pointer-events-none absolute -inset-16 opacity-70 blur-2xl bg-[radial-gradient(circle_at_15%_20%,rgba(var(--xpot-gold),0.22),transparent_55%),radial-gradient(circle_at_80%_25%,rgba(255,255,255,0.10),transparent_60%)]" />
+          {/* payout (✅ border no longer the loud one) */}
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/25 p-4 ring-1 ring-white/[0.06]">
+            <div className="pointer-events-none absolute -inset-16 opacity-60 blur-2xl bg-[radial-gradient(circle_at_15%_20%,rgba(var(--xpot-gold),0.16),transparent_55%),radial-gradient(circle_at_80%_25%,rgba(255,255,255,0.08),transparent_60%)]" />
 
-            <div className="pointer-events-none absolute -inset-x-24 top-0 h-[140%] rotate-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)] opacity-50 animate-[xpotSweep_5.5s_linear_infinite]" />
+            <div className="pointer-events-none absolute -inset-x-24 top-0 h-[140%] rotate-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)] opacity-40 animate-[xpotSweep_5.5s_linear_infinite]" />
 
             <p className="relative text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Payout</p>
 
