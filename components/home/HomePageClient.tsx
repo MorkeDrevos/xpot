@@ -76,18 +76,15 @@ const XPOT_SOLSCAN_URL =
 // Royal = ceremonial gold + onyx + precision highlights (premium, not cheesy)
 const BTN_ROYAL_PRIMARY =
   'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold ' +
-  // ✅ fallback (always valid)
-  'bg-amber-200 text-slate-950 ' +
-  // ✅ if --xpot-gold exists, this overrides; if invalid, fallback stays
-  'bg-[linear-gradient(135deg,rgba(var(--xpot-gold),0.98),rgba(255,255,255,0.90),rgba(56,189,248,0.22))] ' +
-  'shadow-[0_26px_90px_rgba(var(--xpot-gold),0.22),0_18px_55px_rgba(0,0,0,0.55)] ' +
+  'bg-gradient-to-br from-amber-200 via-white to-sky-200 text-slate-950 ' +
+  'shadow-[0_26px_90px_rgba(251,191,36,0.22),0_18px_55px_rgba(0,0,0,0.55)] ' +
   'hover:brightness-[1.05] active:brightness-[0.98] transition ' +
   'ring-1 ring-white/[0.14]';
 
 const BTN_ROYAL_SECONDARY =
   'inline-flex items-center justify-center rounded-full px-5 py-3 text-[13px] font-semibold ' +
-  'border border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.06] transition ' +
-  'shadow-[0_12px_40px_rgba(0,0,0,0.35)]';
+  'border border-white/12 bg-slate-950/40 text-slate-100 hover:bg-slate-950/55 transition ' +
+  'shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur';
 
 function setMeta(name: string, content: string) {
   if (typeof document === 'undefined') return;
