@@ -39,17 +39,6 @@ export async function GET(req: NextRequest) {
     const limit = intParam(req.nextUrl.searchParams.get('limit'), 50);
     const take = Math.min(limit * 10, 5000);
 
-    // Debug: DB fingerprint (kills env confusion forever)
-    let dbInfo: { db: string; host: string | null; port: number | null } | null = null;
-    try {
-      const rows = await prisma.$queryRaw<
-        Array<{ db: string; host: string | null; port: number | null }>
-      >`SELECT current_database()::text AS db, inet_server_addr()::text AS host, inet_server_port()::int AS port`;
-      dbInfo = rows?.[0] ?? null;
-    } catch {
-      dbInfo = null;
-    }
-
     const total = await prisma.winner.count();
 
     const include = {
@@ -70,14 +59,14 @@ export async function GET(req: NextRequest) {
     try {
       rows = await (prisma.winner as any).findMany({
         take,
-        orderBy: [{ date: 'desc' }],
+        orderBy: { date: 'desc' },
         include,
       });
     } catch {
       try {
         rows = await (prisma.winner as any).findMany({
           take,
-          orderBy: [{ createdAt: 'desc' }],
+          orderBy: { createdAt: 'desc' },
           include,
         });
       } catch {
@@ -88,15 +77,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Dedupe: ONE drawId = ONE winner (fallbacks if drawId missing)
+    // Deduplicate: ONE drawId = ONE public winner
     const seen = new Set<string>();
     const uniq: any[] = [];
+
     for (const w of rows) {
       const key =
-        String((w as any).drawId ?? '') ||
-        String((w as any).draw?.id ?? '') ||
-        // last resort: bucket by drawDate (date-only) to avoid double winners on same day
-        String(((w as any).draw?.drawDate ?? (w as any).date ?? (w as any).createdAt)?.toString?.() ?? w.id) ||
+        String(w.drawId ?? '') ||
+        String(w.draw?.id ?? '') ||
         String(w.id);
 
       if (seen.has(key)) continue;
@@ -105,30 +93,20 @@ export async function GET(req: NextRequest) {
       if (uniq.length >= limit) break;
     }
 
-    // Fallback lookup for missing user/avatar:
-    // If a Winner has walletAddress but ticket->wallet->user is missing, resolve via Wallet.address.
-    const missingWalletAddrs = Array.from(
-      new Set(
-        uniq
-          .map(w => (w as any).walletAddress as string | null)
-          .filter(Boolean)
-          .filter(addr => {
-            const ticket = (w as any).ticket;
-            const wallet = ticket?.wallet;
-            const user = wallet?.user;
-            return !user; // missing linkage
-          }) as string[],
-      ),
-    );
+    // Resolve fallback users by wallet address (SAFE, no scope bugs)
+    const walletAddrsNeedingLookup = uniq
+      .filter(w => !w.ticket?.wallet?.user)
+      .map(w => w.walletAddress ?? w.ticket?.walletAddress ?? w.ticket?.wallet?.address)
+      .filter(Boolean) as string[];
 
     const walletToUser = new Map<
       string,
       { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }
     >();
 
-    if (missingWalletAddrs.length) {
+    if (walletAddrsNeedingLookup.length) {
       const wallets = await prisma.wallet.findMany({
-        where: { address: { in: missingWalletAddrs } },
+        where: { address: { in: walletAddrsNeedingLookup } },
         include: { user: true },
       });
 
@@ -142,61 +120,58 @@ export async function GET(req: NextRequest) {
     }
 
     const payload = uniq.map(w => {
-      const draw = (w as any).draw;
-      const ticket = (w as any).ticket;
+      const draw = w.draw;
+      const ticket = w.ticket;
+      const wallet = ticket?.wallet;
+      const user = wallet?.user;
 
-      const ticketWallet = ticket?.wallet;
-      const ticketUser = ticketWallet?.user;
-
-      const winnerWalletAddress =
-        (w as any).walletAddress ??
+      const walletAddress =
+        w.walletAddress ??
         ticket?.walletAddress ??
-        ticketWallet?.address ??
+        wallet?.address ??
         null;
 
-      // Prefer the ticket->wallet->user chain, else fallback map via Winner.walletAddress
-      const fallbackUser = winnerWalletAddress ? walletToUser.get(winnerWalletAddress) : null;
-
-      const handle = ticketUser?.xHandle ?? fallbackUser?.xHandle ?? null;
-      const name = (ticketUser as any)?.xName ?? fallbackUser?.xName ?? null;
-      const avatarUrl = (ticketUser as any)?.xAvatarUrl ?? fallbackUser?.xAvatarUrl ?? null;
+      const fallbackUser = walletAddress ? walletToUser.get(walletAddress) : null;
 
       return {
         id: w.id,
-        drawId: (w as any).drawId ?? draw?.id ?? null,
+        drawId: w.drawId ?? draw?.id ?? null,
 
-        kind: (w as any).kind ?? 'MAIN',
-        label: (w as any).label ?? null,
+        kind: w.kind ?? 'MAIN',
+        label: w.label ?? null,
 
-        // prefer draw.drawDate, fallback to winner.date/createdAt
-        drawDate: safeIso(draw?.drawDate ?? (w as any).date ?? (w as any).createdAt),
+        drawDate: safeIso(draw?.drawDate ?? w.date ?? w.createdAt),
 
-        ticketCode: (w as any).ticketCode ?? ticket?.code ?? null,
+        ticketCode: w.ticketCode ?? ticket?.code ?? null,
 
         amountXpot: pickAmountXpot(w),
 
-        // IMPORTANT: use Winner.walletAddress if present (it may exist even when relations are broken)
-        walletAddress: winnerWalletAddress,
+        walletAddress,
 
-        handle,
-        name,
-        avatarUrl,
+        handle: user?.xHandle ?? fallbackUser?.xHandle ?? null,
+        name: (user as any)?.xName ?? fallbackUser?.xName ?? null,
+        avatarUrl: (user as any)?.xAvatarUrl ?? fallbackUser?.xAvatarUrl ?? null,
 
-        isPaidOut: typeof (w as any).isPaidOut === 'boolean' ? (w as any).isPaidOut : null,
-        txUrl: (w as any).txUrl ?? null,
-        txSig: (w as any).txSig ?? null,
+        isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
+        txUrl: w.txUrl ?? null,
+        txSig: w.txSig ?? null,
       };
     });
 
-    const meta = {
-      db: dbInfo, // { db, host, port } when available
-      totalWinnersInDb: total,
-      fetchedRows: rows.length,
-      returned: payload.length,
-      sample: payload[0] ?? null,
-    };
-
-    return NextResponse.json({ ok: true, winners: payload, meta }, { status: 200 });
+    return NextResponse.json(
+      {
+        ok: true,
+        winners: payload,
+        meta: {
+          totalWinnersInDb: total,
+          fetchedRows: rows.length,
+          returned: payload.length,
+        },
+        // ✅ IMPORTANT: transparency link
+        winnersPageUrl: '/winners',
+      },
+      { status: 200 },
+    );
   } catch (err: any) {
     console.error('GET /api/winners/recent error', err);
     return NextResponse.json(
