@@ -1,3 +1,4 @@
+// app/_home/HomePageClient.tsx
 'use client';
 
 import {
@@ -252,6 +253,17 @@ function PremiumCard({
       <div className="relative z-10">{children}</div>
     </section>
   );
+}
+
+function normalizeHandle(h: string | null | undefined) {
+  const s = String(h ?? '').trim();
+  if (!s) return '@unknown';
+  return s.startsWith('@') ? s : `@${s}`;
+}
+
+function toXProfileUrl(handle: string | null | undefined) {
+  const h = normalizeHandle(handle).replace(/^@/, '');
+  return `https://x.com/${encodeURIComponent(h)}`;
 }
 
 function formatNumber(n: number) {
@@ -654,7 +666,6 @@ function useLatestWinnerCard() {
           handle: x.handle ?? x.xHandle ?? null,
           name: x.name ?? x.xName ?? null,
           avatarUrl: x.avatarUrl ?? x.xAvatarUrl ?? null,
-          verified: typeof x.verified === 'boolean' ? x.verified : (x?.isVerified ?? null),
           wallet: x.wallet ?? x.walletAddress ?? x.walletAddr ?? null,
           amountXpot:
             typeof x.amountXpot === 'number'
@@ -684,7 +695,6 @@ function useLatestWinnerCard() {
           handle: x.handle ?? null,
           name: x.name ?? null,
           avatarUrl: x.avatarUrl ?? null,
-          verified: typeof x.verified === 'boolean' ? x.verified : (x?.isVerified ?? null),
           wallet: x.wallet ?? null,
           amountXpot: typeof x.amountXpot === 'number' ? x.amountXpot : null,
           amount: typeof x.amount === 'number' ? x.amount : null,
@@ -994,7 +1004,7 @@ function HomePageInner() {
               <CosmicHeroBackdrop />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.30),transparent)]" />
 
-              {/* New layout: RIGHT (Jackpot) dominates */}
+              {/* RIGHT (Jackpot) dominates */}
               <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,1.28fr)_minmax(0,0.72fr)] 2xl:grid-cols-[minmax(0,1.36fr)_minmax(0,0.64fr)]">
                 {/* RIGHT - Jackpot hero */}
                 <div className="min-w-0 order-1 lg:order-2">
@@ -1036,7 +1046,7 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* LEFT - Identity + proof + winner spotlight */}
+                {/* LEFT - Identity + proof + winner */}
                 <div className="min-w-0 order-2 lg:order-1">
                   <div className="relative">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1051,6 +1061,7 @@ function HomePageInner() {
                     </div>
 
                     <div className="mt-4">
+                      {/* ORIGINAL H1 (back) */}
                       <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                         One protocol. One daily <span className="xpot-xpotword">XPOT</span> draw.
                       </h1>
@@ -1083,13 +1094,13 @@ function HomePageInner() {
                             </span>
                           </div>
 
+                          {/* keeps FinalDrawDate component in sync if you later change run end */}
                           <div className="sr-only">
                             <FinalDrawDate />
                           </div>
                         </div>
                       </div>
 
-                      {/* Trust bar (decluttered) */}
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
                           <Users className="h-4 w-4 text-slate-300" />
@@ -1137,9 +1148,11 @@ function HomePageInner() {
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
       {/* LIVE ACTIVITY */}
-      <div className="mt-10">
-        <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
-      </div>
+      {SHOW_LIVE_FEED ? (
+        <div className="mt-10">
+          <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
+        </div>
+      ) : null}
 
       {/* THE PROTOCOL, MADE CLEAR */}
       <section className="mt-10">
@@ -1282,6 +1295,7 @@ function HomePageInner() {
           desc="Homepage stays hype and simple. Hub is where the entry and verification happens."
         />
 
+        {/* ✅ no tab pre-opened */}
         <div className="grid gap-4 lg:grid-cols-2">
           <FAQItem
             q="Do I need to buy tickets?"
