@@ -1582,6 +1582,26 @@ function TokenomicsPageInner() {
                   </button>
                 </div>
 
+                {/* Tiny proof links (keeps it premium but transparent) */}
+<div className="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+  <Link
+    href="/tokenomics?tab=rewards&focus=reserve"
+    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+  >
+    Tokenomics & proof <ArrowRight className="h-4 w-4 opacity-70" />
+  </Link>
+
+  <span className="text-slate-600">Public wallets, vesting, reserves.</span>
+
+  {/* Optional but recommended for transparency */}
+  <Link
+    href="/winners"
+    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+  >
+    Winners & payouts <ExternalLink className="h-4 w-4 opacity-70" />
+  </Link>
+</div>
+
                 <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
