@@ -1194,10 +1194,15 @@ Claim once per day in the hub.
 />
 
 {/* protocol clarification */}
-<div className="mb-4 max-w-3xl text-[12px] leading-relaxed text-slate-400">
-  Top holder concentration reflects protocol-controlled wallets
-  (liquidity, treasury, strategy execution, and community rewards),
-  not private individuals.
+<div className="mb-6 max-w-3xl rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 ring-1 ring-white/[0.06]">
+  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
+    Holder distribution
+  </p>
+  <p className="mt-2 text-[13px] leading-relaxed text-slate-300">
+    Top holder concentration reflects protocol-controlled wallets
+    (liquidity, treasury, strategy execution, and community rewards),
+    not private individuals.
+  </p>
 </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
