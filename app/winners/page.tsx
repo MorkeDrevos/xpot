@@ -10,6 +10,7 @@ import GoldAmount from '@/components/GoldAmount';
 import {
   BadgeCheck,
   CalendarClock,
+  ChevronDown,
   Crown,
   ExternalLink,
   Info,
@@ -28,7 +29,7 @@ type WinnerKind = 'MAIN' | 'BONUS';
 type WinnerRow = {
   id: string;
 
-  // drawId is the canonical de-dupe key (one draw = one winner row)
+  // ✅ IMPORTANT: drawId is the canonical de-dupe key (one draw = one winner row)
   drawId?: string | null;
 
   kind?: WinnerKind | string | null;
@@ -65,6 +66,7 @@ function safeTimeMs(iso?: string | null) {
 function formatDate(date: string) {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '—';
+  // date-only, no time
   return d.toLocaleDateString('en-GB');
 }
 
@@ -143,6 +145,7 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
+  // Adjust so that formatting back into the target TZ matches the intended wall-clock time.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
 
@@ -312,12 +315,14 @@ function WinnerIdentity({
 }
 
 function makeDedupeKey(w: WinnerRow) {
+  // ✅ Canonical: one draw = one winner row
   const drawId = (w.drawId || '').trim();
   if (drawId) {
     const k = String(w.kind || '').toUpperCase();
     return `draw:${drawId}|${k || 'WIN'}`;
   }
 
+  // Prefer strong unique identifiers next
   const sig = (w.txSig || '').trim();
   if (sig) return `sig:${sig}`;
 
@@ -327,6 +332,7 @@ function makeDedupeKey(w: WinnerRow) {
   const id = (w.id || '').trim();
   if (id) return `id:${id}`;
 
+  // Fallback fingerprint: date + kind + handle + wallet + amount
   const d = (w.drawDate || '').trim();
   const k = String(w.kind || '').toUpperCase();
   const h = (normalizeHandle(w.handle) || '').trim();
@@ -354,12 +360,15 @@ export default function WinnersPage() {
         setError(null);
         setLoading(true);
 
+        // ✅ We must display ALL winners.
+        // We try to paginate if the API returns a cursor. If it doesn’t, we still fetch a large limit.
         const all: any[] = [];
         let cursor: string | null = null;
 
+        // safety cap (prevents infinite loops if backend bugs)
         for (let page = 0; page < 20; page++) {
           const params = new URLSearchParams();
-          params.set('limit', '5000');
+          params.set('limit', '5000'); // big page size so "all winners" loads in one go if possible
           if (cursor) params.set('cursor', cursor);
 
           const res = await fetch(`/api/winners/recent?${params.toString()}`, { cache: 'no-store' });
@@ -370,6 +379,7 @@ export default function WinnersPage() {
           const batch = Array.isArray(data?.winners) ? data.winners : [];
           for (const w of batch) all.push(w);
 
+          // support common cursor shapes
           const next =
             (typeof data?.nextCursor === 'string' && data.nextCursor) ||
             (typeof data?.cursor === 'string' && data.cursor) ||
@@ -388,23 +398,32 @@ export default function WinnersPage() {
 
         const mapped: WinnerRow[] = all.map((w: any) => ({
           id: String(w.id ?? crypto.randomUUID()),
+
+          // ✅ pull draw id if backend provides it (many of your endpoints do)
           drawId: w.drawId ?? w.draw_id ?? w.draw?.id ?? null,
+
           kind: w.kind ?? w.winnerKind ?? w.type ?? null,
           label: w.label ?? null,
           drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
           ticketCode: w.ticketCode ?? w.code ?? null,
-          amountXpot: typeof w.amountXpot === 'number' ? w.amountXpot : typeof w.amount === 'number' ? w.amount : null,
+
+          amountXpot: w.amountXpot ?? w.amount ?? null,
+
           walletAddress: w.walletAddress ?? w.wallet ?? null,
+
           handle: w.handle ?? w.xHandle ?? null,
           name: w.name ?? w.xName ?? null,
           avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
+
           isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
           txUrl: w.txUrl ?? w.txLink ?? null,
           txSig: w.txSig ?? w.signature ?? null,
         }));
 
+        // 1) Sort newest first (by drawDate, fallback: 0)
         mapped.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
 
+        // 2) Dedupe by drawId (preferred), otherwise strong ids
         const seen = new Set<string>();
         const deduped: WinnerRow[] = [];
         for (const r of mapped) {
@@ -463,6 +482,7 @@ export default function WinnersPage() {
   }, [rows, query, kindFilter, showTxOnly]);
 
   const grouped = useMemo(() => {
+    // group by date-only key, but keep a real ms sort key (newest first)
     const map = new Map<string, { key: string; ms: number; items: WinnerRow[] }>();
 
     for (const r of filteredRows) {
@@ -481,12 +501,16 @@ export default function WinnersPage() {
     const arr = Array.from(map.values());
     arr.sort((a, b) => b.ms - a.ms);
 
+    // sort items within each day (newest first)
     for (const g of arr) {
       g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
     }
 
     return arr;
   }, [filteredRows]);
+
+  // ✅ show ALL days (no “recent only”)
+  const visibleGrouped = grouped;
 
   const totals = useMemo(() => {
     const main = filteredRows.filter(r => String(r.kind || '').toUpperCase() === 'MAIN').length;
@@ -628,7 +652,7 @@ export default function WinnersPage() {
                 <div className="xpot-card px-4 py-4 text-sm text-slate-500">No winners yet.</div>
               ) : (
                 <div className="space-y-6">
-                  {grouped.map(g => (
+                  {visibleGrouped.map(g => (
                     <section key={g.key} className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
@@ -644,16 +668,10 @@ export default function WinnersPage() {
                           const hasTx = isValidHttpUrl(w.txUrl);
                           const verified = hasTx || w.isPaidOut === true;
 
-                          // IMPORTANT:
-                          // - GoldAmount expects a STRING
-                          // - We only render GoldAmount when we actually have a numeric amount
-                          const amountNum =
+                          const amountText =
                             typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot)
-                              ? w.amountXpot
-                              : null;
-
-                          const hasAmount = amountNum !== null;
-                          const amountText = hasAmount ? fmtInt(Math.round(amountNum as number)) : null;
+                              ? fmtInt(Math.round(w.amountXpot))
+                              : '—';
 
                           return (
                             <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
@@ -712,13 +730,7 @@ export default function WinnersPage() {
 
                                 <div className="flex justify-start sm:justify-center">
                                   <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
-                                    {hasAmount && amountText ? (
-                                      <GoldAmount value={amountText} suffix="XPOT" size="md" />
-                                    ) : (
-                                      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-slate-300">
-                                        <span className="opacity-60">—</span> XPOT
-                                      </div>
-                                    )}
+                                    <GoldAmount value={amountText} suffix="XPOT" size="md" />
                                   </div>
                                 </div>
 
