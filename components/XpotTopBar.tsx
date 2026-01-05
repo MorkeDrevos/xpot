@@ -77,7 +77,7 @@ const XPOT_X_POST = 'https://x.com/xpotbet';
 const FINAL_DAY_HREF = '/2045/final-day';
 const FINAL_DAY_LABEL = 'Final Draw';
 
-// const WINNERS_HREF = '/winners'; // commented out per request
+const WINNERS_HREF = '/winners';
 const TOKENOMICS_HREF = '/tokenomics';
 const ROADMAP_HREF = '/roadmap';
 const PROTOCOL_HREF = '/hub/protocol';
