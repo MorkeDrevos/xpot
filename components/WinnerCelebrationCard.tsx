@@ -46,6 +46,9 @@ function formatXp(amount?: number | null) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n);
 }
 
+/** keep this OUTSIDE the component so TS never does weird narrowing */
+type IdentityBorder = 'white' | 'gold';
+
 export default function WinnerCelebrationCard({
   winner,
   className = '',
@@ -68,19 +71,21 @@ export default function WinnerCelebrationCard({
 
   const kindLabel = winner?.kind === 'BONUS' ? 'BONUS' : 'MAIN';
 
-  type IdentityBorder = 'white' | 'gold';
+  // ✅ IMPORTANT:
+  // DO NOT use `as const` here.
+  // Also keep the union type explicit.
+  const IDENTITY_BORDER: IdentityBorder = 'white'; // change to 'gold' if you want
 
-  const IDENTITY_BORDER: IdentityBorder = 'white'; // or 'gold'
+  // ✅ TS-safe, no "unintentional comparison" errors
+  const identityBorderClass =
+    IDENTITY_BORDER === 'gold'
+      ? 'border-[rgba(var(--xpot-gold),0.28)]'
+      : 'border-white/15';
 
-  const identityBorderClass: string =
-  IDENTITY_BORDER === 'gold'
-    ? 'border-[rgba(var(--xpot-gold),0.28)]'
-    : 'border-white/15';
-
-const identityBgClass: string =
-  IDENTITY_BORDER === 'gold'
-    ? 'bg-[rgba(var(--xpot-gold),0.06)]'
-    : 'bg-white/[0.04]';
+  const identityBgClass =
+    IDENTITY_BORDER === 'gold'
+      ? 'bg-[rgba(var(--xpot-gold),0.06)]'
+      : 'bg-white/[0.04]';
 
   return (
     <section
@@ -195,10 +200,14 @@ const identityBgClass: string =
 
             <div className="pointer-events-none absolute -inset-x-24 top-0 h-[140%] rotate-12 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)] opacity-40 animate-[xpotSweep_5.5s_linear_infinite]" />
 
-            <p className="relative text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Payout</p>
+            <p className="relative text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+              Payout
+            </p>
 
             <div className="relative mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-semibold tracking-tight text-white sm:text-[34px]">{amount}</span>
+              <span className="text-3xl font-semibold tracking-tight text-white sm:text-[34px]">
+                {amount}
+              </span>
               <span className="text-[14px] font-semibold text-[rgb(var(--xpot-gold))]">XPOT</span>
             </div>
 
