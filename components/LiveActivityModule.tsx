@@ -1,10 +1,9 @@
-
 'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Crown, Sparkles, Users } from 'lucide-react';
+import { Crown, Sparkles, Users, Trophy, ExternalLink } from 'lucide-react';
 
 import XAccountIdentity from '@/components/XAccountIdentity';
 
@@ -45,6 +44,7 @@ export type LiveWinnerRow = {
 ====================================================== */
 
 const ROUTE_HUB = '/hub';
+const ROUTE_WINNERS = '/winners';
 
 function cx(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(' ');
@@ -54,6 +54,11 @@ function normalizeHandle(h?: string | null) {
   const s = String(h ?? '').trim();
   if (!s) return '@unknown';
   return s.startsWith('@') ? s : `@${s}`;
+}
+
+function isUnknownHandle(h?: string | null) {
+  const s = normalizeHandle(h);
+  return !s || s === '@unknown';
 }
 
 function toXProfileUrl(handle: string) {
@@ -91,13 +96,18 @@ function formatDateOnly(iso?: string | null) {
 
 function formatXpot(w: LiveWinnerRow | null) {
   const v = w?.amountXpot ?? w?.amount;
-  if (!v) return null;
+  if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return null;
   return Math.round(v).toLocaleString('en-US');
 }
 
 function isValidIso(iso?: string | null) {
   if (!iso) return false;
   return Number.isFinite(Date.parse(iso));
+}
+
+function isValidHttpUrl(u?: string | null) {
+  if (!u) return false;
+  return /^https?:\/\/.+/i.test(u);
 }
 
 /**
@@ -325,7 +335,10 @@ export default function LiveActivityModule({
   const claimedIso = isValidIso(winner?.drawDate) ? winner?.drawDate : null;
   const claimedLabel = claimedIso ? formatDateOnly(claimedIso) : null;
 
-  const xHref = toXProfileUrl(winnerHandle);
+  const canLinkX = !isUnknownHandle(winnerHandle);
+  const xHref = canLinkX ? toXProfileUrl(winnerHandle) : null;
+
+  const hasTx = isValidHttpUrl(winner?.txUrl);
 
   return (
     <section
@@ -363,16 +376,29 @@ export default function LiveActivityModule({
                 Latest winner
               </div>
 
-              {winner?.txUrl ? (
-                <a
-                  href={winner.txUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-slate-400 hover:text-white"
+              <div className="flex items-center gap-2">
+                {hasTx && winner?.txUrl ? (
+                  <a
+                    href={winner.txUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                    title="View transaction"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Tx
+                  </a>
+                ) : null}
+
+                <Link
+                  href={ROUTE_WINNERS}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                  title="Open winners archive"
                 >
-                  View TX
-                </a>
-              ) : null}
+                  <Trophy className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
+                  Archive
+                </Link>
+              </div>
             </div>
 
             {/* PROMO LINE */}
@@ -402,15 +428,43 @@ export default function LiveActivityModule({
 
             {/* WINNER IDENTITY (✅ use XAccountIdentity component) */}
             <div className="mt-4">
-              <a href={xHref} target="_blank" rel="noopener noreferrer" className="block">
-                <XAccountIdentity
-                  name={winnerName}
-                  handle={winnerHandle}
-                  avatarUrl={winner?.avatarUrl}
-                  verified={Boolean(winner?.verified)}
-                  subtitle={winner?.kind === 'BONUS' ? 'Bonus winner' : null}
-                />
-              </a>
+              {xHref ? (
+                <a href={xHref} target="_blank" rel="noopener noreferrer" className="block">
+                  <XAccountIdentity
+                    name={winnerName}
+                    handle={winnerHandle}
+                    avatarUrl={winner?.avatarUrl}
+                    verified={Boolean(winner?.verified)}
+                    subtitle={winner?.kind === 'BONUS' ? 'Bonus winner' : null}
+                  />
+                </a>
+              ) : (
+                <div className="block">
+                  <XAccountIdentity
+                    name={winnerName}
+                    handle={winnerHandle}
+                    avatarUrl={winner?.avatarUrl}
+                    verified={Boolean(winner?.verified)}
+                    subtitle={winner?.kind === 'BONUS' ? 'Bonus winner' : null}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* BOTTOM NOTE (✅ make it obvious there are more winners) */}
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.26em] text-slate-500">See more winners</div>
+                <div className="mt-1 text-xs text-slate-300">
+                  Full archive, TX links and history on the winners page.
+                </div>
+              </div>
+              <Link
+                href={ROUTE_WINNERS}
+                className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10"
+              >
+                Open winners
+              </Link>
             </div>
           </div>
 
@@ -453,6 +507,14 @@ export default function LiveActivityModule({
                 ))}
               </div>
             )}
+
+            {/* Optional: subtle footer for entries count */}
+            <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+              <span>{clean.length ? `${clean.length} unique entrants` : 'No entrants yet'}</span>
+              <Link href={ROUTE_HUB} className="text-slate-300 hover:text-white">
+                Claim in the hub
+              </Link>
+            </div>
           </div>
         </div>
       </div>
