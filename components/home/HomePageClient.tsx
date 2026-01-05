@@ -258,7 +258,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             Primary venue is Jupiter. Always verify the mint and use official links.
           </p>
 
-          <div className="mt-3 grid gap-2 sm:flex sm:items-center">
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
   {/* PRIMARY */}
   <a
     href={XPOT_JUP_SWAP_URL}
@@ -266,13 +266,10 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
     rel="noopener noreferrer"
     title="Trade XPOT on Jupiter"
     className="
-      xpot-btn-vault
-      group
-      relative
-      inline-flex items-center justify-center
-      rounded-full
-      w-full sm:w-auto
-      px-6 py-3.5
+      xpot-btn-vault group relative isolate
+      inline-flex w-full sm:w-auto items-center justify-center
+      !rounded-full overflow-hidden
+      h-[46px] px-6
       text-sm font-semibold
       transition
       hover:brightness-[1.03]
@@ -280,24 +277,34 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       active:scale-[0.99]
     "
   >
-    Trade on Jupiter
-    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+    <span className="relative z-10">Trade on Jupiter</span>
+    <ArrowRight className="relative z-10 ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 
-    {/* Lightshow glow (new) */}
+    {/* Lightshow (new palette) */}
     <span
       aria-hidden
       className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl"
       style={{
         background:
-          'radial-gradient(circle at 22% 40%, rgba(56,189,248,0.14), transparent 58%),' + // sky
-          'radial-gradient(circle at 78% 30%, rgba(236,72,153,0.10), transparent 62%),' + // magenta
-          'radial-gradient(circle at 45% 65%, rgba(var(--xpot-gold),0.16), transparent 60%)', // gold
+          // aurora: cyan + violet + gold (premium)
+          'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.16), transparent 60%),' +
+          'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.12), transparent 62%),' +
+          'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.14), transparent 62%)',
+      }}
+    />
+    <span
+      aria-hidden
+      className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition"
+      style={{
+        background:
+          'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.10), transparent 55%),' +
+          'linear-gradient(90deg, rgba(34,211,238,0.00), rgba(168,85,247,0.08), rgba(34,211,238,0.00))',
       }}
     />
   </a>
 
-  {/* SECONDARIES (mobile: 2 columns, desktop: inline) */}
-  <div className="grid grid-cols-2 gap-2 sm:flex">
+  {/* SECONDARIES (mobile: 2 columns) */}
+  <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
     <a
       href={XPOT_DEXSCREENER_URL}
       target="_blank"
@@ -305,10 +312,10 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       title="View chart"
       className="
         xpot-btn xpot-btn-utility
-        rounded-full
-        w-full sm:w-auto
-        px-4 py-3
-        text-[13px]
+        inline-flex items-center justify-center gap-2
+        !rounded-full
+        h-[46px] w-full sm:w-auto
+        px-4 text-[13px]
       "
     >
       <TrendingUp className="h-4 w-4" />
@@ -323,10 +330,10 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       title="View on Solscan"
       className="
         xpot-btn xpot-btn-utility
-        rounded-full
-        w-full sm:w-auto
-        px-4 py-3
-        text-[13px]
+        inline-flex items-center justify-center gap-2
+        !rounded-full
+        h-[46px] w-full sm:w-auto
+        px-4 text-[13px]
       "
     >
       <ShieldCheck className="h-4 w-4" />
