@@ -1045,89 +1045,59 @@ function HomePageInner() {
                   </div>
                 </div>
 
-{/* LEFT - Identity + proof + winner */}
-<div className="min-w-0 order-2 lg:order-1">
-  <div className="relative">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <Pill tone={warmup ? 'amber' : 'emerald'}>
-        <Radio className="h-3.5 w-3.5" />
-        {run.ended ? 'Final draw' : warmup ? 'Warm-up' : run.started ? 'Live run' : 'Pre-run'}
-      </Pill>
+                {/* LEFT - Identity + proof + winner */}
+                <div className="min-w-0 order-2 lg:order-1">
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <Pill tone={warmup ? 'amber' : 'emerald'}>
+                        <Radio className="h-3.5 w-3.5" />
+                        {run.ended ? 'Final draw' : warmup ? 'Warm-up' : run.started ? 'Live run' : 'Pre-run'}
+                      </Pill>
 
-      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-        NO TICKETS - JUST XPOT HOLDINGS
-      </span>
-    </div>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+                        NO TICKETS - JUST XPOT HOLDINGS
+                      </span>
+                    </div>
 
-    <div className="mt-4">
-      {/* ORIGINAL H1 (back) */}
-      <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-        One protocol. One daily <span className="xpot-xpotword">XPOT</span> draw.
-      </h1>
+                    <div className="mt-4">
+                      {/* ORIGINAL H1 (back) */}
+                      <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                        One protocol. One daily <span className="xpot-xpotword">XPOT</span> draw.
+                      </h1>
 
-      <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
-        A daily entry, unlocked by XPOT holdings.
-        <br />
-        Claim once per day in the hub.
-      </p>
+                      <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
+                        A daily entry, unlocked by XPOT holdings.
+Claim once per day in the hub.
+                      </p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
-          <Users className="h-4 w-4 text-slate-300" />
-          Real handles
-          <span className="text-slate-500">•</span>
-          <ShieldCheck className="h-4 w-4 text-slate-300" />
-          On-chain proof
-          <span className="text-slate-500">•</span>
-          <Globe className="h-4 w-4 text-slate-300" />
-          One cadence
-        </span>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                          <Users className="h-4 w-4 text-slate-300" />
+                          Real handles
+                          <span className="text-slate-500">•</span>
+                          <ShieldCheck className="h-4 w-4 text-slate-300" />
+                          On-chain proof
+                          <span className="text-slate-500">•</span>
+                          <Globe className="h-4 w-4 text-slate-300" />
+                          One cadence
+                        </span>
 
-        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
-          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
-            <Info className="h-4 w-4 text-emerald-100/70" />
-            Verified in hub
-          </span>
-        </TinyTooltip>
-      </div>
+                        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
+                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
+                            <Info className="h-4 w-4 text-emerald-100/70" />
+                            Verified in hub
+                          </span>
+                        </TinyTooltip>
+                      </div>
 
-      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
+                      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
 
-      <div className="mt-5">
-        <WinnerCelebrationCard winner={winnerSpotlight} />
-      </div>
-
-      {/* ✅ Transparency / Treasury note now belongs HERE (left hero) */}
-      <div className="mt-4 max-w-2xl">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 ring-1 ring-white/[0.06]">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                Treasury & protocol wallets
-              </p>
-            </div>
-
-            <Link
-              href={ROUTE_TOKENOMICS_RESERVE}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.05] transition"
-              title="Learn more in Tokenomics"
-            >
-              Learn more
-              <ArrowRight className="h-3 w-3 opacity-70" />
-            </Link>
-          </div>
-
-          <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
-            Top holder concentration reflects protocol-controlled wallets (liquidity pool, treasury, strategy execution,
-            and community rewards) - not private individuals.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-                
+                      <div className="mt-5">
+                        <WinnerCelebrationCard winner={winnerSpotlight} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Under-hero rail */}
