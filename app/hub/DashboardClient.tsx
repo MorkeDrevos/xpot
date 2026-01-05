@@ -24,7 +24,6 @@ import {
   Sparkles,
   Ticket,
   Wallet,
-  X,
   Radio,
   Volume2,
   VolumeX,
@@ -532,7 +531,6 @@ function normalizePublicWinner(raw: any): PublicWinner | null {
   const id = pickString(raw.id, raw.winnerId, raw.ticketId, raw.drawId) || '';
   if (!id) return null;
 
-  // wallet can be in many places depending on include() shape
   const wallet =
     pickString(
       raw.wallet,
@@ -545,7 +543,6 @@ function normalizePublicWinner(raw: any): PublicWinner | null {
       raw?.wallet?.publicKey,
     ) || null;
 
-  // handle/name/avatar often live on user or ticket.user or profile fields
   const handle =
     pickString(
       raw.handle,
@@ -579,7 +576,6 @@ function normalizePublicWinner(raw: any): PublicWinner | null {
       raw?.ticket?.wallet?.user?.imageUrl,
     ) || null;
 
-  // amount fields vary a LOT
   const amount = pickNumber(
     raw.amount,
     raw.amountXpot,
@@ -590,7 +586,6 @@ function normalizePublicWinner(raw: any): PublicWinner | null {
     raw?.payout?.amount,
   );
 
-  // tx url or signature (build url if only signature exists)
   const txUrl =
     pickString(raw.txUrl, raw.tx, raw.txHash, raw.signature) ||
     (pickString(raw.txSig, raw.payoutSig) ? `https://solscan.io/tx/${pickString(raw.txSig, raw.payoutSig)}` : null);
@@ -619,7 +614,6 @@ function normalizePublicWinner(raw: any): PublicWinner | null {
 }
 
 async function fetchRecentWinners(limit = 10) {
-  // Try multiple endpoints (because your codebase has moved routes around)
   const tries = [
     `/api/public/winners/recent?limit=${encodeURIComponent(String(limit))}`,
     `/api/winners/recent?limit=${encodeURIComponent(String(limit))}`,
@@ -631,9 +625,6 @@ async function fetchRecentWinners(limit = 10) {
       if (!r.ok) continue;
       const j = (await r.json().catch(() => null)) as any;
 
-      // Support shapes:
-      // { ok: true, winners: [...] }
-      // { ok: true, winner: ... } (fallback)
       const listRaw: any[] = Array.isArray(j?.winners)
         ? j.winners
         : j?.winner
@@ -644,14 +635,12 @@ async function fetchRecentWinners(limit = 10) {
 
       const winners = listRaw.map(normalizePublicWinner).filter(Boolean) as PublicWinner[];
       if (winners.length) return { ok: true as const, winners };
-      // If endpoint exists but empty winners, still return empty
       if (Array.isArray(j?.winners)) return { ok: true as const, winners: [] as PublicWinner[] };
     } catch {
       // keep trying
     }
   }
 
-  // As a final fallback, try "latest" and wrap into list
   try {
     const r = await fetch('/api/public/winners/latest', { cache: 'no-store' });
     if (r.ok) {
@@ -664,6 +653,47 @@ async function fetchRecentWinners(limit = 10) {
   }
 
   return { ok: false as const, winners: [] as PublicWinner[] };
+}
+
+// ✅ Deduplicate winners (prevents join duplicates + repeated items)
+function dedupeWinners(list: PublicWinner[]) {
+  const seen = new Map<string, PublicWinner>();
+
+  for (const w of list) {
+    const key =
+      (w.txUrl && `tx:${w.txUrl}`) ||
+      `k:${(w.wallet ?? '').toLowerCase()}|${safeTimeMs(w.drawDate)}|${w.amount}|${(w.handle ?? '').toLowerCase()}`;
+
+    const prev = seen.get(key);
+    if (!prev) {
+      seen.set(key, w);
+      continue;
+    }
+
+    const score = (x: PublicWinner) =>
+      (x.txUrl ? 8 : 0) + (x.isPaidOut ? 4 : 0) + (x.avatarUrl ? 2 : 0) + (x.handle ? 1 : 0);
+
+    if (score(w) > score(prev)) seen.set(key, w);
+  }
+
+  return Array.from(seen.values());
+}
+
+function sortWinnersNewestFirst(list: PublicWinner[]) {
+  return [...list].sort((a, b) => {
+    const ta = safeTimeMs(a.drawDate);
+    const tb = safeTimeMs(b.drawDate);
+    if (tb !== ta) return tb - ta;
+
+    // Stable tie-breakers (prevents "jumping" order)
+    const wa = (a.wallet ?? '').toLowerCase();
+    const wb = (b.wallet ?? '').toLowerCase();
+    if (wb !== wa) return wb.localeCompare(wa);
+
+    const xa = (a.txUrl ?? '').toLowerCase();
+    const xb = (b.txUrl ?? '').toLowerCase();
+    return xb.localeCompare(xa);
+  });
 }
 
 function useRecentWinners(enabled: boolean, limit = 10) {
@@ -696,8 +726,9 @@ function useRecentWinners(enabled: boolean, limit = 10) {
         return;
       }
 
-      // Sort defensively by drawDate desc
-      const sorted = [...res.winners].sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
+      const cleaned = dedupeWinners(res.winners);
+      const sorted = sortWinnersNewestFirst(cleaned);
+
       setWinners(sorted);
       setLoading(false);
       setPulse(p => p + 1);
@@ -714,23 +745,17 @@ function useRecentWinners(enabled: boolean, limit = 10) {
   return { winners, loading, error, pulse };
 }
 
-function WinnersRow({
-  w,
-  dense = false,
-}: {
-  w: PublicWinner;
-  dense?: boolean;
-}) {
+function WinnersRow({ w, dense = false }: { w: PublicWinner; dense?: boolean }) {
   const handle = w.handle ? normalizeHandle(w.handle) : null;
   const xUrl = handle ? toXProfileUrl(handle) : null;
 
   const title = handle || w.name || 'XPOT winner';
-  const sub = w.drawDate ? formatDateTime(w.drawDate) : '—';
 
-  // Labels (single source of truth)
+  // ✅ Date only (no hour)
+  const sub = w.drawDate ? formatDate(w.drawDate) : '—';
+
   const walletLabel = w.wallet ? shortWallet(w.wallet) : '—';
-  const rewardLabel =
-    w.amount && w.amount > 0 ? `${Math.floor(w.amount).toLocaleString()} XPOT` : '—';
+  const rewardLabel = w.amount && w.amount > 0 ? `${Math.floor(w.amount).toLocaleString()} XPOT` : '—';
 
   // IMPORTANT: if backend sends paid=true but amount is 0, don't show PAID
   const paidUi = Boolean(w.isPaidOut) && Boolean(w.amount && w.amount > 0);
@@ -787,13 +812,11 @@ function WinnersRow({
       </div>
 
       <div className={`mt-3 grid gap-2 ${dense ? '' : 'sm:grid-cols-2'}`}>
-        {/* WALLET */}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
           <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Wallet</span>
           <span className="font-mono text-xs text-slate-100">{walletLabel}</span>
         </div>
 
-        {/* REWARD */}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
           <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Reward</span>
           <span className="text-xs font-semibold text-slate-100">{rewardLabel}</span>
@@ -857,9 +880,6 @@ function EntryCeremony({
   code,
   onClose,
   soundEnabled,
-  countdown,
-  cutoffLabel,
-  sharePath = '/hub',
 }: {
   open: boolean;
   code: string;
@@ -929,7 +949,7 @@ function EntryCeremony({
             transparent,
             rgba(255, 255, 255, 0.08),
             rgba(99, 102, 241, 0.12),
-            rgba(56, 189, 248, 0.10),
+            rgba(56, 189, 248, 0.1),
             rgba(16, 185, 129, 0.08),
             transparent
           );
@@ -1191,11 +1211,9 @@ function DashboardInner() {
     10,
   );
 
-  // refs for clean "jump" actions
   const entriesSectionRef = useRef<HTMLDivElement | null>(null);
   const claimSectionRef = useRef<HTMLDivElement | null>(null);
 
-  // Highlight pulse on the entries card after auto-scroll (premium "confirmation")
   const [entriesHighlightPulse, setEntriesHighlightPulse] = useState(0);
   const reducedMotion = useReducedMotionPref();
 
@@ -1390,7 +1408,6 @@ function DashboardInner() {
     [isAuthedEnough, publicKey, walletConnected, fetchTicketsToday, fetchXpotBalance, fetchHistory],
   );
 
-  // Initial load + polling
   useEffect(() => {
     if (!isAuthedEnough) {
       setEntries([]);
@@ -1422,7 +1439,6 @@ function DashboardInner() {
     };
   }, [isAuthedEnough, refreshAll]);
 
-  // Wallet change / disconnect: force a manual refresh immediately
   const prevWalletAddrRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isAuthedEnough) return;
@@ -1993,11 +2009,7 @@ function DashboardInner() {
                         Claim
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => refreshAll('manual')}
-                        className={`${BTN_UTILITY} h-9 px-4 text-xs`}
-                      >
+                      <button type="button" onClick={() => refreshAll('manual')} className={`${BTN_UTILITY} h-9 px-4 text-xs`}>
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         Refresh
                       </button>
@@ -2384,15 +2396,20 @@ function DashboardInner() {
                         </div>
                       </div>
                     ) : (
-                      recentWinners.slice(0, 6).map(w => <WinnersRow key={w.id} w={w} />)
+                      recentWinners.slice(0, 3).map(w => (
+  <WinnersRow
+    key={`w-${w.txUrl ?? w.id}-${safeTimeMs(w.drawDate)}-${(w.wallet ?? '').toLowerCase()}`}
+    w={w}
+  />
+))
                     )}
                   </div>
 
-                  {recentWinners.length > 6 ? (
-                    <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
-                      Showing latest 6. More winners are available in the public feed.
-                    </div>
-                  ) : null}
+                  {recentWinners.length > 3 ? (
+  <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
+    Showing latest 3. Full archive is on the winners page.
+  </div>
+) : null}
                 </LuxeCard>
               ) : (
                 <LuxeCard accent="sky">
@@ -2421,6 +2438,7 @@ function DashboardInner() {
                 </LuxeCard>
               )}
 
+              {/* ✅ FIXED: this card MUST NOT be self-closing or TS will fail */}
               <LuxeCard accent="neutral">
                 <LuxeTitle
                   title="Your draw history"

@@ -99,6 +99,39 @@ function isValidIso(iso?: string | null) {
   return Number.isFinite(Date.parse(iso));
 }
 
+/**
+ * ✅ Fix for double avatars:
+ * Dedupe entries by HANDLE only (keep the most recent per handle).
+ * Your old logic used `${handle}-${createdAt}` which allows duplicates.
+ */
+function dedupeByHandleKeepLatest(entries: EntryRow[]) {
+  const map = new Map<string, EntryRow>();
+
+  for (const raw of entries ?? []) {
+    if (!raw?.handle) continue;
+
+    const h = normalizeHandle(raw.handle);
+    const current = map.get(h);
+
+    const rawTs = safeTimeMs(raw.createdAt ?? null);
+    const curTs = current ? safeTimeMs(current.createdAt ?? null) : -1;
+
+    // Keep the newest entry for that handle
+    if (!current || rawTs >= curTs) {
+      map.set(h, {
+        ...raw,
+        handle: h,
+        createdAt: raw.createdAt ?? '',
+        name: raw.name ? String(raw.name).trim() : raw.name ?? null,
+      });
+    }
+  }
+
+  const out = Array.from(map.values());
+  out.sort((a, b) => safeTimeMs(b.createdAt ?? null) - safeTimeMs(a.createdAt ?? null));
+  return out;
+}
+
 /* ======================================================
    AVATAR + TOOLTIP (PORTAL)
 ====================================================== */
@@ -115,9 +148,7 @@ function Avatar({
   const clean = handle.replace('@', '');
   const img =
     src ??
-    `https://unavatar.io/twitter/${clean}?cache=${Math.floor(
-      Date.now() / (6 * 60 * 60 * 1000),
-    )}`;
+    `https://unavatar.io/twitter/${clean}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
 
   return (
     <div
@@ -166,10 +197,7 @@ function TooltipPortal({
   if (!open || !pos) return null;
 
   return createPortal(
-    <div
-      className="fixed z-[9999]"
-      style={{ left: pos.x, top: pos.y, transform: 'translateX(-50%)' }}
-    >
+    <div className="fixed z-[9999]" style={{ left: pos.x, top: pos.y, transform: 'translateX(-50%)' }}>
       {children}
     </div>,
     document.body,
@@ -236,7 +264,7 @@ function EntryLine({ e, idx }: { e: EntryRow; idx: number }) {
           handle={h}
           name={e.name}
           avatarUrl={e.avatarUrl}
-          meta={e.createdAt ? `Madrid ${formatTime(e.createdAt)}` : null}
+          meta={e.createdAt ? `Entered ${formatTime(e.createdAt)}` : null}
         />
         <div className="truncate text-sm font-semibold text-white">{h}</div>
       </div>
@@ -246,18 +274,22 @@ function EntryLine({ e, idx }: { e: EntryRow; idx: number }) {
 }
 
 function BubbleEntrants({ entries }: { entries: EntryRow[] }) {
+  // ✅ extra safety: entries coming in here are already deduped, but we keep it bulletproof
+  const unique = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
+
   return (
     <div className="flex flex-wrap justify-center gap-3 py-4">
-      {entries.slice(0, 24).map((e, i) => {
+      {unique.slice(0, 24).map((e, i) => {
         const size = i === 0 ? 72 : i < 4 ? 56 : 44;
         const h = normalizeHandle(e.handle);
+
         return (
           <AvatarTooltip
-            key={`${h}-${i}`}
+            key={h} // ✅ key by handle, not index (prevents weird React reuse)
             handle={h}
             name={e.name}
             avatarUrl={e.avatarUrl}
-            meta={e.createdAt ? `Madrid ${formatTime(e.createdAt)}` : null}
+            meta={e.createdAt ? `Entered ${formatTime(e.createdAt)}` : null}
             size={size}
           />
         );
@@ -279,17 +311,8 @@ export default function LiveActivityModule({
   entries: EntryRow[];
   className?: string;
 }) {
-  const clean = useMemo(() => {
-    const seen = new Set<string>();
-    return [...entries]
-      .filter(e => {
-        const k = `${e.handle}-${e.createdAt}`;
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      })
-      .sort((a, b) => safeTimeMs(b.createdAt) - safeTimeMs(a.createdAt));
-  }, [entries]);
+  // ✅ MAIN FIX: dedupe by handle ONLY (keep most recent)
+  const clean = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
 
   const [view, setView] = useState<'bubbles' | 'list'>('bubbles');
 
@@ -353,7 +376,7 @@ export default function LiveActivityModule({
 
             {/* PROMO LINE */}
             <div className="text-[10px] uppercase tracking-[0.32em] text-slate-400">
-              
+              WINNER JUST TOOK HOME
             </div>
 
             {/* AMOUNT (✅ no x/× prefix) */}
@@ -368,9 +391,7 @@ export default function LiveActivityModule({
             <div className="mt-2 text-xs text-slate-400">
               {claimedLabel ? (
                 <>
-                  <span className="mr-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                    Claimed
-                  </span>
+                  <span className="mr-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">Claimed</span>
                   <span className="text-slate-300">{claimedLabel}</span>
                 </>
               ) : (
@@ -427,7 +448,7 @@ export default function LiveActivityModule({
             ) : (
               <div className="space-y-2">
                 {clean.slice(0, 7).map((e, i) => (
-                  <EntryLine key={`${e.handle}-${i}`} e={e} idx={i} />
+                  <EntryLine key={normalizeHandle(e.handle)} e={e} idx={i} />
                 ))}
               </div>
             )}
