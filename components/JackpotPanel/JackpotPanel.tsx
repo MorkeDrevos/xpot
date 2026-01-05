@@ -241,11 +241,16 @@ export default function JackpotPanel({
       ? 'w-full max-w-none rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
       : 'w-full max-w-none rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
-  const capsuleWrap = 'group relative inline-flex max-w-full items-center';
+  // ✅ Mobile: make the top capsule row full-width and centered (matches your screenshot request)
+  // - Capsule becomes wide (up to ~92vw) and perfectly centered
+  // - Desktop keeps the original "inline" feel
+  const capsuleWrap = 'group relative inline-flex w-full max-w-full items-center sm:w-auto';
 
   const capsuleInner = [
-    'relative grid max-w-full grid-cols-1 gap-2 rounded-2xl',
-    'sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3',
+    'relative grid w-full max-w-full grid-cols-1 gap-2 rounded-2xl',
+    'sm:grid sm:w-auto sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3',
+    // mobile width target: wide and centered, not edge-to-edge
+    'mx-auto max-w-[92vw] sm:mx-0 sm:max-w-none',
     isHero ? 'bg-black/65 px-4 py-3 sm:px-6 sm:py-4' : 'bg-black/55 px-3 py-2.5 sm:px-4 sm:py-3',
     'shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl',
     'overflow-hidden',
@@ -455,8 +460,9 @@ export default function JackpotPanel({
             }}
           />
 
-          <div className="relative flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
+          {/* ✅ MOBILE: stack, center and widen the capsule */}
+          <div className="relative flex flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex w-full justify-center sm:w-auto sm:justify-start">
               <div className={capsuleWrap}>
                 <div className={capsuleInner}>
                   <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
