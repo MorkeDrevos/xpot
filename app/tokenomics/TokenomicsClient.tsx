@@ -322,9 +322,7 @@ function LinearVestingChartAndSchedule({
 
           <div className="text-right">
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Total vested</p>
-            <p className="mt-1 font-mono text-[12px] font-semibold text-slate-100 leading-none">
-              {fmtInt(totalTokens)} XPOT
-            </p>
+            <p className="mt-1 font-mono text-[12px] font-semibold text-slate-100 leading-none">{fmtInt(totalTokens)} XPOT</p>
           </div>
         </div>
 
@@ -367,16 +365,7 @@ function LinearVestingChartAndSchedule({
                 const y = h - pad - barH;
                 const bw = Math.max(6, barW - 10);
                 return (
-                  <rect
-                    key={r.m}
-                    x={x}
-                    y={y}
-                    width={bw}
-                    height={barH}
-                    rx="8"
-                    fill={`url(#${barGradientId})`}
-                    opacity="0.9"
-                  />
+                  <rect key={r.m} x={x} y={y} width={bw} height={barH} rx="8" fill={`url(#${barGradientId})`} opacity="0.9" />
                 );
               })}
 
@@ -392,9 +381,7 @@ function LinearVestingChartAndSchedule({
           </div>
         </div>
 
-        <p className="mt-3 text-[11px] text-slate-600">
-          Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow above.
-        </p>
+        <p className="mt-3 text-[11px] text-slate-600">Bars = monthly unlock. Line = cumulative vested %. Verify via Streamflow above.</p>
       </div>
 
       <div className="mobile-flat rounded-2xl border border-slate-900/70 bg-slate-950/55 p-4">
@@ -402,10 +389,7 @@ function LinearVestingChartAndSchedule({
 
         <div className="mt-3 grid gap-2">
           {rows.map(r => (
-            <div
-              key={r.m}
-              className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs"
-            >
+            <div key={r.m} className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-black/25 px-3 py-2 text-xs">
               <span className="font-mono text-slate-300">Month {r.m}</span>
               <span className="font-mono text-slate-200">{fmtInt(r.monthly)} XPOT</span>
               <span className="text-slate-500">{r.pct.toFixed(0)}%</span>
@@ -415,9 +399,7 @@ function LinearVestingChartAndSchedule({
 
         <div className="mt-3 rounded-2xl border border-slate-800/70 bg-black/25 p-3">
           <p className="text-xs text-slate-300">Simple rule: no cliffs, no tricks.</p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            1/{Math.max(1, Math.floor(months))} unlocks monthly, equal amounts.
-          </p>
+          <p className="mt-1 text-[11px] text-slate-500">1/{Math.max(1, Math.floor(months))} unlocks monthly, equal amounts.</p>
         </div>
       </div>
     </div>
@@ -564,10 +546,7 @@ function TeamVestingPanel({ totalTeamTokens }: { totalTeamTokens: number }) {
             { k: 'Recipient (payout wallet)', v: TEAM_VESTING.recipientWallet },
             { k: 'Contract (escrow)', v: TEAM_VESTING.contractAccount },
           ].map(row => (
-            <div
-              key={row.k}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2"
-            >
+            <div key={row.k} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
                 <p className="mt-1 font-mono text-xs text-slate-200">{row.v}</p>
@@ -771,10 +750,7 @@ function VaultGroupPanel({
             const decimals = typeof v.balance?.decimals === 'number' ? v.balance.decimals : null;
 
             return (
-              <div
-                key={`${groupKey}:${v.address}`}
-                className="mobile-flat rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4"
-              >
+              <div key={`${groupKey}:${v.address}`} className="mobile-flat rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-100">
@@ -1056,7 +1032,7 @@ function DonutAllocation({
                       strokeDashoffset={seg.dashoffset}
                       style={{ cursor: 'pointer', filter: isActive ? 'url(#xpotGlow)' : undefined }}
                       initial={false}
-                      animate={useReducedMotion() ? {} : { opacity: isActive ? 1 : 0.7 }}
+                      animate={reduceMotion ? {} : { opacity: isActive ? 1 : 0.7 }}
                       onClick={() => onSelect(seg.key)}
                       onMouseEnter={() => onSelect(seg.key)}
                     />
@@ -1098,6 +1074,7 @@ function DonutAllocation({
           {items.map(a => {
             const active = openKey === a.key;
             const isSelected = selected?.key === a.key;
+            const vaultGroupKey = vaultGroupByAllocKey[a.key] ?? a.key;
 
             const stroke = toneStroke(a.tone);
             const glow = toneGlow(a.tone);
@@ -1149,7 +1126,7 @@ function DonutAllocation({
                           className="h-2 rounded-full"
                           initial={false}
                           animate={{ width: pctToBar(a.pct) }}
-                          transition={useReducedMotion() ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
+                          transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
                           style={{
                             background: `linear-gradient(90deg, ${stroke}, rgba(255,255,255,0.08))`,
                             boxShadow: active ? `0 0 16px ${glow}` : undefined,
@@ -1166,10 +1143,10 @@ function DonutAllocation({
                   {active && (
                     <motion.div
                       key="content"
-                      initial={useReducedMotion() ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                      animate={useReducedMotion() ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                      exit={useReducedMotion() ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                      transition={useReducedMotion() ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
+                      initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
+                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                      exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
+                      transition={reduceMotion ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4">
@@ -1183,7 +1160,7 @@ function DonutAllocation({
 
                           <VaultGroupPanel
                             title="Vaults (live)"
-                            groupKey={vaultGroupByAllocKey[a.key] ?? a.key}
+                            groupKey={vaultGroupKey}
                             data={vaultData}
                             isLoading={vaultLoading}
                             hadError={vaultError}
@@ -1206,9 +1183,16 @@ function DonutAllocation({
   );
 }
 
-function TransparencyNoteBar({ href = '/learn', onLearn }: { href?: string; onLearn?: () => void }) {
+function TransparencyNoteBar({
+  href = '/learn',
+  onLearn,
+}: {
+  href?: string;
+  onLearn?: () => void;
+}) {
   return (
     <div className="mt-5 mobile-flat rounded-[26px] border border-white/10 bg-slate-950/45 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur-xl overflow-hidden">
+      {/* subtle frame + glow */}
       <div className="pointer-events-none absolute inset-0 opacity-60 hidden sm:block bg-[radial-gradient(circle_at_12%_30%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_86%_40%,rgba(var(--xpot-gold),0.14),transparent_60%)]" />
       <div className="relative z-10 p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1235,7 +1219,8 @@ function TransparencyNoteBar({ href = '/learn', onLearn }: { href?: string; onLe
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-slate-300">
-          Top holder concentration reflects <span className="font-semibold text-slate-100">protocol-controlled wallets</span> (liquidity pool, treasury, strategy execution, and community rewards) - not private individuals.
+          Top holder concentration reflects <span className="font-semibold text-slate-100">protocol-controlled wallets</span>{' '}
+          (liquidity pool, treasury, strategy execution, and community rewards) - not private individuals.
         </p>
       </div>
     </div>
@@ -1256,6 +1241,7 @@ function TokenomicsPageInner() {
   const PARTNERS_TOTAL_TOKENS = supply * (PARTNERS_PCT / 100);
 
   useEffect(() => {
+    // fallback in case metadata is not applied correctly
     if (typeof document !== 'undefined') {
       document.title = 'Tokenomics | XPOT';
     }
@@ -1442,7 +1428,6 @@ function TokenomicsPageInner() {
     ? streamflowContractUrl(RESERVE_STREAMFLOW_CONTRACT)
     : streamflowDashboardUrl(XPOT_MINT_ACCOUNT);
 
-  // ====== PROOF CARDS (unchanged) ======
   const proofCards = (
     <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <div className="mobile-flat rounded-[22px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl">
@@ -1566,12 +1551,6 @@ function TokenomicsPageInner() {
         sloganRight: 'Protocol-grade distribution',
       }}
     >
-      {/* =========================
-          HERO (REDESIGNED)
-          - Uses right side with a premium snapshot panel
-          - Fixes the empty space issue
-          - Moves TransparencyNoteBar OUT of the tiny-proof-links flex (was breaking layout)
-         ========================= */}
       <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
         <div className="relative overflow-hidden border-b border-white/5 bg-[linear-gradient(180deg,rgba(10,7,4,0.96),rgba(0,0,0,0.94))]">
           <div
@@ -1586,180 +1565,81 @@ function TokenomicsPageInner() {
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/10" />
 
           <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6">
-            <div className="pt-7 sm:pt-9 pb-7 sm:pb-9">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
-                {/* LEFT */}
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Pill tone="emerald">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Daily distribution
-                    </Pill>
-                    <Pill tone="sky">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      On-chain proof
-                    </Pill>
-                    <Pill tone="amber">
-                      <Lock className="h-3.5 w-3.5" />
-                      Fixed supply
-                    </Pill>
-                  </div>
-
-                  <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight sm:text-4xl">
-                    A distribution designed to outlast noise.<span className="text-emerald-300"> Rewards come first.</span>
-                  </h1>
-
-                  <p className="mt-4 text-sm leading-relaxed text-slate-300">
-                    XPOT is built around simple rules, public wallets and verifiable outcomes. If it cannot be proven on-chain, it should not exist.
-                  </p>
-
-                  <div className="mt-6 flex flex-wrap items-center gap-3">
-                    <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
-                      Enter today&apos;s XPOT
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-
-                    <Link
-                      href={ROUTE_TERMS}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}
-                    >
-                      Terms
-                    </Link>
-
-                    <button
-                      type="button"
-                      onClick={openDistribution}
-                      className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
-                    >
-                      View reserve
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {/* Transparency bar belongs here (NOT inside the tiny links flex) */}
-                  <TransparencyNoteBar href="/tokenomics#vaults" />
-
-                  {/* Tiny proof links */}
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
-                    <Link
-                      href="/tokenomics?tab=rewards&focus=reserve"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-                    >
-                      Tokenomics & proof <ArrowRight className="h-4 w-4 opacity-70" />
-                    </Link>
-
-                    <span className="text-slate-600">Public wallets, vesting, reserves.</span>
-
-                    <Link
-                      href={ROUTE_WINNERS}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-                    >
-                      Winners & payouts <ExternalLink className="h-4 w-4 opacity-70" />
-                    </Link>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                    <span className="inline-flex items-center gap-2">
-                      <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-                      Proof targets: mint account, authority status, reserve lock, vesting contracts
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <span className="h-1 w-1 rounded-full bg-white/20" />
-                      Coverage focus:{' '}
-                      <span className="font-mono text-emerald-200">
-                        {Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'} years
-                      </span>
-                    </span>
-                  </div>
+            <div className="pt-8 sm:pt-10 pb-8 sm:pb-10">
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone="emerald">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Daily distribution
+                  </Pill>
+                  <Pill tone="sky">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    On-chain proof
+                  </Pill>
+                  <Pill tone="amber">
+                    <Lock className="h-3.5 w-3.5" />
+                    Fixed supply
+                  </Pill>
                 </div>
 
-                {/* RIGHT - new premium snapshot panel */}
-                <div className="mobile-flat relative overflow-hidden rounded-[26px] border border-white/10 bg-slate-950/45 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-                  <div className="pointer-events-none absolute inset-0 opacity-70 bg-[radial-gradient(circle_at_20%_15%,rgba(var(--xpot-gold),0.16),transparent_55%),radial-gradient(circle_at_86%_30%,rgba(56,189,248,0.10),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent)]" />
-                  <div className="relative z-10 p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Protocol snapshot</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-100">Key guarantees at a glance</p>
-                      </div>
-                      <Pill tone="amber">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Verifiable
-                      </Pill>
-                    </div>
+                <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight sm:text-4xl">
+                  A distribution designed to outlast noise.<span className="text-emerald-300"> Rewards come first.</span>
+                </h1>
 
-                    <div className="mt-4 grid gap-2">
-                      {[
-                        {
-                          k: 'Daily distribution',
-                          v: `${fmtInt(DISTRIBUTION_DAILY_XPOT)} XPOT`,
-                          s: 'Fixed rule, protocol reserve-backed',
-                          tone: 'emerald' as PillTone,
-                        },
-                        {
-                          k: 'Reserve runway',
-                          v: `${Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'} years`,
-                          s: `${runwayFixedDays.toLocaleString('en-US')} days coverage`,
-                          tone: 'emerald' as PillTone,
-                        },
-                        {
-                          k: 'Supply',
-                          v: supply.toLocaleString('en-US'),
-                          s: 'Fixed supply, minted once',
-                          tone: 'sky' as PillTone,
-                        },
-                        {
-                          k: 'Controls',
-                          v: 'Authorities revoked',
-                          s: 'Mint / Freeze / Update all NULL',
-                          tone: 'amber' as PillTone,
-                        },
-                      ].map(row => (
-                        <div key={row.k} className="rounded-2xl border border-white/10 bg-black/25 p-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{row.k}</p>
-                              <p className="mt-1 font-mono text-sm font-semibold text-slate-100">{row.v}</p>
-                              <p className="mt-1 text-[11px] text-slate-600">{row.s}</p>
-                            </div>
-                            <span
-                              className={[
-                                'mt-0.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]',
-                                row.tone === 'emerald'
-                                  ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
-                                  : row.tone === 'sky'
-                                    ? 'border-sky-400/25 bg-sky-500/10 text-sky-200'
-                                    : 'border-[rgba(var(--xpot-gold),0.30)] bg-[rgba(var(--xpot-gold),0.08)] text-[rgb(var(--xpot-gold-2))]',
-                              ].join(' ')}
-                            >
-                              Proof
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <p className="mt-4 text-sm leading-relaxed text-slate-300">
+                  XPOT is built around simple rules, public wallets and verifiable outcomes. If it cannot be proven on-chain, it should not exist.
+                </p>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <ProofLinkPill href={solscanAccountUrl(XPOT_MINT_ACCOUNT)} label="Mint (Solscan)" tone="slate" />
-                      <ProofLinkPill href={reserveProofHref} label="Reserve (Streamflow)" tone="emerald" />
-                      <Link
-                        href={ROUTE_WINNERS}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.06] transition"
-                      >
-                        Winners <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-                      </Link>
-                    </div>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                    Enter today&apos;s XPOT
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
 
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Principle</p>
-                      <p className="mt-2 text-sm text-slate-200">Proof is the product.</p>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                        Every bucket maps to wallets and on-chain history. If it cannot be verified, it should not exist.
-                      </p>
-                    </div>
-                  </div>
+                  <Link href={ROUTE_TERMS} target="_blank" rel="noopener noreferrer" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
+                    Terms
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={openDistribution}
+                    className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+                  >
+                    View reserve
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Tiny proof links */}
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
+                <TransparencyNoteBar href="/tokenomics#vaults" />
+                  <Link
+                    href="/tokenomics?tab=rewards&focus=reserve"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                  >
+                    Tokenomics & proof <ArrowRight className="h-4 w-4 opacity-70" />
+                  </Link>
+
+                  <span className="text-slate-600">Public wallets, vesting, reserves.</span>
+
+                  <Link
+                    href={ROUTE_WINNERS}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                  >
+                    Winners & payouts <ExternalLink className="h-4 w-4 opacity-70" />
+                  </Link>
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
+                    Proof targets: mint account, authority status, reserve lock, vesting contracts
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-1 w-1 rounded-full bg-white/20" />
+                    Coverage focus:{' '}
+                    <span className="font-mono text-emerald-200">{Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'} years</span>
+                  </span>
                 </div>
               </div>
 
@@ -1770,9 +1650,6 @@ function TokenomicsPageInner() {
           </div>
         </div>
       </section>
-
-      {/* Vaults anchor target */}
-      <div id="vaults" />
 
       <section className="mt-8" ref={allocationRef}>
         <div className={CARD}>
@@ -1788,9 +1665,7 @@ function TokenomicsPageInner() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-slate-100">Distribution map</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Select a bucket, then expand the matching card for the full breakdown and live vaults.
-                </p>
+                <p className="mt-1 text-xs text-slate-400">Select a bucket, then expand the matching card for the full breakdown and live vaults.</p>
               </div>
             </div>
 
@@ -1915,6 +1790,7 @@ function TokenomicsPageInner() {
         </div>
       </section>
 
+      {/* Real site footer */}
       <div className="mt-10">
         <XpotFooter />
       </div>
