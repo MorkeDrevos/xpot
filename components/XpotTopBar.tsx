@@ -716,14 +716,6 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         Roadmap
       </NavLink>
 
-      {/* Winners removed - replaced with Health */}
-      {/*
-      <NavLink href={WINNERS_HREF}>
-        <Trophy className="h-4 w-4 text-amber-300" />
-        Winners
-      </NavLink>
-      */}
-
       <NavLink href={PROTOCOL_HREF}>
         <ShieldCheck className="h-4 w-4 text-emerald-300" />
         Health
