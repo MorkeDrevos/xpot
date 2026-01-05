@@ -10,7 +10,6 @@ import GoldAmount from '@/components/GoldAmount';
 import {
   BadgeCheck,
   CalendarClock,
-  ChevronDown,
   Crown,
   ExternalLink,
   Info,
@@ -28,30 +27,29 @@ type WinnerKind = 'MAIN' | 'BONUS';
 
 type WinnerRow = {
   id: string;
+  drawId?: string | null;
   kind?: WinnerKind | string | null;
-
   drawDate?: string | null;
   ticketCode?: string | null;
-
   amountXpot?: number | null;
-
   walletAddress?: string | null;
-
   handle?: string | null;
   name?: string | null;
   avatarUrl?: string | null;
-
   isPaidOut?: boolean | null;
-
   txUrl?: string | null;
   txSig?: string | null;
-
   label?: string | null;
 };
 
 function shortWallet(addr: string) {
   if (!addr || addr.length < 10) return addr || '—';
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+}
+
+function safeTimeMs(iso?: string | null) {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? t : 0;
 }
 
 function formatDate(date: string) {
@@ -135,7 +133,6 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
-  // Adjust so that formatting back into the target TZ matches the intended wall-clock time.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
 
@@ -216,9 +213,7 @@ function downloadTextFile(filename: string, content: string, mime = 'text/plain'
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 // ─────────────────────────────────────────────
@@ -304,6 +299,30 @@ function WinnerIdentity({
   );
 }
 
+function makeDedupeKey(w: WinnerRow) {
+  const drawId = (w.drawId || '').trim();
+  if (drawId) {
+    const k = String(w.kind || '').toUpperCase();
+    return `draw:${drawId}|${k || 'WIN'}`;
+  }
+
+  const sig = (w.txSig || '').trim();
+  if (sig) return `sig:${sig}`;
+
+  const tx = (w.txUrl || '').trim();
+  if (tx) return `tx:${tx}`;
+
+  const id = (w.id || '').trim();
+  if (id) return `id:${id}`;
+
+  const d = (w.drawDate || '').trim();
+  const k = String(w.kind || '').toUpperCase();
+  const h = (normalizeHandle(w.handle) || '').trim();
+  const wa = (w.walletAddress || '').trim();
+  const a = typeof w.amountXpot === 'number' ? String(Math.round(w.amountXpot)) : '';
+  return `fp:${d}|${k}|${h}|${wa}|${a}`;
+}
+
 export default function WinnersPage() {
   const [rows, setRows] = useState<WinnerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -313,47 +332,80 @@ export default function WinnersPage() {
   const [kindFilter, setKindFilter] = useState<'ALL' | 'MAIN' | 'BONUS'>('ALL');
   const [showTxOnly, setShowTxOnly] = useState(false);
 
-  const [visibleDays, setVisibleDays] = useState(7);
-
   const liveIsOpen = false;
 
   useEffect(() => {
     let alive = true;
 
-    async function load() {
+    async function loadAll() {
       try {
         setError(null);
         setLoading(true);
 
-        const res = await fetch('/api/winners/recent?limit=80', { cache: 'no-store' });
-        if (!res.ok) throw new Error('Failed to load winners');
+        const all: any[] = [];
+        let cursor: string | null = null;
 
-        const data = await res.json();
-        const winners = Array.isArray(data?.winners) ? data.winners : [];
+        for (let page = 0; page < 20; page++) {
+          const params = new URLSearchParams();
+          params.set('limit', '5000');
+          if (cursor) params.set('cursor', cursor);
+
+          const res = await fetch(`/api/winners/recent?${params.toString()}`, { cache: 'no-store' });
+          if (!res.ok) throw new Error('Failed to load winners');
+
+          const data = await res.json();
+
+          const batch = Array.isArray(data?.winners) ? data.winners : [];
+          for (const w of batch) all.push(w);
+
+          const next =
+            (typeof data?.nextCursor === 'string' && data.nextCursor) ||
+            (typeof data?.cursor === 'string' && data.cursor) ||
+            (typeof data?.next_page_token === 'string' && data.next_page_token) ||
+            null;
+
+          if (!next || batch.length === 0) {
+            cursor = null;
+            break;
+          }
+
+          cursor = next;
+        }
 
         if (!alive) return;
 
-        setRows(
-          winners.map((w: any) => ({
-            id: String(w.id ?? crypto.randomUUID()),
-            kind: w.kind ?? w.winnerKind ?? w.type ?? null,
-            label: w.label ?? null,
-            drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
-            ticketCode: w.ticketCode ?? w.code ?? null,
+        const mapped: WinnerRow[] = all.map((w: any) => ({
+          id: String(w.id ?? crypto.randomUUID()),
+          drawId: w.drawId ?? w.draw_id ?? w.draw?.id ?? null,
+          kind: w.kind ?? w.winnerKind ?? w.type ?? null,
+          label: w.label ?? null,
+          drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
+          ticketCode: w.ticketCode ?? w.code ?? null,
 
-            amountXpot: w.amountXpot ?? w.amount ?? null,
+          // IMPORTANT: rely on API to coerce this to number
+          amountXpot: typeof w.amountXpot === 'number' ? w.amountXpot : null,
 
-            walletAddress: w.walletAddress ?? w.wallet ?? null,
+          walletAddress: w.walletAddress ?? w.wallet ?? null,
+          handle: w.handle ?? w.xHandle ?? null,
+          name: w.name ?? w.xName ?? null,
+          avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
+          isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
+          txUrl: w.txUrl ?? w.txLink ?? null,
+          txSig: w.txSig ?? w.signature ?? null,
+        }));
 
-            handle: w.handle ?? w.xHandle ?? null,
-            name: w.name ?? w.xName ?? null,
-            avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
+        mapped.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
 
-            isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
-            txUrl: w.txUrl ?? w.txLink ?? null,
-            txSig: w.txSig ?? w.signature ?? null,
-          })),
-        );
+        const seen = new Set<string>();
+        const deduped: WinnerRow[] = [];
+        for (const r of mapped) {
+          const key = makeDedupeKey(r);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          deduped.push(r);
+        }
+
+        setRows(deduped);
       } catch (e) {
         if (!alive) return;
         setError((e as Error)?.message || 'Failed to load winners.');
@@ -363,7 +415,7 @@ export default function WinnersPage() {
       }
     }
 
-    load();
+    loadAll();
     return () => {
       alive = false;
     };
@@ -392,6 +444,7 @@ export default function WinnersPage() {
         r.txSig || '',
         r.txUrl || '',
         r.label || '',
+        r.drawId || '',
       ]
         .join(' ')
         .toLowerCase();
@@ -401,15 +454,30 @@ export default function WinnersPage() {
   }, [rows, query, kindFilter, showTxOnly]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, WinnerRow[]>();
-    for (const r of filteredRows) {
-      const key = r.drawDate ? formatDate(r.drawDate) : '—';
-      map.set(key, [...(map.get(key) || []), r]);
-    }
-    return Array.from(map.entries());
-  }, [filteredRows]);
+    const map = new Map<string, { key: string; ms: number; items: WinnerRow[] }>();
 
-  const visibleGrouped = useMemo(() => grouped.slice(0, visibleDays), [grouped, visibleDays]);
+    for (const r of filteredRows) {
+      const ms = safeTimeMs(r.drawDate);
+      const key = r.drawDate ? formatDate(r.drawDate) : '—';
+
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, { key, ms, items: [r] });
+      } else {
+        existing.items.push(r);
+        existing.ms = Math.max(existing.ms, ms);
+      }
+    }
+
+    const arr = Array.from(map.values());
+    arr.sort((a, b) => b.ms - a.ms);
+
+    for (const g of arr) {
+      g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
+    }
+
+    return arr;
+  }, [filteredRows]);
 
   const totals = useMemo(() => {
     const main = filteredRows.filter(r => String(r.kind || '').toUpperCase() === 'MAIN').length;
@@ -529,9 +597,7 @@ export default function WinnersPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-100">Winner log</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Completed draws and bonus drops. Link out to the TX whenever available.
-                </p>
+                <p className="mt-1 text-xs text-slate-400">Completed draws and bonus drops.</p>
               </div>
 
               <Badge tone="slate">
@@ -551,15 +617,15 @@ export default function WinnersPage() {
                 <div className="xpot-card px-4 py-4 text-sm text-slate-500">No winners yet.</div>
               ) : (
                 <div className="space-y-6">
-                  {visibleGrouped.map(([dateKey, items]) => (
-                    <section key={dateKey} className="space-y-3">
+                  {grouped.map(g => (
+                    <section key={g.key} className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{dateKey}</p>
-                        <span className="text-xs text-slate-500">{items.length} entries</span>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
+                        <span className="text-xs text-slate-500">{g.items.length} entries</span>
                       </div>
 
                       <div className="space-y-2">
-                        {items.map(w => {
+                        {g.items.map(w => {
                           const kind = String(w.kind || '').toUpperCase();
                           const isMain = kind === 'MAIN';
                           const isBonus = kind === 'BONUS';
@@ -567,13 +633,13 @@ export default function WinnersPage() {
                           const hasTx = isValidHttpUrl(w.txUrl);
                           const verified = hasTx || w.isPaidOut === true;
 
-                          const amountText =
-                            typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot)
-                              ? fmtInt(Math.round(w.amountXpot))
-                              : '—';
+                          const amountVal =
+                            typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot) ? w.amountXpot : null;
+
+                          const amountText = amountVal === null ? '—' : fmtInt(Math.round(amountVal));
 
                           return (
-                            <article key={w.id} className="xpot-card px-4 py-4">
+                            <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span
                                   className={[
@@ -627,9 +693,9 @@ export default function WinnersPage() {
                                   walletAddress={w.walletAddress}
                                 />
 
-                                {/* Amount - deliberately smaller */}
                                 <div className="flex justify-start sm:justify-center">
                                   <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
+                                    {/* GoldAmount expects a string value */}
                                     <GoldAmount value={amountText} suffix="XPOT" size="md" />
                                   </div>
                                 </div>
@@ -658,31 +724,14 @@ export default function WinnersPage() {
                       </div>
                     </section>
                   ))}
-
-                  {grouped.length > visibleDays && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        className="xpot-btn h-11 w-full text-sm"
-                        onClick={() => setVisibleDays(v => Math.min(v + 7, grouped.length))}
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <ChevronDown className="h-4 w-4" />
-                          Load more days
-                        </span>
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
 
             <div className="mt-6 xpot-divider" />
-            <div className="mt-4 text-xs text-slate-500">Next upgrade: verified TX and a compact “Proof” drawer per win.</div>
           </div>
         </section>
 
-        {/* Footer */}
         <footer className={`mt-10 border-t ${BORDER_SOFT} pt-8 pb-6`}>
           <div className="grid gap-6 md:grid-cols-3">
             <div>
