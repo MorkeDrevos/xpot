@@ -264,7 +264,7 @@ function EntryLine({ e, idx }: { e: EntryRow; idx: number }) {
           handle={h}
           name={e.name}
           avatarUrl={e.avatarUrl}
-          meta={e.createdAt ? `Madrid ${formatTime(e.createdAt)}` : null}
+          meta={e.createdAt ? `Entered ${formatTime(e.createdAt)}` : null}
         />
         <div className="truncate text-sm font-semibold text-white">{h}</div>
       </div>
@@ -289,7 +289,7 @@ function BubbleEntrants({ entries }: { entries: EntryRow[] }) {
             handle={h}
             name={e.name}
             avatarUrl={e.avatarUrl}
-            meta={e.createdAt ? `Madrid ${formatTime(e.createdAt)}` : null}
+            meta={e.createdAt ? `Entered ${formatTime(e.createdAt)}` : null}
             size={size}
           />
         );
