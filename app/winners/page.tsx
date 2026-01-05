@@ -10,7 +10,6 @@ import GoldAmount from '@/components/GoldAmount';
 import {
   BadgeCheck,
   CalendarClock,
-  ChevronDown,
   Crown,
   ExternalLink,
   Info,
@@ -28,28 +27,18 @@ type WinnerKind = 'MAIN' | 'BONUS';
 
 type WinnerRow = {
   id: string;
-
-  // ✅ IMPORTANT: drawId is the canonical de-dupe key (one draw = one winner row)
   drawId?: string | null;
-
   kind?: WinnerKind | string | null;
-
   drawDate?: string | null;
   ticketCode?: string | null;
-
   amountXpot?: number | null;
-
   walletAddress?: string | null;
-
   handle?: string | null;
   name?: string | null;
   avatarUrl?: string | null;
-
   isPaidOut?: boolean | null;
-
   txUrl?: string | null;
   txSig?: string | null;
-
   label?: string | null;
 };
 
@@ -66,7 +55,6 @@ function safeTimeMs(iso?: string | null) {
 function formatDate(date: string) {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '—';
-  // date-only, no time
   return d.toLocaleDateString('en-GB');
 }
 
@@ -145,7 +133,6 @@ function wallClockToUtcMs({
 }) {
   let t = Date.UTC(y, m - 1, d, hh, mm, ss);
 
-  // Adjust so that formatting back into the target TZ matches the intended wall-clock time.
   for (let i = 0; i < 3; i++) {
     const got = getTzParts(new Date(t), timeZone);
 
@@ -226,9 +213,7 @@ function downloadTextFile(filename: string, content: string, mime = 'text/plain'
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
 // ─────────────────────────────────────────────
@@ -315,14 +300,12 @@ function WinnerIdentity({
 }
 
 function makeDedupeKey(w: WinnerRow) {
-  // ✅ Canonical: one draw = one winner row
   const drawId = (w.drawId || '').trim();
   if (drawId) {
     const k = String(w.kind || '').toUpperCase();
     return `draw:${drawId}|${k || 'WIN'}`;
   }
 
-  // Prefer strong unique identifiers next
   const sig = (w.txSig || '').trim();
   if (sig) return `sig:${sig}`;
 
@@ -332,7 +315,6 @@ function makeDedupeKey(w: WinnerRow) {
   const id = (w.id || '').trim();
   if (id) return `id:${id}`;
 
-  // Fallback fingerprint: date + kind + handle + wallet + amount
   const d = (w.drawDate || '').trim();
   const k = String(w.kind || '').toUpperCase();
   const h = (normalizeHandle(w.handle) || '').trim();
@@ -360,15 +342,12 @@ export default function WinnersPage() {
         setError(null);
         setLoading(true);
 
-        // ✅ We must display ALL winners.
-        // We try to paginate if the API returns a cursor. If it doesn’t, we still fetch a large limit.
         const all: any[] = [];
         let cursor: string | null = null;
 
-        // safety cap (prevents infinite loops if backend bugs)
         for (let page = 0; page < 20; page++) {
           const params = new URLSearchParams();
-          params.set('limit', '5000'); // big page size so "all winners" loads in one go if possible
+          params.set('limit', '5000');
           if (cursor) params.set('cursor', cursor);
 
           const res = await fetch(`/api/winners/recent?${params.toString()}`, { cache: 'no-store' });
@@ -379,7 +358,6 @@ export default function WinnersPage() {
           const batch = Array.isArray(data?.winners) ? data.winners : [];
           for (const w of batch) all.push(w);
 
-          // support common cursor shapes
           const next =
             (typeof data?.nextCursor === 'string' && data.nextCursor) ||
             (typeof data?.cursor === 'string' && data.cursor) ||
@@ -398,32 +376,23 @@ export default function WinnersPage() {
 
         const mapped: WinnerRow[] = all.map((w: any) => ({
           id: String(w.id ?? crypto.randomUUID()),
-
-          // ✅ pull draw id if backend provides it (many of your endpoints do)
           drawId: w.drawId ?? w.draw_id ?? w.draw?.id ?? null,
-
           kind: w.kind ?? w.winnerKind ?? w.type ?? null,
           label: w.label ?? null,
           drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
           ticketCode: w.ticketCode ?? w.code ?? null,
-
-          amountXpot: w.amountXpot ?? w.amount ?? null,
-
+          amountXpot: typeof w.amountXpot === 'number' ? w.amountXpot : null,
           walletAddress: w.walletAddress ?? w.wallet ?? null,
-
           handle: w.handle ?? w.xHandle ?? null,
           name: w.name ?? w.xName ?? null,
           avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
-
           isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
           txUrl: w.txUrl ?? w.txLink ?? null,
           txSig: w.txSig ?? w.signature ?? null,
         }));
 
-        // 1) Sort newest first (by drawDate, fallback: 0)
         mapped.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
 
-        // 2) Dedupe by drawId (preferred), otherwise strong ids
         const seen = new Set<string>();
         const deduped: WinnerRow[] = [];
         for (const r of mapped) {
@@ -482,7 +451,6 @@ export default function WinnersPage() {
   }, [rows, query, kindFilter, showTxOnly]);
 
   const grouped = useMemo(() => {
-    // group by date-only key, but keep a real ms sort key (newest first)
     const map = new Map<string, { key: string; ms: number; items: WinnerRow[] }>();
 
     for (const r of filteredRows) {
@@ -490,9 +458,8 @@ export default function WinnersPage() {
       const key = r.drawDate ? formatDate(r.drawDate) : '—';
 
       const existing = map.get(key);
-      if (!existing) {
-        map.set(key, { key, ms, items: [r] });
-      } else {
+      if (!existing) map.set(key, { key, ms, items: [r] });
+      else {
         existing.items.push(r);
         existing.ms = Math.max(existing.ms, ms);
       }
@@ -501,16 +468,9 @@ export default function WinnersPage() {
     const arr = Array.from(map.values());
     arr.sort((a, b) => b.ms - a.ms);
 
-    // sort items within each day (newest first)
-    for (const g of arr) {
-      g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
-    }
-
+    for (const g of arr) g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
     return arr;
   }, [filteredRows]);
-
-  // ✅ show ALL days (no “recent only”)
-  const visibleGrouped = grouped;
 
   const totals = useMemo(() => {
     const main = filteredRows.filter(r => String(r.kind || '').toUpperCase() === 'MAIN').length;
@@ -531,7 +491,6 @@ export default function WinnersPage() {
       pageTag="hub"
     >
       <section className="mt-6 space-y-6">
-        {/* Header / filters */}
         <section className="xpot-panel px-5 py-5 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -625,7 +584,6 @@ export default function WinnersPage() {
           </div>
         </section>
 
-        {/* Log */}
         <section className="xpot-card-primary" data-glow="magenta">
           <div className="xpot-nebula-halo" />
           <div className="relative z-10 px-5 py-5 sm:px-6 sm:py-6">
@@ -652,7 +610,7 @@ export default function WinnersPage() {
                 <div className="xpot-card px-4 py-4 text-sm text-slate-500">No winners yet.</div>
               ) : (
                 <div className="space-y-6">
-                  {visibleGrouped.map(g => (
+                  {grouped.map(g => (
                     <section key={g.key} className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
@@ -668,10 +626,10 @@ export default function WinnersPage() {
                           const hasTx = isValidHttpUrl(w.txUrl);
                           const verified = hasTx || w.isPaidOut === true;
 
-                          const amountText =
-                            typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot)
-                              ? fmtInt(Math.round(w.amountXpot))
-                              : '—';
+                          const amountVal =
+                            typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot) ? w.amountXpot : null;
+
+                          const amountText = amountVal === null ? '—' : fmtInt(Math.round(amountVal));
 
                           return (
                             <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
@@ -701,9 +659,7 @@ export default function WinnersPage() {
                                   )}
                                 </span>
 
-                                {w.ticketCode ? (
-                                  <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span>
-                                ) : null}
+                                {w.ticketCode ? <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span> : null}
 
                                 <span className="text-slate-700">•</span>
 
@@ -766,7 +722,6 @@ export default function WinnersPage() {
           </div>
         </section>
 
-        {/* Footer */}
         <footer className={`mt-10 border-t ${BORDER_SOFT} pt-8 pb-6`}>
           <div className="grid gap-6 md:grid-cols-3">
             <div>

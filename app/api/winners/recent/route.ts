@@ -21,16 +21,33 @@ function safeIso(d: unknown) {
   }
 }
 
+/**
+ * Your DB currently has jackpotUsd / payoutUsd populated (seen in Prisma Studio).
+ * The UI wants "amountXpot". Until you store a dedicated XPOT amount column,
+ * we treat jackpotUsd / payoutUsd as the XPOT amount fallback.
+ */
 function pickAmountXpot(w: any): number | null {
   const candidates = [
     w?.amountXpot,
     w?.payoutXpot,
+    w?.jackpotXpot,
     w?.amount,
     w?.payoutAmount,
+
+    // IMPORTANT: your schema/data shows these exist and are filled
+    w?.jackpotUsd,
+    w?.payoutUsd,
   ];
+
   for (const c of candidates) {
     if (typeof c === 'number' && Number.isFinite(c)) return c;
+    // sometimes Prisma can hand back Decimal-like values
+    if (c && typeof c === 'object' && typeof (c as any).toNumber === 'function') {
+      const n = (c as any).toNumber();
+      if (typeof n === 'number' && Number.isFinite(n)) return n;
+    }
   }
+
   return null;
 }
 
@@ -82,11 +99,7 @@ export async function GET(req: NextRequest) {
     const uniq: any[] = [];
 
     for (const w of rows) {
-      const key =
-        String(w.drawId ?? '') ||
-        String(w.draw?.id ?? '') ||
-        String(w.id);
-
+      const key = String(w.drawId ?? '') || String(w.draw?.id ?? '') || String(w.id);
       if (seen.has(key)) continue;
       seen.add(key);
       uniq.push(w);
@@ -99,10 +112,7 @@ export async function GET(req: NextRequest) {
       .map(w => w.walletAddress ?? w.ticket?.walletAddress ?? w.ticket?.wallet?.address)
       .filter(Boolean) as string[];
 
-    const walletToUser = new Map<
-      string,
-      { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }
-    >();
+    const walletToUser = new Map<string, { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }>();
 
     if (walletAddrsNeedingLookup.length) {
       const wallets = await prisma.wallet.findMany({
@@ -144,6 +154,7 @@ export async function GET(req: NextRequest) {
 
         ticketCode: w.ticketCode ?? ticket?.code ?? null,
 
+        // ✅ now actually populated from jackpotUsd/payoutUsd too
         amountXpot: pickAmountXpot(w),
 
         walletAddress,
@@ -167,7 +178,6 @@ export async function GET(req: NextRequest) {
           fetchedRows: rows.length,
           returned: payload.length,
         },
-        // ✅ IMPORTANT: transparency link
         winnersPageUrl: '/winners',
       },
       { status: 200 },
