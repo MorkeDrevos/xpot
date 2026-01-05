@@ -22,52 +22,60 @@ function safeIso(d: unknown) {
 }
 
 /**
- * Prisma can return numbers as:
- * - number (Int/Float)
- * - string (some drivers/serializers)
- * - bigint (BigInt)
- * - Decimal-like (object with toNumber())
- *
- * We normalize all of those to a JS number.
+ * Prisma can return numeric columns as:
+ * - number
+ * - string
+ * - Prisma.Decimal (object with toNumber()/toString())
+ * This converts best-effort to number, else null.
  */
 function coerceNumber(v: any): number | null {
-  try {
-    if (v === null || v === undefined) return null;
+  if (v === null || v === undefined) return null;
 
-    if (typeof v === 'number') {
-      return Number.isFinite(v) ? v : null;
-    }
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
 
-    if (typeof v === 'bigint') {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    }
-
-    if (typeof v === 'string') {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    }
-
-    // Decimal-like (Prisma.Decimal has toNumber())
-    if (typeof v === 'object' && typeof v.toNumber === 'function') {
-      const n = v.toNumber();
-      return typeof n === 'number' && Number.isFinite(n) ? n : null;
-    }
-
-    // Fallback: valueOf() sometimes yields string/number
-    if (typeof v === 'object' && typeof v.valueOf === 'function') {
-      const vv = v.valueOf();
-      if (vv !== v) return coerceNumber(vv);
-    }
-
-    return null;
-  } catch {
-    return null;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
   }
+
+  // Prisma.Decimal or similar
+  if (typeof v === 'object') {
+    // Prefer toNumber if present
+    const toNumber = (v as any)?.toNumber;
+    if (typeof toNumber === 'function') {
+      try {
+        const n = toNumber.call(v);
+        return typeof n === 'number' && Number.isFinite(n) ? n : null;
+      } catch {}
+    }
+
+    // Fallback to string parse
+    const toString = (v as any)?.toString;
+    if (typeof toString === 'function') {
+      try {
+        const s = toString.call(v);
+        if (typeof s === 'string') {
+          const n = Number(s);
+          return Number.isFinite(n) ? n : null;
+        }
+      } catch {}
+    }
+  }
+
+  return null;
 }
 
 function pickAmountXpot(w: any): number | null {
-  const candidates = [w?.amountXpot, w?.payoutXpot, w?.amount, w?.payoutAmount];
+  const candidates = [
+    w?.amountXpot,
+    w?.payoutXpot,
+    w?.amount,
+    w?.payoutAmount,
+
+    // extra common shapes if you ever stored it nested
+    w?.draw?.amountXpot,
+    w?.draw?.payoutXpot,
+  ];
 
   for (const c of candidates) {
     const n = coerceNumber(c);
@@ -126,7 +134,6 @@ export async function GET(req: NextRequest) {
 
     for (const w of rows) {
       const key = String(w.drawId ?? '') || String(w.draw?.id ?? '') || String(w.id);
-
       if (seen.has(key)) continue;
       seen.add(key);
       uniq.push(w);
@@ -139,7 +146,10 @@ export async function GET(req: NextRequest) {
       .map(w => w.walletAddress ?? w.ticket?.walletAddress ?? w.ticket?.wallet?.address)
       .filter(Boolean) as string[];
 
-    const walletToUser = new Map<string, { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }>();
+    const walletToUser = new Map<
+      string,
+      { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }
+    >();
 
     if (walletAddrsNeedingLookup.length) {
       const wallets = await prisma.wallet.findMany({
@@ -177,7 +187,7 @@ export async function GET(req: NextRequest) {
 
         ticketCode: w.ticketCode ?? ticket?.code ?? null,
 
-        // ✅ FIX: normalize Decimal/BigInt/string -> number
+        // ✅ THIS is the key fix
         amountXpot: pickAmountXpot(w),
 
         walletAddress,
