@@ -1066,7 +1066,8 @@ function HomePageInner() {
                       </h1>
 
                       <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
-                        Hold XPOT. Claim your daily entry.
+                        A daily entry, unlocked by XPOT holdings.
+Claim once per day in the hub.
                       </p>
 
                       {/* FINAL DRAW - promoted */}
