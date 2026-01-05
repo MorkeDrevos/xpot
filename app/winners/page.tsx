@@ -381,10 +381,7 @@ export default function WinnersPage() {
           label: w.label ?? null,
           drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
           ticketCode: w.ticketCode ?? w.code ?? null,
-
-          // IMPORTANT: rely on API to coerce this to number
           amountXpot: typeof w.amountXpot === 'number' ? w.amountXpot : null,
-
           walletAddress: w.walletAddress ?? w.wallet ?? null,
           handle: w.handle ?? w.xHandle ?? null,
           name: w.name ?? w.xName ?? null,
@@ -461,9 +458,8 @@ export default function WinnersPage() {
       const key = r.drawDate ? formatDate(r.drawDate) : '—';
 
       const existing = map.get(key);
-      if (!existing) {
-        map.set(key, { key, ms, items: [r] });
-      } else {
+      if (!existing) map.set(key, { key, ms, items: [r] });
+      else {
         existing.items.push(r);
         existing.ms = Math.max(existing.ms, ms);
       }
@@ -472,10 +468,7 @@ export default function WinnersPage() {
     const arr = Array.from(map.values());
     arr.sort((a, b) => b.ms - a.ms);
 
-    for (const g of arr) {
-      g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
-    }
-
+    for (const g of arr) g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
     return arr;
   }, [filteredRows]);
 
@@ -666,9 +659,7 @@ export default function WinnersPage() {
                                   )}
                                 </span>
 
-                                {w.ticketCode ? (
-                                  <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span>
-                                ) : null}
+                                {w.ticketCode ? <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span> : null}
 
                                 <span className="text-slate-700">•</span>
 
@@ -695,7 +686,6 @@ export default function WinnersPage() {
 
                                 <div className="flex justify-start sm:justify-center">
                                   <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
-                                    {/* GoldAmount expects a string value */}
                                     <GoldAmount value={amountText} suffix="XPOT" size="md" />
                                   </div>
                                 </div>
