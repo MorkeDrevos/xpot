@@ -322,7 +322,7 @@ export default function LiveActivityModule({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-400">
                 <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-                Winner
+                LATEST WINNER
               </div>
 
               <div className="flex items-center gap-2">
@@ -333,7 +333,7 @@ export default function LiveActivityModule({
                     rel="noopener noreferrer"
                     className="text-xs text-slate-400 hover:text-white"
                   >
-                    View proof
+                    View TX
                   </a>
                 )}
               </div>
