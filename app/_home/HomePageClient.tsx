@@ -70,6 +70,14 @@ const GOLD_RING_SHADOW = 'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10)]';
 
 const MIN_ELIGIBLE_XPOT = 100_000;
 
+/**
+ * ✅ The "white border" fix in one place:
+ * Use these everywhere instead of border-white/10 and ring-white/[0.05]
+ */
+const BORDER_SOFT = 'border-white/[0.04]';
+const RING_SOFT = 'ring-white/[0.02]';
+const DIVIDER_SOFT = 'bg-white/[0.06]';
+
 /* ─────────────────────────────────────────────
    Shared countdown context (single source of truth)
 ───────────────────────────────────────────── */
@@ -143,13 +151,13 @@ function Pill({
 }) {
   const map: Record<string, string> = {
     slate:
-      'border-slate-700/70 bg-slate-900/70 text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]',
+      'border-slate-800/60 bg-slate-900/60 text-slate-300 shadow-[0_0_0_1px_rgba(15,23,42,0.7)]',
     emerald:
-      'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.18)]',
+      'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]',
     amber: `${GOLD_BORDER} ${GOLD_BG_WASH} ${GOLD_TEXT} ${GOLD_RING_SHADOW}`,
-    sky: 'border-sky-400/50 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.16)]',
+    sky: 'border-sky-400/35 bg-sky-500/10 text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.10)]',
     violet:
-      'border-violet-400/45 bg-violet-500/10 text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.16)]',
+      'border-violet-400/35 bg-violet-500/10 text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.10)]',
   };
 
   return (
@@ -209,7 +217,7 @@ function TinyTooltip({ label, children }: { label: string; children: ReactNode }
       {open && pos && mounted && typeof document !== 'undefined' && document.body
         ? createPortal(
             <div
-              className="fixed z-[9999] -translate-x-1/2 rounded-2xl border border-white/[0.06] bg-black/85 px-3 py-2 text-[11px] leading-relaxed text-slate-200 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
+              className={`fixed z-[9999] -translate-x-1/2 rounded-2xl border ${BORDER_SOFT} bg-black/85 px-3 py-2 text-[11px] leading-relaxed text-slate-200 shadow-[0_30px_100px_rgba(0,0,0,0.65)]`}
               style={{ left: pos.left, top: pos.top }}
               role="tooltip"
             >
@@ -222,11 +230,6 @@ function TinyTooltip({ label, children }: { label: string; children: ReactNode }
   );
 }
 
-/**
- * Soft border/ring system:
- * - Reduce "white box" look by lowering border/ring alpha across shared components.
- * - Keep gold accents intact.
- */
 function PremiumCard({
   children,
   className = '',
@@ -244,8 +247,7 @@ function PremiumCard({
         'relative overflow-hidden rounded-[32px]',
         'bg-white/[0.03] backdrop-blur-xl',
         'shadow-[0_40px_140px_rgba(0,0,0,0.55)]',
-        // was ring-white/[0.06] -> too bright
-        'ring-1 ring-white/[0.025]',
+        `ring-1 ${RING_SOFT}`,
         sheen ? 'xpot-sheen' : '',
         className,
       ].join(' ')}
@@ -254,22 +256,10 @@ function PremiumCard({
         <div className="pointer-events-none absolute -inset-28 bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.22),transparent_58%),radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.18),transparent_60%),radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.14),transparent_60%),radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_62%)] opacity-90" />
       )}
 
-      {/* was 0.10 -> too bright */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)]" />
+      <div className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.05),transparent)]`} />
       <div className="relative z-10">{children}</div>
     </section>
   );
-}
-
-function normalizeHandle(h: string | null | undefined) {
-  const s = String(h ?? '').trim();
-  if (!s) return '@unknown';
-  return s.startsWith('@') ? s : `@${s}`;
-}
-
-function toXProfileUrl(handle: string | null | undefined) {
-  const h = normalizeHandle(handle).replace(/^@/, '');
-  return `https://x.com/${encodeURIComponent(h)}`;
 }
 
 function formatNumber(n: number) {
@@ -814,9 +804,7 @@ function SectionHeader({
         {eyebrow ? (
           <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">{eyebrow}</p>
         ) : null}
-        <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
-          {title}
-        </h2>
+        <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{title}</h2>
         {desc ? <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-slate-400">{desc}</p> : null}
       </div>
 
@@ -845,12 +833,10 @@ function MetricChip({
       ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] text-slate-100'
       : tone === 'violet'
       ? 'border-violet-400/20 bg-violet-500/10 text-violet-100'
-      : 'border-white/[0.06] bg-white/[0.03] text-slate-200'; // was border-white/10
+      : `${BORDER_SOFT} bg-white/[0.03] text-slate-200`;
 
   return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border ${toneClass} px-4 py-3 ring-1 ring-white/[0.03]`} // was 0.05
-    >
+    <div className={`relative overflow-hidden rounded-2xl border ${toneClass} px-4 py-3 ring-1 ${RING_SOFT}`}>
       <div className="pointer-events-none absolute -inset-20 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(255,255,255,0.06),transparent_62%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_40%_0%,rgba(var(--xpot-gold),0.08),transparent_62%)]" />
       <div className="relative flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -858,7 +844,7 @@ function MetricChip({
           <div className="mt-1 text-[13px] font-semibold text-slate-50">{value}</div>
         </div>
         {icon ? (
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/[0.06] bg-slate-950/30">
+          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl border ${BORDER_SOFT} bg-slate-950/30`}>
             {icon}
           </span>
         ) : null}
@@ -883,14 +869,14 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
         href={XPOT_JUP_SWAP_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+        className={`inline-flex items-center gap-2 rounded-full border ${BORDER_SOFT} bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition`}
         title="Buy XPOT on Jupiter"
       >
         Buy XPOT
         <ExternalLink className="h-4 w-4 text-slate-500" />
       </a>
 
-      <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.02] px-5 py-3 text-[13px] font-semibold text-slate-300">
+      <div className={`ml-1 inline-flex items-center gap-2 rounded-full border ${BORDER_SOFT} bg-white/[0.02] px-5 py-3 text-[13px] font-semibold text-slate-300`}>
         <Timer className="h-4 w-4 text-slate-400" />
         Next draw in <span className="font-mono text-slate-100">{countdown}</span>
       </div>
@@ -901,7 +887,7 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
 function StepRail() {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-5 ring-1 ring-white/[0.03]">
+      <div className={`relative overflow-hidden rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-5 ring-1 ${RING_SOFT}`}>
         <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.22),transparent_62%),radial-gradient(circle_at_80%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
         <div className="relative">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">Step 1</p>
@@ -913,7 +899,7 @@ function StepRail() {
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-sky-400/20 bg-sky-500/10 p-5 ring-1 ring-white/[0.03]">
+      <div className={`relative overflow-hidden rounded-3xl border border-sky-400/20 bg-sky-500/10 p-5 ring-1 ${RING_SOFT}`}>
         <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
         <div className="relative">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sky-100/85">Step 2</p>
@@ -925,7 +911,7 @@ function StepRail() {
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] p-5 ring-1 ring-white/[0.03]">
+      <div className={`relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] p-5 ring-1 ${RING_SOFT}`}>
         <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
         <div className="relative">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-100/85">Step 3</p>
@@ -951,7 +937,7 @@ function FAQItem({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.03] ring-1 ring-white/[0.03]">
+    <div className={`relative overflow-hidden rounded-3xl border ${BORDER_SOFT} bg-white/[0.03] ring-1 ${RING_SOFT}`}>
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
@@ -963,7 +949,7 @@ function FAQItem({
       </button>
       {open ? (
         <div className="px-6 pb-6">
-          <div className="h-px bg-white/[0.06]" />
+          <div className={`h-px ${DIVIDER_SOFT}`} />
           <div className="pt-4 text-[12px] leading-relaxed text-slate-400">{a}</div>
         </div>
       ) : null}
@@ -990,8 +976,8 @@ function HomePageInner() {
     const t = run.ended
       ? `XPOT - Final Draw live (${RUN_END_EU})`
       : run.started
-      ? `XPOT - Day ${run.day}/${RUN_DAYS} (Next draw ${cutoffLabel})`
-      : `XPOT - Run starts ${RUN_START_EU}`;
+        ? `XPOT - Day ${run.day}/${RUN_DAYS} (Next draw ${cutoffLabel})`
+        : `XPOT - Run starts ${RUN_START_EU}`;
 
     document.title = t;
     setMeta(
@@ -1013,9 +999,7 @@ function HomePageInner() {
               <CosmicHeroBackdrop />
               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.30),transparent)]" />
 
-              {/* RIGHT (Jackpot) dominates */}
               <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:p-8 lg:items-start lg:grid-cols-[minmax(0,1.28fr)_minmax(0,0.72fr)] 2xl:grid-cols-[minmax(0,1.36fr)_minmax(0,0.64fr)]">
-                {/* RIGHT - Jackpot hero */}
                 <div className="min-w-0 order-1 lg:order-2">
                   <div className="relative -mt-1 lg:-mt-2">
                     <JackpotPanel variant="standalone" layout="wide" mode="hero" />
@@ -1055,7 +1039,6 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* LEFT - Identity + proof + winner */}
                 <div className="min-w-0 order-2 lg:order-1">
                   <div className="relative">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1082,7 +1065,7 @@ function HomePageInner() {
                         <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.03]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_20%,rgba(56,189,248,0.10),transparent_62%)]" />
                           <div className="relative flex flex-wrap items-center gap-3">
-                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/[0.06] bg-slate-950/30">
+                            <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${BORDER_SOFT} bg-slate-950/30`}>
                               <CalendarClock className={`h-5 w-5 ${GOLD_TEXT}`} />
                             </span>
                             <div className="min-w-0">
@@ -1095,7 +1078,7 @@ function HomePageInner() {
                               </p>
                             </div>
                             <div className="grow" />
-                            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
+                            <span className={`inline-flex items-center gap-2 rounded-full border ${BORDER_SOFT} bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200`}>
                               <Timer className="h-4 w-4 text-slate-300" />
                               Next cutoff <span className="font-mono font-semibold text-slate-100">{countdown}</span>
                             </span>
@@ -1108,7 +1091,7 @@ function HomePageInner() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                        <span className={`inline-flex items-center gap-2 rounded-full border ${BORDER_SOFT} bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200`}>
                           <Users className="h-4 w-4 text-slate-300" />
                           Real handles
                           <span className="text-slate-500">•</span>
@@ -1120,7 +1103,7 @@ function HomePageInner() {
                         </span>
 
                         <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
-                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
+                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/18 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
                             <Info className="h-4 w-4 text-emerald-100/70" />
                             Verified in hub
                           </span>
@@ -1137,9 +1120,8 @@ function HomePageInner() {
                 </div>
               </div>
 
-              {/* Under-hero rail */}
               <div className="relative z-10 px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-7">
-                <div className="h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)]" />
+                <div className={`h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)]`} />
                 <div className="mt-5">
                   <StepRail />
                 </div>
@@ -1170,7 +1152,7 @@ function HomePageInner() {
                 href={XPOT_DEXSCREENER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                className={`inline-flex items-center gap-2 rounded-full border ${BORDER_SOFT} bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition`}
               >
                 Chart
                 <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
@@ -1179,7 +1161,7 @@ function HomePageInner() {
                 href={XPOT_SOLSCAN_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                className={`inline-flex items-center gap-2 rounded-full border ${BORDER_SOFT} bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition`}
               >
                 Explorer
                 <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
@@ -1203,28 +1185,28 @@ function HomePageInner() {
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
+              <div className={`rounded-2xl border ${BORDER_SOFT} bg-slate-950/25 p-4 ring-1 ${RING_SOFT}`}>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Handle-first</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   Your @handle is the public identity. It is what the crowd sees in winners and live activity.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
+              <div className={`rounded-2xl border ${BORDER_SOFT} bg-slate-950/25 p-4 ring-1 ${RING_SOFT}`}>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">On-chain proof</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   When paid, the winner card shows the transaction link. Anyone can verify the payout.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
+              <div className={`rounded-2xl border ${BORDER_SOFT} bg-slate-950/25 p-4 ring-1 ${RING_SOFT}`}>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">One cadence</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   Daily cutoff at 22:00 Madrid. One rhythm for everyone. The countdown never lies.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
+              <div className={`rounded-2xl border ${BORDER_SOFT} bg-slate-950/25 p-4 ring-1 ${RING_SOFT}`}>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">No tickets</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   Eligibility is holdings-based. Claim in the hub to register your daily entry.
@@ -1246,7 +1228,7 @@ function HomePageInner() {
             <div className="mt-4 grid gap-2">
               <Link
                 href={ROUTE_HUB}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-[13px] font-semibold text-emerald-100 hover:bg-emerald-500/14 transition"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/18 bg-emerald-500/10 px-4 py-3 text-[13px] font-semibold text-emerald-100 hover:bg-emerald-500/14 transition"
               >
                 <span className="inline-flex items-center gap-2">
                   <Wand2 className="h-4 w-4 text-emerald-200" />
@@ -1259,7 +1241,7 @@ function HomePageInner() {
                 href={XPOT_JUP_SWAP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition"
+                className={`inline-flex items-center justify-between gap-3 rounded-2xl border ${BORDER_SOFT} bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition`}
               >
                 <span className="inline-flex items-center gap-2">
                   <Zap className="h-4 w-4 text-emerald-200" />
@@ -1270,7 +1252,7 @@ function HomePageInner() {
 
               <Link
                 href={ROUTE_TOKENOMICS_RESERVE}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition"
+                className={`inline-flex items-center justify-between gap-3 rounded-2xl border ${BORDER_SOFT} bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition`}
               >
                 <span className="inline-flex items-center gap-2">
                   <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
@@ -1279,7 +1261,7 @@ function HomePageInner() {
                 <ChevronDown className="h-4 w-4 text-slate-500" />
               </Link>
 
-              <div className="mt-2 rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
+              <div className={`mt-2 rounded-2xl border ${BORDER_SOFT} bg-slate-950/25 p-4 ring-1 ${RING_SOFT}`}>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility check</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   Connect X + wallet in the hub and we verify holdings and identity. If you qualify, you can claim for
