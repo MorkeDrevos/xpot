@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Crown, Sparkles, Users } from 'lucide-react';
 
+import XAccountIdentity from '@/components/XAccountIdentity';
+
 /* ======================================================
    TYPES (TOP-LEVEL EXPORTS - REQUIRED FOR BUILD)
 ====================================================== */
@@ -54,7 +56,8 @@ function normalizeHandle(h?: string | null) {
 }
 
 function toXProfileUrl(handle: string) {
-  return `https://x.com/${handle.replace('@', '')}`;
+  const clean = handle.replace(/^@/, '');
+  return `https://x.com/${encodeURIComponent(clean)}`;
 }
 
 function safeTimeMs(iso?: string | null) {
@@ -73,13 +76,15 @@ function formatTime(iso?: string | null) {
   }).format(new Date(ms));
 }
 
-function formatDateTime(iso?: string | null) {
+// ✅ Date-only (no time) for "Claimed"
+function formatDateOnly(iso?: string | null) {
   const ms = safeTimeMs(iso);
   if (!ms) return '';
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Madrid',
-    dateStyle: 'medium',
-    timeStyle: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
   }).format(new Date(ms));
 }
 
@@ -116,7 +121,7 @@ function Avatar({
 
   return (
     <div
-      className="relative rounded-full overflow-hidden bg-white/5 ring-1 ring-white/15"
+      className="relative overflow-hidden rounded-full bg-white/5 ring-1 ring-white/15"
       style={{ width: size, height: size }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -143,8 +148,19 @@ function TooltipPortal({
 
   useEffect(() => {
     if (!open || !anchor) return;
-    const r = anchor.getBoundingClientRect();
-    setPos({ x: r.left + r.width / 2, y: r.bottom + 10 });
+
+    const update = () => {
+      const r = anchor.getBoundingClientRect();
+      setPos({ x: r.left + r.width / 2, y: r.bottom + 10 });
+    };
+
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
   }, [open, anchor]);
 
   if (!open || !pos) return null;
@@ -192,13 +208,13 @@ function AvatarTooltip({
       </a>
 
       <TooltipPortal open={open} anchor={ref.current}>
-        <div className="rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl p-3 shadow-2xl w-[260px]">
+        <div className="w-[260px] rounded-2xl border border-white/10 bg-black/90 p-3 shadow-2xl backdrop-blur-xl">
           <div className="flex gap-3">
             <Avatar handle={handle} src={avatarUrl} size={42} />
             <div className="min-w-0">
-              <div className="font-semibold text-sm text-white truncate">{handle}</div>
-              {name && <div className="text-xs text-slate-400 truncate">{name}</div>}
-              {meta && <div className="text-[10px] text-slate-500 mt-1">{meta}</div>}
+              <div className="truncate text-sm font-semibold text-white">{handle}</div>
+              {name && <div className="truncate text-xs text-slate-400">{name}</div>}
+              {meta && <div className="mt-1 text-[10px] text-slate-500">{meta}</div>}
             </div>
           </div>
         </div>
@@ -215,7 +231,7 @@ function EntryLine({ e, idx }: { e: EntryRow; idx: number }) {
   const h = normalizeHandle(e.handle);
   return (
     <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex min-w-0 items-center gap-3">
         <AvatarTooltip
           handle={h}
           name={e.name}
@@ -224,9 +240,7 @@ function EntryLine({ e, idx }: { e: EntryRow; idx: number }) {
         />
         <div className="truncate text-sm font-semibold text-white">{h}</div>
       </div>
-      <div className="text-[10px] text-slate-400">
-        {idx === 0 ? 'just now' : 'today'}
-      </div>
+      <div className="text-[10px] text-slate-400">{idx === 0 ? 'just now' : 'today'}</div>
     </div>
   );
 }
@@ -285,7 +299,7 @@ export default function LiveActivityModule({
 
   // Present drawDate as CLAIMED timestamp everywhere (per your new rule)
   const claimedIso = isValidIso(winner?.drawDate) ? winner?.drawDate : null;
-  const claimedLabel = claimedIso ? formatDateTime(claimedIso) : null;
+  const claimedLabel = claimedIso ? formatDateOnly(claimedIso) : null;
 
   const xHref = toXProfileUrl(winnerHandle);
 
@@ -296,47 +310,45 @@ export default function LiveActivityModule({
         className,
       )}
     >
-      <div className="p-5 space-y-5">
+      <div className="space-y-5 p-5">
         {/* HEADER */}
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <div>
             <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-slate-400">
               <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
               Live activity
             </div>
-            <div className="text-lg font-semibold text-white mt-1">The XPOT stage</div>
+            <div className="mt-1 text-lg font-semibold text-white">The XPOT stage</div>
           </div>
 
           <Link
             href={ROUTE_HUB}
             className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10"
           >
-            Enter today’s XPOT
+            Enter today&apos;s XPOT
           </Link>
         </div>
 
         {/* CONTENT */}
-        <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-4">
+        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
           {/* WINNER */}
           <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-400">
                 <Crown className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-                LATEST WINNER
+                Latest winner
               </div>
 
-              <div className="flex items-center gap-2">
-                {winner?.txUrl && (
-                  <a
-                    href={winner.txUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-slate-400 hover:text-white"
-                  >
-                    View TX
-                  </a>
-                )}
-              </div>
+              {winner?.txUrl ? (
+                <a
+                  href={winner.txUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-slate-400 hover:text-white"
+                >
+                  View TX
+                </a>
+              ) : null}
             </div>
 
             {/* PROMO LINE */}
@@ -344,19 +356,19 @@ export default function LiveActivityModule({
               Winner just took home
             </div>
 
-            {/* AMOUNT */}
+            {/* AMOUNT (✅ no x/× prefix) */}
             <div className="mt-1 flex items-baseline gap-2">
-              <div className="text-[44px] font-semibold text-[rgb(var(--xpot-gold-2))] leading-none">
-                {prize ? `×${prize}` : '—'}
+              <div className="text-[44px] font-semibold leading-none text-[rgb(var(--xpot-gold-2))]">
+                {prize ?? '—'}
               </div>
               <div className="text-xs text-slate-400">XPOT</div>
             </div>
 
-            {/* CLAIMED DATE */}
+            {/* CLAIMED DATE (✅ date only, no time) */}
             <div className="mt-2 text-xs text-slate-400">
               {claimedLabel ? (
                 <>
-                  <span className="uppercase tracking-[0.22em] text-[10px] text-slate-500 mr-2">
+                  <span className="mr-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
                     Claimed
                   </span>
                   <span className="text-slate-300">{claimedLabel}</span>
@@ -366,44 +378,33 @@ export default function LiveActivityModule({
               )}
             </div>
 
-            {/* WINNER IDENTITY */}
-            <div className="mt-4 flex items-center gap-3">
-              <AvatarTooltip
-                handle={winnerHandle}
-                name={winnerName}
-                avatarUrl={winner?.avatarUrl}
-                meta={claimedLabel ? `Claimed ${claimedLabel}` : null}
-                size={52}
-              />
-              <div className="min-w-0">
-                <a
-                  href={xHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-white hover:text-[rgb(var(--xpot-gold-2))] truncate inline-flex items-center gap-2"
-                >
-                  <span className="truncate">{winnerHandle}</span>
-                  <span className="text-slate-500 text-xs">↗</span>
-                </a>
-                {winnerName && (
-                  <div className="text-xs text-slate-400 truncate">{winnerName}</div>
-                )}
-              </div>
+            {/* WINNER IDENTITY (✅ use XAccountIdentity component) */}
+            <div className="mt-4">
+              <a href={xHref} target="_blank" rel="noopener noreferrer" className="block">
+                <XAccountIdentity
+                  name={winnerName}
+                  handle={winnerHandle}
+                  avatarUrl={winner?.avatarUrl}
+                  verified={Boolean(winner?.verified)}
+                  subtitle={winner?.kind === 'BONUS' ? 'Bonus winner' : null}
+                />
+              </a>
             </div>
           </div>
 
           {/* ENTRIES */}
           <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
-            <div className="flex justify-between items-center mb-3">
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-400">
                 <Users className="h-4 w-4 text-sky-300" />
                 Entries
               </div>
+
               <div className="flex gap-1">
                 <button
                   onClick={() => setView('bubbles')}
                   className={cx(
-                    'px-3 py-1 rounded-full text-xs',
+                    'rounded-full px-3 py-1 text-xs',
                     view === 'bubbles' ? 'bg-white/10 text-white' : 'text-slate-400',
                   )}
                 >
@@ -412,7 +413,7 @@ export default function LiveActivityModule({
                 <button
                   onClick={() => setView('list')}
                   className={cx(
-                    'px-3 py-1 rounded-full text-xs',
+                    'rounded-full px-3 py-1 text-xs',
                     view === 'list' ? 'bg-white/10 text-white' : 'text-slate-400',
                   )}
                 >
