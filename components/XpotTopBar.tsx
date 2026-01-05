@@ -628,18 +628,15 @@ function PublicNavCenter({
                   Roadmap
                 </Link>
 
-                {/* Winners removed - replaced with Health */}
-                {/*
                 <Link
-                  href={WINNERS_HREF}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Trophy className="h-4 w-4 text-amber-300" />
-                  </span>
-                  Winners
-                </Link>
-                */}
+  href={WINNERS_HREF}
+  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+>
+  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+    <Trophy className="h-4 w-4 text-amber-300" />
+  </span>
+  Winners
+</Link>
 
                 <Link
                   href={PROTOCOL_HREF}
@@ -1277,8 +1274,6 @@ function MobileMenu({
                 </span>
               </Link>
 
-              {/* Winners removed - replaced with Health */}
-              {/*
               <Link
                 className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                 href={WINNERS_HREF}
@@ -1288,7 +1283,6 @@ function MobileMenu({
                   Winners
                 </span>
               </Link>
-              */}
 
               <Link
                 className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
