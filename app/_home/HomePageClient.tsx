@@ -991,8 +991,7 @@ function HomePageInner() {
   }, [run.day, run.started, run.ended, cutoffLabel]);
 
   const hero = (
-    <section className="relative">
-      <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+14px)]" />
+    <section className="relative pt-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+14px)]">
       <MissionBanner />
 
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
