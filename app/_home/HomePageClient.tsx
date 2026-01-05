@@ -1115,44 +1115,43 @@ Claim once per day in the hub.
   );
 
   return (
-    <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* LIVE ACTIVITY */}
-      {SHOW_LIVE_FEED ? (
-        <div className="mt-10">
-          <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
-        </div>
-      ) : null}
-
-      {/* FINAL DRAW */}
-<section className="mt-10">
-  <PremiumCard className="p-6" halo={false}>
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30">
-        <CalendarClock className={`h-5 w-5 ${GOLD_TEXT}`} />
-      </span>
-
-      <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Final Draw ends</p>
-        <p className="mt-1 text-[14px] font-semibold text-slate-50">
-          <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
-          <span className="text-slate-400"> (Madrid)</span>
-        </p>
+  <XpotPageShell pageTag="home" fullBleedTop={hero}>
+    {/* LIVE ACTIVITY */}
+    {SHOW_LIVE_FEED ? (
+      <div className="mt-10">
+        <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
       </div>
+    ) : null}
 
-      <div className="grow" />
+    {/* FINAL DRAW */}
+    <section className="mt-10">
+      <PremiumCard className="p-6" halo={false}>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30">
+            <CalendarClock className={`h-5 w-5 ${GOLD_TEXT}`} />
+          </span>
 
-      <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
-        <Timer className="h-4 w-4 text-slate-300" />
-        Next cutoff <span className="font-mono font-semibold text-slate-100">{countdown}</span>
-      </span>
-    </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Final Draw ends</p>
+            <p className="mt-1 text-[14px] font-semibold text-slate-50">
+              <span className={`${GOLD_TEXT}`}>28/02/2045 22:00</span>
+              <span className="text-slate-400"> (Madrid)</span>
+            </p>
+          </div>
 
-    {/* keep component in sync */}
-    <div className="sr-only">
-      <FinalDrawDate />
-    </div>
-  </PremiumCard>
-</section>
+          <div className="grow" />
+
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
+            <Timer className="h-4 w-4 text-slate-300" />
+            Next cutoff <span className="font-mono font-semibold text-slate-100">{countdown}</span>
+          </span>
+        </div>
+
+        <div className="sr-only">
+          <FinalDrawDate />
+        </div>
+      </PremiumCard>
+    </section>
 
       {/* THE PROTOCOL, MADE CLEAR */}
       <section className="mt-10">
