@@ -23,7 +23,6 @@ import {
   Info,
   Radio,
   ShieldCheck,
-  Sparkles,
   Timer,
   Users,
   Wand2,
@@ -210,7 +209,7 @@ function TinyTooltip({ label, children }: { label: string; children: ReactNode }
       {open && pos && mounted && typeof document !== 'undefined' && document.body
         ? createPortal(
             <div
-              className="fixed z-[9999] -translate-x-1/2 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 text-[11px] leading-relaxed text-slate-200 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
+              className="fixed z-[9999] -translate-x-1/2 rounded-2xl border border-white/[0.06] bg-black/85 px-3 py-2 text-[11px] leading-relaxed text-slate-200 shadow-[0_30px_100px_rgba(0,0,0,0.65)]"
               style={{ left: pos.left, top: pos.top }}
               role="tooltip"
             >
@@ -223,6 +222,11 @@ function TinyTooltip({ label, children }: { label: string; children: ReactNode }
   );
 }
 
+/**
+ * Soft border/ring system:
+ * - Reduce "white box" look by lowering border/ring alpha across shared components.
+ * - Keep gold accents intact.
+ */
 function PremiumCard({
   children,
   className = '',
@@ -240,6 +244,7 @@ function PremiumCard({
         'relative overflow-hidden rounded-[32px]',
         'bg-white/[0.03] backdrop-blur-xl',
         'shadow-[0_40px_140px_rgba(0,0,0,0.55)]',
+        // was ring-white/[0.06] -> too bright
         'ring-1 ring-white/[0.025]',
         sheen ? 'xpot-sheen' : '',
         className,
@@ -249,7 +254,8 @@ function PremiumCard({
         <div className="pointer-events-none absolute -inset-28 bg-[radial-gradient(circle_at_8%_0%,rgba(16,185,129,0.22),transparent_58%),radial-gradient(circle_at_92%_8%,rgba(139,92,246,0.18),transparent_60%),radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.14),transparent_60%),radial-gradient(circle_at_50%_-10%,rgba(var(--xpot-gold),0.10),transparent_62%)] opacity-90" />
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
+      {/* was 0.10 -> too bright */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)]" />
       <div className="relative z-10">{children}</div>
     </section>
   );
@@ -671,8 +677,8 @@ function useLatestWinnerCard() {
             typeof x.amountXpot === 'number'
               ? x.amountXpot
               : typeof x.amount === 'number'
-                ? x.amount
-                : null,
+              ? x.amount
+              : null,
           amount: typeof x.amount === 'number' ? x.amount : null,
           drawDate: x.drawDate ?? x.date ?? x.createdAt ?? null,
           txUrl: x.txUrl ?? x.txLink ?? null,
@@ -745,8 +751,8 @@ function useLatestEntriesTelemetry() {
       const arr = Array.isArray(data?.entries)
         ? (data.entries as EntryRow[])
         : Array.isArray(data)
-          ? (data as EntryRow[])
-          : [];
+        ? (data as EntryRow[])
+        : [];
 
       setEntries(arr.filter(e => Boolean(e?.handle)));
     }
@@ -808,7 +814,9 @@ function SectionHeader({
         {eyebrow ? (
           <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">{eyebrow}</p>
         ) : null}
-        <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{title}</h2>
+        <h2 className="mt-2 text-pretty text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+          {title}
+        </h2>
         {desc ? <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-slate-400">{desc}</p> : null}
       </div>
 
@@ -832,15 +840,17 @@ function MetricChip({
     tone === 'emerald'
       ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100'
       : tone === 'sky'
-        ? 'border-sky-400/20 bg-sky-500/10 text-sky-100'
-        : tone === 'amber'
-          ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] text-slate-100'
-          : tone === 'violet'
-            ? 'border-violet-400/20 bg-violet-500/10 text-violet-100'
-            : 'border-white/10 bg-white/[0.03] text-slate-200';
+      ? 'border-sky-400/20 bg-sky-500/10 text-sky-100'
+      : tone === 'amber'
+      ? 'border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] text-slate-100'
+      : tone === 'violet'
+      ? 'border-violet-400/20 bg-violet-500/10 text-violet-100'
+      : 'border-white/[0.06] bg-white/[0.03] text-slate-200'; // was border-white/10
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border ${toneClass} px-4 py-3 ring-1 ring-white/[0.05]`}>
+    <div
+      className={`relative overflow-hidden rounded-2xl border ${toneClass} px-4 py-3 ring-1 ring-white/[0.03]`} // was 0.05
+    >
       <div className="pointer-events-none absolute -inset-20 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(255,255,255,0.06),transparent_62%),radial-gradient(circle_at_80%_10%,rgba(56,189,248,0.10),transparent_62%),radial-gradient(circle_at_40%_0%,rgba(var(--xpot-gold),0.08),transparent_62%)]" />
       <div className="relative flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -848,7 +858,7 @@ function MetricChip({
           <div className="mt-1 text-[13px] font-semibold text-slate-50">{value}</div>
         </div>
         {icon ? (
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-white/[0.06] bg-slate-950/30">
             {icon}
           </span>
         ) : null}
@@ -873,14 +883,14 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
         href={XPOT_JUP_SWAP_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+        className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
         title="Buy XPOT on Jupiter"
       >
         Buy XPOT
         <ExternalLink className="h-4 w-4 text-slate-500" />
       </a>
 
-      <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-5 py-3 text-[13px] font-semibold text-slate-300">
+      <div className="ml-1 inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.02] px-5 py-3 text-[13px] font-semibold text-slate-300">
         <Timer className="h-4 w-4 text-slate-400" />
         Next draw in <span className="font-mono text-slate-100">{countdown}</span>
       </div>
@@ -891,7 +901,7 @@ function PrimaryCtaRow({ countdown, warmup }: { countdown: string; warmup: boole
 function StepRail() {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-5 ring-1 ring-white/[0.06]">
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-5 ring-1 ring-white/[0.03]">
         <div className="pointer-events-none absolute -inset-24 opacity-75 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(16,185,129,0.22),transparent_62%),radial-gradient(circle_at_80%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
         <div className="relative">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-100/80">Step 1</p>
@@ -903,7 +913,7 @@ function StepRail() {
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-sky-400/20 bg-sky-500/10 p-5 ring-1 ring-white/[0.06]">
+      <div className="relative overflow-hidden rounded-3xl border border-sky-400/20 bg-sky-500/10 p-5 ring-1 ring-white/[0.03]">
         <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(56,189,248,0.20),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(16,185,129,0.10),transparent_62%)]" />
         <div className="relative">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sky-100/85">Step 2</p>
@@ -915,7 +925,7 @@ function StepRail() {
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] p-5 ring-1 ring-white/[0.06]">
+      <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.22)] bg-[rgba(var(--xpot-gold),0.10)] p-5 ring-1 ring-white/[0.03]">
         <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_20%,rgba(var(--xpot-gold),0.18),transparent_62%),radial-gradient(circle_at_82%_30%,rgba(56,189,248,0.10),transparent_62%)]" />
         <div className="relative">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-100/85">Step 3</p>
@@ -941,7 +951,7 @@ function FAQItem({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] ring-1 ring-white/[0.05]">
+    <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-white/[0.03] ring-1 ring-white/[0.03]">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
@@ -953,7 +963,7 @@ function FAQItem({
       </button>
       {open ? (
         <div className="px-6 pb-6">
-          <div className="h-px bg-white/10" />
+          <div className="h-px bg-white/[0.06]" />
           <div className="pt-4 text-[12px] leading-relaxed text-slate-400">{a}</div>
         </div>
       ) : null}
@@ -980,8 +990,8 @@ function HomePageInner() {
     const t = run.ended
       ? `XPOT - Final Draw live (${RUN_END_EU})`
       : run.started
-        ? `XPOT - Day ${run.day}/${RUN_DAYS} (Next draw ${cutoffLabel})`
-        : `XPOT - Run starts ${RUN_START_EU}`;
+      ? `XPOT - Day ${run.day}/${RUN_DAYS} (Next draw ${cutoffLabel})`
+      : `XPOT - Run starts ${RUN_START_EU}`;
 
     document.title = t;
     setMeta(
@@ -1060,7 +1070,6 @@ function HomePageInner() {
                     </div>
 
                     <div className="mt-4">
-                      {/* ORIGINAL H1 (back) */}
                       <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                         One protocol. One daily <span className="xpot-xpotword">XPOT</span> draw.
                       </h1>
@@ -1069,12 +1078,11 @@ function HomePageInner() {
                         Hold XPOT. Claim your daily entry.
                       </p>
 
-                      {/* FINAL DRAW - promoted */}
                       <div className="mt-4">
-                        <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.06]">
+                        <div className="relative overflow-hidden rounded-3xl border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.08)] px-4 py-3 ring-1 ring-white/[0.03]">
                           <div className="pointer-events-none absolute -inset-24 opacity-70 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_82%_20%,rgba(56,189,248,0.10),transparent_62%)]" />
                           <div className="relative flex flex-wrap items-center gap-3">
-                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/30">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/[0.06] bg-slate-950/30">
                               <CalendarClock className={`h-5 w-5 ${GOLD_TEXT}`} />
                             </span>
                             <div className="min-w-0">
@@ -1087,13 +1095,12 @@ function HomePageInner() {
                               </p>
                             </div>
                             <div className="grow" />
-                            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200">
                               <Timer className="h-4 w-4 text-slate-300" />
                               Next cutoff <span className="font-mono font-semibold text-slate-100">{countdown}</span>
                             </span>
                           </div>
 
-                          {/* keeps FinalDrawDate component in sync if you later change run end */}
                           <div className="sr-only">
                             <FinalDrawDate />
                           </div>
@@ -1101,7 +1108,7 @@ function HomePageInner() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
                           <Users className="h-4 w-4 text-slate-300" />
                           Real handles
                           <span className="text-slate-500">•</span>
@@ -1132,7 +1139,7 @@ function HomePageInner() {
 
               {/* Under-hero rail */}
               <div className="relative z-10 px-4 pb-5 sm:px-6 sm:pb-6 lg:px-8 lg:pb-7">
-                <div className="h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
+                <div className="h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)]" />
                 <div className="mt-5">
                   <StepRail />
                 </div>
@@ -1146,14 +1153,12 @@ function HomePageInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* LIVE ACTIVITY */}
       {SHOW_LIVE_FEED ? (
         <div className="mt-10">
           <LiveActivityModule className="" winner={winnerSpotlight} entries={entries} />
         </div>
       ) : null}
 
-      {/* THE PROTOCOL, MADE CLEAR */}
       <section className="mt-10">
         <SectionHeader
           eyebrow="The protocol"
@@ -1165,7 +1170,7 @@ function HomePageInner() {
                 href={XPOT_DEXSCREENER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
               >
                 Chart
                 <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
@@ -1174,7 +1179,7 @@ function HomePageInner() {
                 href={XPOT_SOLSCAN_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
               >
                 Explorer
                 <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
@@ -1198,28 +1203,28 @@ function HomePageInner() {
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+              <div className="rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Handle-first</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   Your @handle is the public identity. It is what the crowd sees in winners and live activity.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+              <div className="rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">On-chain proof</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   When paid, the winner card shows the transaction link. Anyone can verify the payout.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+              <div className="rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">One cadence</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   Daily cutoff at 22:00 Madrid. One rhythm for everyone. The countdown never lies.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+              <div className="rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">No tickets</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   Eligibility is holdings-based. Claim in the hub to register your daily entry.
@@ -1254,7 +1259,7 @@ function HomePageInner() {
                 href={XPOT_JUP_SWAP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition"
               >
                 <span className="inline-flex items-center gap-2">
                   <Zap className="h-4 w-4 text-emerald-200" />
@@ -1265,7 +1270,7 @@ function HomePageInner() {
 
               <Link
                 href={ROUTE_TOKENOMICS_RESERVE}
-                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition"
+                className="inline-flex items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-[13px] text-slate-100 hover:bg-white/[0.06] transition"
               >
                 <span className="inline-flex items-center gap-2">
                   <Crown className={`h-4 w-4 ${GOLD_TEXT}`} />
@@ -1274,7 +1279,7 @@ function HomePageInner() {
                 <ChevronDown className="h-4 w-4 text-slate-500" />
               </Link>
 
-              <div className="mt-2 rounded-2xl border border-white/10 bg-slate-950/25 p-4 ring-1 ring-white/[0.05]">
+              <div className="mt-2 rounded-2xl border border-white/[0.06] bg-slate-950/25 p-4 ring-1 ring-white/[0.03]">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Eligibility check</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
                   Connect X + wallet in the hub and we verify holdings and identity. If you qualify, you can claim for
@@ -1286,7 +1291,6 @@ function HomePageInner() {
         </div>
       </section>
 
-      {/* FAQ */}
       <section className="mt-10">
         <SectionHeader
           eyebrow="FAQ"
@@ -1294,7 +1298,6 @@ function HomePageInner() {
           desc="Homepage stays hype and simple. Hub is where the entry and verification happens."
         />
 
-        {/* ✅ no tab pre-opened */}
         <div className="grid gap-4 lg:grid-cols-2">
           <FAQItem
             q="Do I need to buy tickets?"
