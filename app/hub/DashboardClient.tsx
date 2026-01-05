@@ -2396,20 +2396,20 @@ function DashboardInner() {
                         </div>
                       </div>
                     ) : (
-                      recentWinners.slice(0, 6).map(w => (
-                        <WinnersRow
-                          key={`w-${w.txUrl ?? w.id}-${safeTimeMs(w.drawDate)}-${(w.wallet ?? '').toLowerCase()}`}
-                          w={w}
-                        />
-                      ))
+                      recentWinners.slice(0, 3).map(w => (
+  <WinnersRow
+    key={`w-${w.txUrl ?? w.id}-${safeTimeMs(w.drawDate)}-${(w.wallet ?? '').toLowerCase()}`}
+    w={w}
+  />
+))
                     )}
                   </div>
 
-                  {recentWinners.length > 6 ? (
-                    <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
-                      Showing latest 6. More winners are available in the public feed.
-                    </div>
-                  ) : null}
+                  {recentWinners.length > 3 ? (
+  <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
+    Showing latest 3. Full archive is on the winners page.
+  </div>
+) : null}
                 </LuxeCard>
               ) : (
                 <LuxeCard accent="sky">
