@@ -236,7 +236,7 @@ function EntryLine({ e, idx }: { e: EntryRow; idx: number }) {
           handle={h}
           name={e.name}
           avatarUrl={e.avatarUrl}
-          meta={e.createdAt ? `Entered ${formatTime(e.createdAt)}` : null}
+          meta={e.createdAt ? `Madrid ${formatTime(e.createdAt)}` : null}
         />
         <div className="truncate text-sm font-semibold text-white">{h}</div>
       </div>
@@ -353,7 +353,7 @@ export default function LiveActivityModule({
 
             {/* PROMO LINE */}
             <div className="text-[10px] uppercase tracking-[0.32em] text-slate-400">
-              Winner just took home
+              
             </div>
 
             {/* AMOUNT (✅ no x/× prefix) */}
