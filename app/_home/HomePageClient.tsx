@@ -288,7 +288,6 @@ function HomeInner() {
       <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
 
-        {/* Royal wash (subtle depth) */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-70"
@@ -314,12 +313,10 @@ function HomeInner() {
                   lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.48fr)]
                 "
               >
-                {/* LEFT */}
                 <div className="flex flex-col justify-between gap-6 lg:pt-8">
                   <div className="space-y-6">
                     <div className="relative p-2 sm:p-3">
                       <div className="relative mt-4">
-                        {/* Royal micro-badges */}
                         <div className="mb-3 flex flex-wrap items-center gap-2">
                           <span
                             className={[
@@ -352,7 +349,6 @@ function HomeInner() {
                         <div className="mt-5 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),transparent)]" />
                       </div>
 
-                      {/* MOBILE: jackpot right after H1 */}
                       <div className="mt-4 grid gap-4 lg:hidden">
                         <PremiumCard className="p-4" halo sheen>
                           <div className="xpot-console-sweep" aria-hidden />
@@ -502,11 +498,10 @@ function HomeInner() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
-                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="violet" />
+                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="sky" />
                   </div>
                 </div>
 
-                {/* RIGHT (desktop only) */}
                 <motion.div
                   className="hidden gap-4 lg:grid"
                   style={
@@ -544,7 +539,6 @@ function HomeInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* HOW IT WORKS */}
       <section className="mt-7">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -572,7 +566,7 @@ function HomeInner() {
                 <Users className="h-3.5 w-3.5" />
                 X identity
               </Pill>
-              <Pill tone="violet">
+              <Pill tone="sky">
                 <Timer className="h-3.5 w-3.5" />
                 Daily cadence
               </Pill>
@@ -595,7 +589,6 @@ function HomeInner() {
         </PremiumCard>
       </section>
 
-      {/* PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -627,12 +620,11 @@ function HomeInner() {
         </div>
       </section>
 
-      {/* ECOSYSTEM */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
-              <Pill tone="violet">
+              <Pill tone="sky">
                 <Blocks className="h-3.5 w-3.5" />
                 Built to scale
               </Pill>
@@ -721,7 +713,6 @@ function HomeInner() {
         </PremiumCard>
       </section>
 
-      {/* FAQ */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo={false}>
           <div className="flex flex-wrap items-start justify-between gap-4">
