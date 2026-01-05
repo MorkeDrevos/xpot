@@ -1093,84 +1093,115 @@ function HomePageInner() {
                   </div>
                 </div>
 
-                {/* LEFT - Identity + proof + winner */}
-                <div className="min-w-0 order-2 lg:order-1">
-                  <div className="relative">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <Pill tone={warmup ? 'amber' : 'emerald'}>
-                        <Radio className="h-3.5 w-3.5" />
-                        {run.ended ? 'Final draw' : warmup ? 'Warm-up' : run.started ? 'Live run' : 'Pre-run'}
-                      </Pill>
+                {/* LEFT - Identity + proof (calmer, structured) */}
+<div className="min-w-0 order-2 lg:order-1">
+  <div className="relative">
+    {/* Top row */}
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <Pill tone={warmup ? 'amber' : 'emerald'}>
+        <Radio className="h-3.5 w-3.5" />
+        {run.ended ? 'Final draw' : warmup ? 'Warm-up' : run.started ? 'Live run' : 'Pre-run'}
+      </Pill>
 
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
-                        NO TICKETS - JUST XPOT HOLDINGS
-                      </span>
-                    </div>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">
+        NO TICKETS - JUST XPOT HOLDINGS
+      </span>
+    </div>
 
-                    <div className="mt-4">
-                      {/* ORIGINAL H1 (back) */}
-                      <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                        One protocol. One daily <span className="xpot-xpotword">XPOT</span> draw.
-                      </h1>
+    {/* Divider */}
+    <div className="mt-4 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent)]" />
 
-                      <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
-                        A daily entry, unlocked by XPOT holdings.
-                        <br />
-                        Claim once per day in the hub.
-                      </p>
+    {/* Headline + copy */}
+    <div className="mt-5">
+      <h1 className="text-balance text-[34px] font-semibold tracking-tight text-white sm:text-5xl">
+        One protocol.
+        <span className="text-white/90"> One daily </span>
+        <span className="xpot-xpotword">XPOT</span>
+        <span className="text-white/90"> draw.</span>
+      </h1>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-3 py-2 text-[12px] text-slate-200">
-                          <Users className="h-4 w-4 text-slate-300" />
-                          Real handles
-                          <span className="text-slate-500">•</span>
-                          <ShieldCheck className="h-4 w-4 text-slate-300" />
-                          On-chain proof
-                          <span className="text-slate-500">•</span>
-                          <Globe className="h-4 w-4 text-slate-300" />
-                          One cadence
-                        </span>
+      <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300/90">
+        A daily entry, unlocked by XPOT holdings.
+        <br />
+        Claim once per day in the hub.
+      </p>
 
-                        <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
-                          <span className="xpot-micro-glow inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/30 px-3 py-2 text-[12px] text-emerald-100/90">
-                            <Info className="h-4 w-4 text-emerald-100/70" />
-                            Verified in hub
-                          </span>
-                        </TinyTooltip>
-                      </div>
+      {/* Micro-proof row (quieter, with dividers) */}
+      <div className="mt-4 max-w-2xl rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 ring-1 ring-white/[0.05]">
+        <div className="flex flex-wrap items-center gap-y-2">
+          <div className="inline-flex items-center gap-2 text-[12px] text-slate-200">
+            <Users className="h-4 w-4 text-slate-300" />
+            Real handles
+          </div>
 
-                      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
+          <div className="mx-3 hidden h-4 w-px bg-white/10 sm:block" />
 
-                      {/* Treasury note belongs here (not in the lower Protocol section) */}
-                      <div className="mt-4 max-w-2xl">
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 ring-1 ring-white/[0.06]">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-                                Treasury & protocol wallets
-                              </p>
-                            </div>
+          <div className="inline-flex items-center gap-2 text-[12px] text-slate-200">
+            <ShieldCheck className="h-4 w-4 text-slate-300" />
+            On-chain proof
+          </div>
 
-                            <Link
-                              href={ROUTE_TOKENOMICS_RESERVE}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:bg-white/[0.05] transition"
-                              title="Learn more in Tokenomics"
-                            >
-                              Learn more
-                              <ArrowRight className="h-3 w-3 opacity-70" />
-                            </Link>
-                          </div>
+          <div className="mx-3 hidden h-4 w-px bg-white/10 sm:block" />
 
-                          <p className="mt-2 text-[12px] leading-relaxed text-slate-300">
-                            Top holder concentration reflects protocol-controlled wallets (liquidity pool, treasury, strategy
-                            execution, and community rewards) - not private individuals.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <div className="inline-flex items-center gap-2 text-[12px] text-slate-200">
+            <Globe className="h-4 w-4 text-slate-300" />
+            One cadence
+          </div>
+
+          <div className="grow" />
+
+          <TinyTooltip label="Eligibility is verified in the hub when you connect X + wallet.">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-950/25 px-3 py-1.5 text-[12px] text-emerald-100/90">
+              <Info className="h-4 w-4 text-emerald-100/70" />
+              Verified in hub
+            </span>
+          </TinyTooltip>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="mt-5 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)]" />
+
+      {/* CTAs */}
+      <PrimaryCtaRow countdown={countdown} warmup={warmup} />
+
+      {/* Divider */}
+      <div className="mt-5 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.22),rgba(255,255,255,0.06),transparent)]" />
+
+      {/* Treasury note (calmer, more premium) */}
+      <div className="mt-5 max-w-2xl">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 ring-1 ring-white/[0.06]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH}`}>
+                  <ShieldCheck className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                </span>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-400">
+                  Treasury & protocol wallets
+                </p>
+              </div>
+
+              <p className="mt-2 text-[12px] leading-relaxed text-slate-300/90">
+                Top holder concentration reflects protocol-controlled wallets (liquidity pool, treasury, strategy
+                execution, and community rewards) - not private individuals.
+              </p>
+            </div>
+
+            <Link
+              href={ROUTE_TOKENOMICS_RESERVE}
+              className={`shrink-0 inline-flex items-center gap-2 rounded-full border ${GOLD_BORDER} ${GOLD_BG_WASH} px-4 py-2 text-[12px] font-semibold ${GOLD_TEXT} hover:bg-[rgba(var(--xpot-gold),0.14)] transition`}
+              title="Learn more in Tokenomics"
+            >
+              Learn more
+              <ArrowRight className="h-3.5 w-3.5 opacity-70" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
               </div>
 
               {/* Under-hero rail */}
