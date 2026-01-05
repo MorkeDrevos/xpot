@@ -24,19 +24,37 @@ export async function GET() {
       return NextResponse.json({ ok: true, winner: null }, { status: 200 });
     }
 
+    const user = w.ticket?.wallet?.user ?? null;
+
+    // IMPORTANT:
+    // - draw.drawDate = "day bucket" (00:00Z of the draw day)
+    // - winner.date = the actual winner timestamp (your 22:00 Madrid moment stored in UTC)
     const payload = {
       id: w.id,
-      drawDate: w.draw?.drawDate
-        ? w.draw.drawDate.toISOString()
-        : null,
 
-      // exists on Winner
-      wallet: (w as any).walletAddress ?? null,
+      // "Day bucket" for grouping
+      drawDay: w.draw?.drawDate ? w.draw.drawDate.toISOString() : null,
 
-      // optional / tolerant fields
-      handle: (w as any).ticket?.wallet?.user?.xHandle ?? null,
-      txUrl: (w as any).txUrl ?? null,
-      isPaidOut: Boolean((w as any).isPaidOut ?? false),
+      // Canonical "winner happened at" timestamp (use this for UI display)
+      drawDate: w.date ? w.date.toISOString() : null,
+
+      wallet: w.walletAddress ?? null,
+      ticketCode: w.ticketCode ?? null,
+
+      // Identity resolved through Wallet -> User
+      handle: user?.xHandle ?? null,
+      name: user?.xName ?? null,
+      avatarUrl: user?.xAvatarUrl ?? null,
+
+      txUrl: w.txUrl ?? null,
+      isPaidOut: Boolean(w.isPaidOut),
+
+      kind: w.kind ?? 'MAIN',
+      label: w.label ?? null,
+
+      // Optional numeric fields (safe defaults)
+      payoutUsd: typeof w.payoutUsd === 'number' ? w.payoutUsd : 0,
+      jackpotUsd: typeof w.jackpotUsd === 'number' ? w.jackpotUsd : 0,
     };
 
     return NextResponse.json({ ok: true, winner: payload }, { status: 200 });

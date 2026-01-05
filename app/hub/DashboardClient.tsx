@@ -36,15 +36,15 @@ import {
   ShieldCheck,
   ExternalLink,
   Info,
+  Crown,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // Feature flags
 // ─────────────────────────────────────────────
 
-// We are not ready yet (admin/winner pipeline still unstable)
-// This disables all Recent Winners fetching + UI.
-const ENABLE_RECENT_WINNERS = false;
+// ✅ We can now show winners in dashboard as well
+const ENABLE_RECENT_WINNERS = true;
 
 // ─────────────────────────────────────────────
 // Small UI helpers (darker, no white borders)
@@ -100,6 +100,26 @@ function formatCountdown(ms: number) {
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+}
+
+// ─────────────────────────────────────────────
+// X handle helpers
+// ─────────────────────────────────────────────
+
+function normalizeHandle(h: string | null | undefined) {
+  const s = String(h ?? '').trim();
+  if (!s) return '@unknown';
+  return s.startsWith('@') ? s : `@${s}`;
+}
+
+function toXProfileUrl(handle: string) {
+  const h = normalizeHandle(handle).replace(/^@/, '');
+  return `https://x.com/${encodeURIComponent(h)}`;
+}
+
+function safeTimeMs(iso?: string | null) {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? t : 0;
 }
 
 // ─────────────────────────────────────────────
@@ -471,6 +491,333 @@ function useBonusUpcoming() {
 }
 
 // ─────────────────────────────────────────────
+// Recent winners hook (dashboard)
+// ─────────────────────────────────────────────
+
+type PublicWinner = {
+  id: string;
+  drawDate: string | null;
+  wallet: string | null;
+  amount: number;
+  handle: string | null;
+  name: string | null;
+  avatarUrl: string | null;
+  txUrl: string | null;
+  isPaidOut: boolean;
+  jackpotUsd?: number;
+  payoutUsd?: number;
+};
+
+function pickString(...vals: any[]) {
+  for (const v of vals) {
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+function pickNumber(...vals: any[]) {
+  for (const v of vals) {
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string') {
+      const n = Number(v);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return 0;
+}
+
+function normalizePublicWinner(raw: any): PublicWinner | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const id = pickString(raw.id, raw.winnerId, raw.ticketId, raw.drawId) || '';
+  if (!id) return null;
+
+  // wallet can be in many places depending on include() shape
+  const wallet =
+    pickString(
+      raw.wallet,
+      raw.walletAddress,
+      raw.winnerWallet,
+      raw.ticketWallet,
+      raw?.ticket?.wallet?.address,
+      raw?.ticket?.wallet?.publicKey,
+      raw?.wallet?.address,
+      raw?.wallet?.publicKey,
+    ) || null;
+
+  // handle/name/avatar often live on user or ticket.user or profile fields
+  const handle =
+    pickString(
+      raw.handle,
+      raw.xHandle,
+      raw.twitterHandle,
+      raw.username,
+      raw?.user?.handle,
+      raw?.user?.xHandle,
+      raw?.ticket?.user?.handle,
+      raw?.ticket?.wallet?.user?.handle,
+    ) || null;
+
+  const name =
+    pickString(
+      raw.name,
+      raw.displayName,
+      raw?.user?.name,
+      raw?.user?.displayName,
+      raw?.ticket?.user?.name,
+      raw?.ticket?.wallet?.user?.name,
+    ) || null;
+
+  const avatarUrl =
+    pickString(
+      raw.avatarUrl,
+      raw.avatar,
+      raw.imageUrl,
+      raw?.user?.avatarUrl,
+      raw?.user?.imageUrl,
+      raw?.ticket?.user?.avatarUrl,
+      raw?.ticket?.wallet?.user?.imageUrl,
+    ) || null;
+
+  // amount fields vary a LOT
+  const amount = pickNumber(
+    raw.amount,
+    raw.amountXpot,
+    raw.payoutXpot,
+    raw.rewardXpot,
+    raw.jackpotXpot,
+    raw?.draw?.jackpotXpot,
+    raw?.payout?.amount,
+  );
+
+  // tx url or signature (build url if only signature exists)
+  const txUrl =
+    pickString(raw.txUrl, raw.tx, raw.txHash, raw.signature) ||
+    (pickString(raw.txSig, raw.payoutSig) ? `https://solscan.io/tx/${pickString(raw.txSig, raw.payoutSig)}` : null);
+
+  const isPaidOut =
+    Boolean(raw.isPaidOut) ||
+    Boolean(raw.paid) ||
+    Boolean(raw.isPaid) ||
+    (typeof raw.status === 'string' ? raw.status.toUpperCase() === 'PAID' : false);
+
+  const drawDate = pickString(raw.drawDate, raw.date, raw.createdAt, raw?.draw?.date, raw?.draw?.closesAt) || null;
+
+  return {
+    id,
+    drawDate,
+    wallet,
+    amount,
+    handle,
+    name,
+    avatarUrl,
+    txUrl,
+    isPaidOut,
+    jackpotUsd: pickNumber(raw.jackpotUsd, raw?.draw?.jackpotUsd),
+    payoutUsd: pickNumber(raw.payoutUsd, raw?.payout?.usd),
+  };
+}
+
+async function fetchRecentWinners(limit = 10) {
+  // Try multiple endpoints (because your codebase has moved routes around)
+  const tries = [
+    `/api/public/winners/recent?limit=${encodeURIComponent(String(limit))}`,
+    `/api/winners/recent?limit=${encodeURIComponent(String(limit))}`,
+  ];
+
+  for (const url of tries) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const j = (await r.json().catch(() => null)) as any;
+
+      // Support shapes:
+      // { ok: true, winners: [...] }
+      // { ok: true, winner: ... } (fallback)
+      const listRaw: any[] = Array.isArray(j?.winners)
+        ? j.winners
+        : j?.winner
+        ? [j.winner]
+        : Array.isArray(j?.data)
+        ? j.data
+        : [];
+
+      const winners = listRaw.map(normalizePublicWinner).filter(Boolean) as PublicWinner[];
+      if (winners.length) return { ok: true as const, winners };
+      // If endpoint exists but empty winners, still return empty
+      if (Array.isArray(j?.winners)) return { ok: true as const, winners: [] as PublicWinner[] };
+    } catch {
+      // keep trying
+    }
+  }
+
+  // As a final fallback, try "latest" and wrap into list
+  try {
+    const r = await fetch('/api/public/winners/latest', { cache: 'no-store' });
+    if (r.ok) {
+      const j = (await r.json().catch(() => null)) as any;
+      const w = normalizePublicWinner(j?.winner);
+      return { ok: true as const, winners: w ? [w] : [] };
+    }
+  } catch {
+    // ignore
+  }
+
+  return { ok: false as const, winners: [] as PublicWinner[] };
+}
+
+function useRecentWinners(enabled: boolean, limit = 10) {
+  const [winners, setWinners] = useState<PublicWinner[]>([]);
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState<string | null>(null);
+  const [pulse, setPulse] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) {
+      setWinners([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    let alive = true;
+
+    async function run() {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetchRecentWinners(limit);
+
+      if (!alive) return;
+
+      if (!res.ok) {
+        setError('Winners feed unavailable');
+        setLoading(false);
+        return;
+      }
+
+      // Sort defensively by drawDate desc
+      const sorted = [...res.winners].sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
+      setWinners(sorted);
+      setLoading(false);
+      setPulse(p => p + 1);
+    }
+
+    run();
+    const t = window.setInterval(run, 20_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [enabled, limit]);
+
+  return { winners, loading, error, pulse };
+}
+
+function WinnersRow({
+  w,
+  dense = false,
+}: {
+  w: PublicWinner;
+  dense?: boolean;
+}) {
+  const handle = w.handle ? normalizeHandle(w.handle) : null;
+  const xUrl = handle ? toXProfileUrl(handle) : null;
+
+  const title = handle || w.name || 'XPOT winner';
+  const sub = w.drawDate ? formatDateTime(w.drawDate) : '—';
+
+  // Labels (single source of truth)
+  const walletLabel = w.wallet ? shortWallet(w.wallet) : '—';
+  const rewardLabel =
+    w.amount && w.amount > 0 ? `${Math.floor(w.amount).toLocaleString()} XPOT` : '—';
+
+  // IMPORTANT: if backend sends paid=true but amount is 0, don't show PAID
+  const paidUi = Boolean(w.isPaidOut) && Boolean(w.amount && w.amount > 0);
+
+  return (
+    <div className={`rounded-2xl border ${BORDER_SOFTER} bg-slate-950/55 px-4 py-3`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {w.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={w.avatarUrl}
+              alt={title}
+              className={`h-9 w-9 rounded-full border ${BORDER_SOFT} object-cover`}
+            />
+          ) : (
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45 text-[11px] font-semibold text-slate-100`}
+              title={title}
+            >
+              {initialFromHandle(handle || w.name || 'X')}
+            </div>
+          )}
+
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
+              {xUrl ? (
+                <a
+                  href={xUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="truncate text-xs font-semibold text-slate-100 hover:text-white"
+                  title="Open X profile"
+                >
+                  {title}
+                </a>
+              ) : (
+                <p className="truncate text-xs font-semibold text-slate-100">{title}</p>
+              )}
+
+              {xUrl ? <ExternalLink className="h-3.5 w-3.5 text-slate-200/65" /> : null}
+            </div>
+
+            <p className="mt-1 text-xs text-slate-200/60">{sub}</p>
+          </div>
+        </div>
+
+        <div className="shrink-0 text-right">
+          <StatusPill tone={paidUi ? 'emerald' : 'sky'}>
+            <Crown className="h-3.5 w-3.5" />
+            {paidUi ? 'Paid' : 'Winner'}
+          </StatusPill>
+        </div>
+      </div>
+
+      <div className={`mt-3 grid gap-2 ${dense ? '' : 'sm:grid-cols-2'}`}>
+        {/* WALLET */}
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Wallet</span>
+          <span className="font-mono text-xs text-slate-100">{walletLabel}</span>
+        </div>
+
+        {/* REWARD */}
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-700/25 bg-slate-950/35 px-3 py-2">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-200/55">Reward</span>
+          <span className="text-xs font-semibold text-slate-100">{rewardLabel}</span>
+        </div>
+      </div>
+
+      {w.txUrl ? (
+        <div className="mt-3">
+          <a
+            href={w.txUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 text-xs text-slate-200/70 hover:text-white"
+          >
+            <ExternalLink className="h-4 w-4" />
+            View transaction
+          </a>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // Entry ceremony (2s shimmer + stamp + optional chime)
 // ─────────────────────────────────────────────
 
@@ -800,7 +1147,6 @@ function DashboardInner() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Winners disabled (feature-flag)
   const [countdown, setCountdown] = useState('00:00:00');
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [syncPulse, setSyncPulse] = useState(0);
@@ -838,6 +1184,12 @@ function DashboardInner() {
     title: 'Loading…',
     desc: 'Preparing today’s mission.',
   });
+
+  // ✅ Winners (now enabled)
+  const { winners: recentWinners, loading: winnersLoading, error: winnersError } = useRecentWinners(
+    ENABLE_RECENT_WINNERS,
+    10,
+  );
 
   // refs for clean "jump" actions
   const entriesSectionRef = useRef<HTMLDivElement | null>(null);
@@ -1100,7 +1452,8 @@ function DashboardInner() {
     }
 
     const myTicket = entries.find(
-      t => t.walletAddress === currentWalletAddress && normalizeStatus(t.status) === 'in-draw',
+      comparison =>
+        comparison.walletAddress === currentWalletAddress && normalizeStatus(comparison.status) === 'in-draw',
     );
 
     if (myTicket) {
@@ -1531,7 +1884,7 @@ function DashboardInner() {
                       <p className="text-[10px] uppercase tracking-[0.16em] text-slate-200/65">Cabin sync</p>
                       <p className="mt-1 text-sm font-semibold text-slate-100">
                         {lastSyncedAt ? (
-                          <span key={syncPulse} className="inline-flex items-center gap-2">
+                          <span className="inline-flex items-center gap-2">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-300/80" />
                             {new Date(lastSyncedAt).toLocaleTimeString('de-DE')}
                           </span>
@@ -1983,8 +2336,65 @@ function DashboardInner() {
                 )}
               </LuxeCard>
 
-              {/* Recent winners - intentionally disabled until admin is stable */}
-              {ENABLE_RECENT_WINNERS ? null : (
+              {/* ✅ Recent winners - LIVE (dashboard) */}
+              {ENABLE_RECENT_WINNERS ? (
+                <LuxeCard accent="sky">
+                  <LuxeTitle
+                    title="Recent winners"
+                    subtitle="Live feed. Click a handle to open the X profile."
+                    right={
+                      <StatusPill tone="sky">
+                        <Crown className="h-3.5 w-3.5" />
+                        Live
+                      </StatusPill>
+                    }
+                  />
+
+                  <div className="mt-4 space-y-2">
+                    {winnersLoading ? (
+                      <div className={`rounded-[24px] ${SURFACE_INNER} p-4`}>
+                        <p className="text-xs text-slate-200/65">Loading winners…</p>
+                      </div>
+                    ) : winnersError ? (
+                      <div className={`rounded-[24px] ${SURFACE_INNER} p-4`}>
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45`}
+                          >
+                            <Info className="h-4 w-4 text-slate-200/75" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-100">Winners feed unavailable</p>
+                            <p className="mt-1 text-xs text-slate-200/65">{winnersError}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : recentWinners.length === 0 ? (
+                      <div className={`rounded-[24px] ${SURFACE_INNER} p-4`}>
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45`}
+                          >
+                            <Crown className="h-4 w-4 text-sky-100/80" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-100">No winners yet</p>
+                            <p className="mt-1 text-xs text-slate-200/65">This section will populate automatically.</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      recentWinners.slice(0, 6).map(w => <WinnersRow key={w.id} w={w} />)
+                    )}
+                  </div>
+
+                  {recentWinners.length > 6 ? (
+                    <div className={`mt-4 rounded-2xl ${SURFACE_INNER} px-4 py-3 text-xs text-slate-200/65`}>
+                      Showing latest 6. More winners are available in the public feed.
+                    </div>
+                  ) : null}
+                </LuxeCard>
+              ) : (
                 <LuxeCard accent="sky">
                   <LuxeTitle
                     title="Recent winners"
@@ -1994,13 +2404,16 @@ function DashboardInner() {
 
                   <div className={`mt-4 rounded-[24px] ${SURFACE_INNER} p-4`}>
                     <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45`}>
+                      <div
+                        className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border ${BORDER_SOFT} bg-slate-950/45`}
+                      >
                         <Info className="h-4 w-4 text-slate-200/75" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-slate-100">Winners feed is paused</p>
                         <p className="mt-1 text-xs text-slate-200/65">
-                          We are finishing the draw automation and admin verification. This will reappear automatically once ready.
+                          We are finishing the draw automation and admin verification. This will reappear automatically
+                          once ready.
                         </p>
                       </div>
                     </div>

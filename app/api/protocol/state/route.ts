@@ -18,10 +18,10 @@ function n(v: unknown): number | undefined {
   return Number.isFinite(num) ? num : undefined;
 }
 
-function pickBestPair(pairs: DexPair[]): DexPair | null {
+function pickBestPairForLink(pairs: DexPair[]): DexPair | null {
   if (!Array.isArray(pairs) || pairs.length === 0) return null;
 
-  // Prefer Solana, then highest liquidity USD
+  // Prefer Solana, then highest liquidity
   const sol = pairs.filter(p => (p.chainId || '').toLowerCase() === 'solana');
   const list = sol.length ? sol : pairs;
 
@@ -29,8 +29,23 @@ function pickBestPair(pairs: DexPair[]): DexPair | null {
   return list[0] ?? null;
 }
 
+function sumPairsUsd(pairs: DexPair[], getter: (p: DexPair) => number | undefined): number | undefined {
+  if (!Array.isArray(pairs) || pairs.length === 0) return undefined;
+  let sum = 0;
+  let any = false;
+
+  for (const p of pairs) {
+    const v = getter(p);
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      sum += v;
+      any = true;
+    }
+  }
+
+  return any ? sum : undefined;
+}
+
 function liquiditySignal(lpUsd?: number) {
-  // Tune these thresholds whenever you want
   if (!Number.isFinite(Number(lpUsd))) return undefined;
   if ((lpUsd ?? 0) >= 100_000) return 'HEALTHY' as const;
   if ((lpUsd ?? 0) >= 20_000) return 'WATCH' as const;
@@ -55,17 +70,14 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Dexscreener token endpoint (works well for quick live testing)
     const url = `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(mint)}`;
 
     const r = await fetch(url, {
       cache: 'no-store',
-      // Avoid Next caching surprises
-      headers: { 'accept': 'application/json' },
+      headers: { accept: 'application/json' },
     });
 
     if (!r.ok) {
-      // Non-fatal: treat as "no public pair yet"
       return NextResponse.json({
         state: {
           updatedAt: new Date().toISOString(),
@@ -75,25 +87,38 @@ export async function GET(req: Request) {
     }
 
     const j = (await r.json().catch(() => ({}))) as { pairs?: DexPair[] };
-    const best = pickBestPair(Array.isArray(j?.pairs) ? j.pairs : []);
+    const pairsRaw = Array.isArray(j?.pairs) ? j.pairs : [];
 
-    const lpUsd = n(best?.liquidity?.usd);
+    // Prefer Solana pairs for totals. If none exist, fall back to whatever pairs exist.
+    const solPairs = pairsRaw.filter(p => (p.chainId || '').toLowerCase() === 'solana');
+    const pairs = solPairs.length ? solPairs : pairsRaw;
+
+    // ✅ Birdeye-style totals: combine ALL LPs + ALL volume across relevant pairs
+    const lpUsdTotal = sumPairsUsd(pairs, p => n(p.liquidity?.usd));
+    const volume24hUsdTotal = sumPairsUsd(pairs, p => n(p.volume?.h24));
+
+    // Price should come from the deepest pair (for best price quality)
+    const best = pickBestPairForLink(pairs);
+
     const priceUsd = n(best?.priceUsd);
-    const volume24hUsd = n(best?.volume?.h24);
 
     return NextResponse.json({
       state: {
-        lpUsd,
-        // Optional until you implement sampling/history
+        // totals
+        lpUsd: lpUsdTotal,
+        volume24hUsd: volume24hUsdTotal,
+        pairsCount: pairs.length,
+
+        // optional until you implement history
         lpChange24hPct: undefined,
-        liquiditySignal: liquiditySignal(lpUsd),
+        liquiditySignal: liquiditySignal(lpUsdTotal),
 
         priceUsd,
-        volume24hUsd,
 
         updatedAt: new Date().toISOString(),
         source: 'dexscreener',
 
+        // best-pair link metadata (keeps your "View chart" working)
         pairUrl: best?.url,
         pairAddress: best?.pairAddress,
         chainId: best?.chainId,
@@ -101,7 +126,6 @@ export async function GET(req: Request) {
       },
     });
   } catch {
-    // Non-fatal: page already handles protoError gracefully
     return NextResponse.json({
       state: {
         updatedAt: new Date().toISOString(),

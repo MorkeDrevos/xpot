@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import XpotPageShell from '@/components/XpotPageShell';
+import XpotFooter from '@/components/XpotFooter';
 import { TOKEN_MINT } from '@/lib/xpot';
 
 type LiveDraw = {
@@ -61,12 +62,20 @@ type PillTone = 'slate' | 'emerald' | 'amber' | 'sky';
 const LIVE_REFRESH_MS = 15_000;
 const PROTO_REFRESH_MS = 20_000;
 
+// Hide Liquidity: Critical in production for now
+const SHOW_LIQUIDITY_STATUS = process.env.NODE_ENV !== 'production';
+
 // Client-side sampling (no backend changes)
 type Sample = { t: number; v: number };
 const SAMPLE_MAX = 180; // ~60 min if sampling ~20s
 const KEY_PRICE = 'xpot_protocol_samples_price_v1';
 const KEY_LP = 'xpot_protocol_samples_lp_v1';
 const KEY_VOL = 'xpot_protocol_samples_vol_v1';
+
+const MADRID_TZ = 'Europe/Madrid';
+const CLOSE_HOUR_MADRID = 22;
+const CLOSE_MINUTE_MADRID = 0;
+const CLOSE_SECOND_MADRID = 0;
 
 function StatusPill({
   children,
@@ -160,7 +169,7 @@ function formatMadridTime(iso?: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   return new Intl.DateTimeFormat(undefined, {
-    timeZone: 'Europe/Madrid',
+    timeZone: MADRID_TZ,
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -200,29 +209,123 @@ function saveSamples(key: string, arr: Sample[]) {
   }
 }
 
-function pushSampleIntoState({
+// Production-grade sampling: functional setState (no stale closure)
+function pushSample({
   key,
   v,
-  current,
   setCurrent,
 }: {
   key: string;
   v?: number;
-  current: Sample[];
-  setCurrent: (next: Sample[]) => void;
+  setCurrent: React.Dispatch<React.SetStateAction<Sample[]>>;
 }) {
   const num = Number(v);
   if (!Number.isFinite(num)) return;
 
   const now = Date.now();
-  const last = current[current.length - 1];
 
-  // avoid noisy duplicates
-  if (last && now - last.t < 6000 && Math.abs(last.v - num) < 1e-12) return;
+  setCurrent((prev) => {
+    const last = prev[prev.length - 1];
 
-  const next = [...current, { t: now, v: num }].slice(-SAMPLE_MAX);
-  setCurrent(next);
-  saveSamples(key, next);
+    // avoid noisy duplicates
+    if (last && now - last.t < 6000 && Math.abs(last.v - num) < 1e-12) return prev;
+
+    const next = [...prev, { t: now, v: num }].slice(-SAMPLE_MAX);
+    saveSamples(key, next);
+    return next;
+  });
+}
+
+/**
+ * Option B (marketing consistency):
+ * When the current draw is closed/locked, show NEXT draw countdown.
+ * We compute the next close time as "22:00 Madrid" on the next Madrid day after the current closesAt date.
+ */
+function getMadridYMD(d: Date): { y: number; m: number; day: number } {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MADRID_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  const parts = fmt.formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+
+  const y = Number(get('year'));
+  const m = Number(get('month'));
+  const day = Number(get('day'));
+
+  if (![y, m, day].every((n) => Number.isFinite(n))) {
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, day: d.getUTCDate() };
+  }
+
+  return { y, m, day };
+}
+
+function madridLocalToUtcDate(y: number, m: number, day: number, hh: number, mm: number, ss: number) {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MADRID_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+
+  function partsToUtcMs(date: Date) {
+    const parts = fmt.formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+    const yy = Number(get('year'));
+    const m2 = Number(get('month'));
+    const dd = Number(get('day'));
+    const h2 = Number(get('hour'));
+    const mi2 = Number(get('minute'));
+    const s2 = Number(get('second'));
+    return Date.UTC(yy, m2 - 1, dd, h2, mi2, s2);
+  }
+
+  let guessUtc = Date.UTC(y, m - 1, day, hh, mm, ss);
+
+  for (let i = 0; i < 3; i++) {
+    const shownAsMadridUtc = partsToUtcMs(new Date(guessUtc));
+    const offsetMs = shownAsMadridUtc - guessUtc;
+    const targetUtc = Date.UTC(y, m - 1, day, hh, mm, ss) - offsetMs;
+
+    if (Math.abs(targetUtc - guessUtc) < 500) {
+      guessUtc = targetUtc;
+      break;
+    }
+    guessUtc = targetUtc;
+  }
+
+  return new Date(guessUtc);
+}
+
+function computeNextCloseIsoFromClosesAt(currentClosesAtIso: string) {
+  const d = new Date(currentClosesAtIso);
+  if (Number.isNaN(d.getTime())) return '';
+
+  // Take the Madrid-local date of the current closesAt, then move to next day
+  const { y, m, day } = getMadridYMD(d);
+
+  // Create a UTC date for that YMD and add 1 day safely (date rollover in UTC)
+  const utcMid = new Date(Date.UTC(y, m - 1, day, 12, 0, 0, 0)); // midday avoids edge cases
+  const utcNext = new Date(utcMid.getTime() + 24 * 60 * 60 * 1000);
+  const nextYMD = getMadridYMD(utcNext);
+
+  const nextClose = madridLocalToUtcDate(
+    nextYMD.y,
+    nextYMD.m,
+    nextYMD.day,
+    CLOSE_HOUR_MADRID,
+    CLOSE_MINUTE_MADRID,
+    CLOSE_SECOND_MADRID,
+  );
+
+  return nextClose.toISOString();
 }
 
 function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: number }) {
@@ -236,7 +339,6 @@ function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: numbe
     const vs = samples.map((s) => s.v);
     const min = Math.min(...vs);
     const max = Math.max(...vs);
-
     const span = max - min || 1;
 
     const xs = samples.map((_, i) => (i / (samples.length - 1)) * (width - 8) + 4);
@@ -277,30 +379,49 @@ function Sparkline({ samples, height = 40 }: { samples: Sample[]; height?: numbe
         />
 
         <path
-          d={points ? `M ${points.replaceAll(' ', ' L ')} L ${width - 4},${height - 5} L 4,${height - 5} Z` : ''}
+          d={
+            points
+              ? `M ${points.replaceAll(' ', ' L ')} L ${width - 4},${height - 5} L 4,${height - 5} Z`
+              : ''
+          }
           fill={`url(#${gradId})`}
           opacity={points ? 0.08 : 0}
         />
       </svg>
-
-      {!points ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Awaiting samples
-          </span>
-        </div>
-      ) : null}
     </div>
   );
 }
 
+// Brighter "homepage-grade" gold: gradient text + gentle glow.
+// This avoids the muddy amber look on dark glass panels.
 function XpotAmount({ amount }: { amount: number }) {
   const n = Number(amount);
   const text = Number.isFinite(n) ? n.toLocaleString() : '—';
+
   return (
     <span className="inline-flex items-baseline gap-3">
-      <span className="font-mono text-amber-200 tracking-[0.18em] text-lg sm:text-xl">{text}</span>
-      <span className="text-slate-400 font-semibold tracking-[0.14em]">XPOT</span>
+      <span
+        className="
+          font-mono tracking-[0.18em] text-lg sm:text-xl
+          bg-gradient-to-r from-[#FFE6A6] via-[#FFD35A] to-[#FFB800]
+          bg-clip-text text-transparent
+          drop-shadow-[0_0_28px_rgba(255,210,90,0.70)]
+          [text-shadow:0_0_18px_rgba(255,210,90,0.45)]
+        "
+      >
+        {text}
+      </span>
+
+      <span
+        className="
+          font-semibold tracking-[0.14em]
+          text-[#FFD35A]
+          drop-shadow-[0_0_18px_rgba(255,210,90,0.55)]
+          [text-shadow:0_0_14px_rgba(255,210,90,0.35)]
+        "
+      >
+        XPOT
+      </span>
     </span>
   );
 }
@@ -320,6 +441,100 @@ function SkeletonLine({ w = 'w-24' }: { w?: string }) {
       aria-hidden="true"
     />
   );
+}
+
+/**
+ * Normalize live draw payloads so Main XPOT matches the rest of the site even if
+ * /api/draw/live returns slightly different shapes across deployments.
+ */
+function normalizeLiveDraw(payload: any): LiveDraw | null {
+  const root = payload?.draw ?? payload?.live ?? payload?.data ?? payload;
+  if (!root || typeof root !== 'object') return null;
+
+  const closesAtRaw =
+    root.closesAt ??
+    root.closeAt ??
+    root.cutoffAt ??
+    root.endsAt ??
+    root.entryClosesAt ??
+    null;
+
+  const statusRaw = root.status ?? root.state ?? root.drawStatus ?? null;
+
+  const jackpotRaw =
+    root.jackpotXpot ??
+    root.jackpot ??
+    root.amountXpot ??
+    root.dailyXpot ??
+    root.poolXpot ??
+    root.rewardXpot ??
+    null;
+
+  const closesAt = typeof closesAtRaw === 'string' ? closesAtRaw : '';
+  const closesAtMs = closesAt ? new Date(closesAt).getTime() : NaN;
+
+  const jackpotXpot = Number(jackpotRaw);
+  const jackpotUsd = Number(root.jackpotUsd);
+
+  let status: LiveDraw['status'] = 'LOCKED';
+  if (typeof statusRaw === 'string') {
+    const s = statusRaw.toUpperCase();
+    if (s === 'OPEN' || s === 'LOCKED' || s === 'DRAWING' || s === 'COMPLETED') status = s;
+  } else if (Number.isFinite(closesAtMs)) {
+    status = Date.now() < closesAtMs ? 'OPEN' : 'LOCKED';
+  }
+
+  const safeClosesAt = Number.isFinite(closesAtMs) ? new Date(closesAtMs).toISOString() : '';
+
+  const hasMeaningful = Number.isFinite(jackpotXpot) || Boolean(safeClosesAt) || Boolean(status);
+  if (!hasMeaningful) return null;
+
+  return {
+    jackpotXpot: Number.isFinite(jackpotXpot) ? jackpotXpot : 0,
+    jackpotUsd: Number.isFinite(jackpotUsd) ? jackpotUsd : undefined,
+    closesAt: safeClosesAt,
+    status,
+  };
+}
+
+function normalizeBonus(payload: any): BonusXPOT[] {
+  const arr = payload?.bonus ?? payload?.items ?? payload?.data ?? payload;
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((b: any) => {
+      const id = String(b?.id ?? b?._id ?? '');
+      const amountXpot = Number(b?.amountXpot ?? b?.amount ?? b?.xpot ?? 0);
+      const scheduledAt = String(b?.scheduledAt ?? b?.at ?? b?.time ?? '');
+      const statusRaw = String(b?.status ?? 'UPCOMING').toUpperCase();
+      const status = statusRaw === 'CLAIMED' || statusRaw === 'CANCELLED' ? statusRaw : 'UPCOMING';
+      const label = typeof b?.label === 'string' ? b.label : undefined;
+
+      if (!id) return null;
+      return { id, amountXpot, scheduledAt, status, label } as BonusXPOT;
+    })
+    .filter(Boolean) as BonusXPOT[];
+}
+
+function setMetaTag(name: string, content: string) {
+  if (!content) return;
+  let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute('name', name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+function setOgTag(property: string, content: string) {
+  if (!content) return;
+  let el = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute('property', property);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
 }
 
 export default function HubProtocolPage() {
@@ -347,7 +562,7 @@ export default function HubProtocolPage() {
   const [liveLatencyMs, setLiveLatencyMs] = useState<number | null>(null);
   const [protoLatencyMs, setProtoLatencyMs] = useState<number | null>(null);
 
-  // Avoid state updates after unmount and avoid out-of-order responses
+  // Avoid out-of-order responses
   const liveReqId = useRef(0);
   const protoReqId = useRef(0);
 
@@ -394,16 +609,18 @@ export default function HubProtocolPage() {
       const t1 = performance.now();
 
       if (req !== liveReqId.current) return;
-
       setLiveLatencyMs(Math.round(t1 - t0));
 
-      const d = await dRes.json().catch(() => ({}));
-      const b = await bRes.json().catch(() => ({}));
+      const dJson = await dRes.json().catch(() => ({}));
+      const bJson = await bRes.json().catch(() => ({}));
 
       if (req !== liveReqId.current) return;
 
-      setDraw(d?.draw ?? null);
-      setBonus(Array.isArray(b?.bonus) ? b.bonus : []);
+      const nextDraw = normalizeLiveDraw(dJson);
+      const nextBonus = normalizeBonus(bJson);
+
+      setDraw(nextDraw);
+      setBonus(nextBonus);
     } catch {
       if (req !== liveReqId.current) return;
       setError('Failed to load live data. Please refresh.');
@@ -425,14 +642,12 @@ export default function HubProtocolPage() {
       const t = window.setTimeout(() => ac.abort(), 5500);
 
       const t0 = performance.now();
-      const res = await fetch('/api/protocol/state', {
-        cache: 'no-store',
-        signal: ac.signal,
-      }).finally(() => window.clearTimeout(t));
+      const res = await fetch('/api/protocol/state', { cache: 'no-store', signal: ac.signal }).finally(() =>
+        window.clearTimeout(t),
+      );
       const t1 = performance.now();
 
       if (req !== protoReqId.current) return;
-
       setProtoLatencyMs(Math.round(t1 - t0));
 
       if (!res.ok) {
@@ -443,7 +658,6 @@ export default function HubProtocolPage() {
       const j = await res.json().catch(() => ({}));
       const next = (j?.state ?? j ?? null) as ProtocolState | null;
 
-      // Tick triggers only if changed vs previous proto
       setProto((prev) => {
         const prevLp = Number(prev?.lpUsd);
         const prevPx = Number(prev?.priceUsd);
@@ -460,26 +674,10 @@ export default function HubProtocolPage() {
         return next;
       });
 
-      // Samples: update in-memory + persist (no re-parsing storage each refresh)
       if (next) {
-        pushSampleIntoState({
-          key: KEY_PRICE,
-          v: next.priceUsd,
-          current: priceSamples,
-          setCurrent: setPriceSamples,
-        });
-        pushSampleIntoState({
-          key: KEY_LP,
-          v: next.lpUsd,
-          current: lpSamples,
-          setCurrent: setLpSamples,
-        });
-        pushSampleIntoState({
-          key: KEY_VOL,
-          v: next.volume24hUsd,
-          current: volSamples,
-          setCurrent: setVolSamples,
-        });
+        pushSample({ key: KEY_PRICE, v: next.priceUsd, setCurrent: setPriceSamples });
+        pushSample({ key: KEY_LP, v: next.lpUsd, setCurrent: setLpSamples });
+        pushSample({ key: KEY_VOL, v: next.volume24hUsd, setCurrent: setVolSamples });
       }
     } catch {
       if (req !== protoReqId.current) return;
@@ -519,25 +717,62 @@ export default function HubProtocolPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const liveIsOpen = draw?.status === 'OPEN';
+  const closesAtMs = useMemo(() => {
+    const iso = draw?.closesAt;
+    if (!iso) return null;
+    const ms = new Date(iso).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }, [draw?.closesAt]);
+
+  const closesInMs = useMemo(() => {
+    if (!closesAtMs) return null;
+    return closesAtMs - now;
+  }, [closesAtMs, now]);
+
+  // Safety: if API says OPEN but close time has passed, treat as locked UI-side
+  const effectiveStatus = useMemo<LiveDraw['status'] | null>(() => {
+    if (!draw) return null;
+
+    const st = draw.status;
+    if (st === 'OPEN' && typeof closesInMs === 'number' && closesInMs <= 0) return 'LOCKED';
+
+    if (st !== 'OPEN' && st !== 'LOCKED' && st !== 'DRAWING' && st !== 'COMPLETED') {
+      if (typeof closesInMs === 'number') return closesInMs > 0 ? 'OPEN' : 'LOCKED';
+      return 'LOCKED';
+    }
+
+    return st;
+  }, [draw, closesInMs]);
+
+  // Marketing consistency: protocol mirrors homepage
+  const liveIsOpen = effectiveStatus === 'OPEN';
   const isRefreshing = liveFetching || protoFetching;
 
-  // Single source of truth: draw.closesAt from DB-backed /api/draw/live
+  // Option B: when locked, show NEXT draw countdown instead of 00:00:00
+  const mainClosesAtIso = useMemo(() => {
+    if (!draw?.closesAt) return '';
+    if (effectiveStatus === 'OPEN') return draw.closesAt;
+    return computeNextCloseIsoFromClosesAt(draw.closesAt);
+  }, [draw?.closesAt, effectiveStatus]);
+
+  const mainClosesAtMs = useMemo(() => {
+    if (!mainClosesAtIso) return null;
+    const ms = new Date(mainClosesAtIso).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }, [mainClosesAtIso]);
+
+  const mainClosesInMs = useMemo(() => {
+    if (!mainClosesAtMs) return null;
+    return mainClosesAtMs - now;
+  }, [mainClosesAtMs, now]);
+
   const closesIn = useMemo(() => {
-    if (!draw?.closesAt) return '00:00:00';
-    const target = new Date(draw.closesAt).getTime();
-    return formatCountdown(target - now);
-  }, [draw?.closesAt, now]);
+    if (typeof mainClosesInMs !== 'number') return '—';
+    if (mainClosesInMs <= 0) return '00:00:00';
+    return formatCountdown(mainClosesInMs);
+  }, [mainClosesInMs]);
 
   const pendingPair = useMemo(() => isPairPending(proto), [proto]);
-
-  // USD estimate: derived from live token price (proto.priceUsd) * daily amount
-  const dailyUsdEstimate = useMemo(() => {
-    const amt = Number(draw?.jackpotXpot);
-    const px = Number(proto?.priceUsd);
-    if (Number.isFinite(amt) && Number.isFinite(px)) return amt * px;
-    return undefined;
-  }, [draw?.jackpotXpot, proto?.priceUsd]);
 
   const liveRefreshIn = useMemo(() => Math.max(0, liveNextAt - now), [liveNextAt, now]);
   const protoRefreshIn = useMemo(() => Math.max(0, protoNextAt - now), [protoNextAt, now]);
@@ -574,6 +809,27 @@ export default function HubProtocolPage() {
     setProtoLoading(true);
     await Promise.allSettled([loadLive(), loadProto()]);
   }
+
+  // Marketing-consistent status label for Main XPOT card
+  const mainStatusLabel = liveIsOpen ? 'OPEN' : 'STANDBY';
+  const mainStatusHint = liveIsOpen ? 'Entries are active' : 'Awaiting next draw';
+
+  // Smart title + meta (client-safe, no rule changes)
+  useEffect(() => {
+    const statusWord = liveIsOpen ? 'Live' : 'Standby';
+    const nextTime = mainClosesAtIso ? formatMadridTime(mainClosesAtIso) : '—';
+    const title = `XPOT Protocol State - ${statusWord} - Next cycle ${nextTime} Madrid`;
+    document.title = title;
+
+    const desc =
+      'XPOT Protocol State. Live integrity overview, liquidity conditions and market telemetry. Marketing-consistent draw cycle countdown.';
+    setMetaTag('description', desc);
+    setMetaTag('robots', 'index,follow');
+    setOgTag('og:title', title);
+    setOgTag('og:description', desc);
+    setOgTag('og:type', 'website');
+    // Keep og:url unset unless you want hardcoded domain here
+  }, [liveIsOpen, mainClosesAtIso]);
 
   return (
     <XpotPageShell
@@ -757,10 +1013,12 @@ export default function HubProtocolPage() {
                 {liveIsOpen ? 'Live entries' : 'Standby'}
               </StatusPill>
 
-              <StatusPill tone={toneFromSignal(proto?.liquiditySignal)}>
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Liquidity: {labelFromSignal(proto?.liquiditySignal)}
-              </StatusPill>
+              {SHOW_LIQUIDITY_STATUS && (
+                <StatusPill tone={toneFromSignal(proto?.liquiditySignal)}>
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Liquidity: {labelFromSignal(proto?.liquiditySignal)}
+                </StatusPill>
+              )}
 
               <StatusPill tone="sky">
                 <Activity className="h-3.5 w-3.5" />
@@ -788,7 +1046,7 @@ export default function HubProtocolPage() {
               label="LP change (24h)"
               loading={protoLoading}
               value={fmtPct(proto?.lpChange24hPct)}
-              hint={protoLoading ? '' : 'Stability band next'}
+              hint={protoLoading ? '' : ''}
               icon={<ChartNoAxesCombined className="h-4 w-4 text-fuchsia-300" />}
             />
             <MetricCard
@@ -825,7 +1083,6 @@ export default function HubProtocolPage() {
                     XPOT is not trading yet or the first liquidity pool is not indexed publicly. This panel will
                     auto-populate once an LP exists.
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">Nothing to do here - it goes live automatically.</p>
                 </div>
               </div>
             </div>
@@ -844,7 +1101,7 @@ export default function HubProtocolPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-100">Main XPOT</p>
-                <p className="mt-1 text-xs text-slate-400">Today’s primary draw</p>
+                <p className="mt-1 text-xs text-slate-400">{liveIsOpen ? "Today’s primary draw" : 'Next draw cycle'}</p>
               </div>
 
               <StatusPill tone={liveIsOpen ? 'emerald' : 'slate'} className={liveIsOpen ? 'xpot-live-pulse' : ''}>
@@ -865,28 +1122,26 @@ export default function HubProtocolPage() {
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <MetricCard
                   label="Daily reward"
-                  valueNode={<XpotAmount amount={Number(draw.jackpotXpot ?? 0)} />}
-                  hint={Number.isFinite(Number(dailyUsdEstimate)) ? `≈ ${fmtUsdCompact(dailyUsdEstimate)}` : '—'}
+                  valueNode={
+                    Number.isFinite(Number(draw.jackpotXpot)) && Number(draw.jackpotXpot) > 0 ? (
+                      <XpotAmount amount={Number(draw.jackpotXpot)} />
+                    ) : (
+                      <span className="text-slate-400 font-semibold">—</span>
+                    )
+                  }
+                  hint="" // USD removed completely
                   icon={<Crown className="h-4 w-4 text-amber-300" />}
                 />
                 <MetricCard
                   label="Closes in"
                   value={closesIn}
-                  hint={draw.closesAt ? `Closes at ${formatMadridTime(draw.closesAt)} (Madrid)` : ''}
+                  hint={mainClosesAtIso ? `Closes at ${formatMadridTime(mainClosesAtIso)} (Madrid)` : ''}
                   icon={<Timer className="h-4 w-4 text-sky-300" />}
                 />
                 <MetricCard
                   label="Status"
-                  value={draw.status}
-                  hint={
-                    draw.status === 'OPEN'
-                      ? 'Entries are active'
-                      : draw.status === 'LOCKED'
-                      ? 'Entry window closed'
-                      : draw.status === 'DRAWING'
-                      ? 'Picking winner'
-                      : 'Completed'
-                  }
+                  value={mainStatusLabel}
+                  hint={mainStatusHint}
                   icon={<Sparkles className="h-4 w-4 text-emerald-300" />}
                 />
               </div>
@@ -934,9 +1189,7 @@ export default function HubProtocolPage() {
                     </p>
                   </div>
 
-                  <StatusPill
-                    tone={b.status === 'CLAIMED' ? 'emerald' : b.status === 'CANCELLED' ? 'slate' : 'amber'}
-                  >
+                  <StatusPill tone={b.status === 'CLAIMED' ? 'emerald' : b.status === 'CANCELLED' ? 'slate' : 'amber'}>
                     {b.status === 'CLAIMED' ? (
                       <>
                         <Crown className="h-3.5 w-3.5" />
@@ -969,12 +1222,7 @@ export default function HubProtocolPage() {
             </div>
 
             <div className="mt-5">
-              <GraphBlock
-                title="LP micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={lpSamples} height={44} />}
-                note="Client-side sampled. Server-side 24h history can land next for a true banded stability chart."
-              />
+              <GraphBlock title="LP micro-trend" badge="Live" spark={<Sparkline samples={lpSamples} height={44} />} />
             </div>
           </PremiumPanel>
 
@@ -985,21 +1233,16 @@ export default function HubProtocolPage() {
             </div>
 
             <div className="mt-5 space-y-3">
-              <GraphBlock
-                title="Price micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={priceSamples} height={44} />}
-                note="Client-side sampled. Shows movement once trading starts."
-              />
-              <GraphBlock
-                title="Volume micro-trend"
-                badge="Live"
-                spark={<Sparkline samples={volSamples} height={44} />}
-                note="Client-side sampled. Useful for spotting early liquidity and first bursts."
-              />
+              <GraphBlock title="Price micro-trend" badge="Live" spark={<Sparkline samples={priceSamples} height={44} />} />
+              <GraphBlock title="Volume micro-trend" badge="Live" spark={<Sparkline samples={volSamples} height={44} />} />
             </div>
           </PremiumPanel>
         </section>
+
+        {/* FOOTER */}
+        <div className="pt-2">
+          <XpotFooter />
+        </div>
       </section>
     </XpotPageShell>
   );
@@ -1053,7 +1296,6 @@ function MetricCard({
       </div>
 
       {!loading && hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
-
       {spark ? <div className="mt-3">{spark}</div> : null}
     </div>
   );
@@ -1115,12 +1357,10 @@ function GraphBlock({
   title,
   badge,
   spark,
-  note,
 }: {
   title: string;
   badge: string;
   spark: React.ReactNode;
-  note: string;
 }) {
   return (
     <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
@@ -1133,8 +1373,6 @@ function GraphBlock({
       </div>
 
       <div className="mt-3">{spark}</div>
-
-      <p className="mt-3 text-xs text-slate-400">{note}</p>
     </div>
   );
 }

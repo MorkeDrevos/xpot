@@ -257,7 +257,7 @@ export default function XpotPageShell({
       {/* Content layer */}
       <div className="relative z-10">
         {/* Banner should set --xpot-banner-h to 0 when hidden on mobile */}
-        <PreLaunchBanner />
+        <PreLaunchBanner hidden />
 
         {showTopBar && (
           <div className={topBarClassName}>
