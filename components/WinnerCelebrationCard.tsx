@@ -68,19 +68,19 @@ export default function WinnerCelebrationCard({
 
   const kindLabel = winner?.kind === 'BONUS' ? 'BONUS' : 'MAIN';
 
-  // Toggle: white border on identity card vs gold border
-  // User request: move the strong border highlight to the identity (img 2), not payout (img 3)
-  const IDENTITY_BORDER = 'white' as const; // 'white' | 'gold'
+  type IdentityBorder = 'white' | 'gold';
 
-  const identityBorderClass =
-    IDENTITY_BORDER === 'gold'
-      ? 'border-[rgba(var(--xpot-gold),0.28)]'
-      : 'border-white/15';
+  const IDENTITY_BORDER: IdentityBorder = 'white'; // or 'gold'
 
-  const identityBgClass =
-    IDENTITY_BORDER === 'gold'
-      ? 'bg-[rgba(var(--xpot-gold),0.06)]'
-      : 'bg-white/[0.04]';
+  const identityBorderClass: string =
+  IDENTITY_BORDER === 'gold'
+    ? 'border-[rgba(var(--xpot-gold),0.28)]'
+    : 'border-white/15';
+
+const identityBgClass: string =
+  IDENTITY_BORDER === 'gold'
+    ? 'bg-[rgba(var(--xpot-gold),0.06)]'
+    : 'bg-white/[0.04]';
 
   return (
     <section
