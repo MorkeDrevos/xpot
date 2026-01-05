@@ -240,7 +240,7 @@ function PremiumCard({
         'relative overflow-hidden rounded-[32px]',
         'bg-white/[0.03] backdrop-blur-xl',
         'shadow-[0_40px_140px_rgba(0,0,0,0.55)]',
-        'ring-1 ring-white/[0.06]',
+        'ring-1 ring-white/[0.025]',
         sheen ? 'xpot-sheen' : '',
         className,
       ].join(' ')}
