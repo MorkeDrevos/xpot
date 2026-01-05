@@ -54,9 +54,15 @@ function shortWallet(addr: string) {
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
+function safeTimeMs(iso?: string | null) {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? t : 0;
+}
+
 function formatDate(date: string) {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '—';
+  // date-only, no time
   return d.toLocaleDateString('en-GB');
 }
 
@@ -304,6 +310,26 @@ function WinnerIdentity({
   );
 }
 
+function makeDedupeKey(w: WinnerRow) {
+  // Prefer strong unique identifiers first
+  const sig = (w.txSig || '').trim();
+  if (sig) return `sig:${sig}`;
+
+  const tx = (w.txUrl || '').trim();
+  if (tx) return `tx:${tx}`;
+
+  const id = (w.id || '').trim();
+  if (id) return `id:${id}`;
+
+  // Fallback fingerprint: date + kind + handle + wallet + amount
+  const d = (w.drawDate || '').trim();
+  const k = String(w.kind || '').toUpperCase();
+  const h = (normalizeHandle(w.handle) || '').trim();
+  const wa = (w.walletAddress || '').trim();
+  const a = typeof w.amountXpot === 'number' ? String(Math.round(w.amountXpot)) : '';
+  return `fp:${d}|${k}|${h}|${wa}|${a}`;
+}
+
 export default function WinnersPage() {
   const [rows, setRows] = useState<WinnerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -325,7 +351,7 @@ export default function WinnersPage() {
         setError(null);
         setLoading(true);
 
-        const res = await fetch('/api/winners/recent?limit=80', { cache: 'no-store' });
+        const res = await fetch('/api/winners/recent?limit=120', { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to load winners');
 
         const data = await res.json();
@@ -333,27 +359,40 @@ export default function WinnersPage() {
 
         if (!alive) return;
 
-        setRows(
-          winners.map((w: any) => ({
-            id: String(w.id ?? crypto.randomUUID()),
-            kind: w.kind ?? w.winnerKind ?? w.type ?? null,
-            label: w.label ?? null,
-            drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
-            ticketCode: w.ticketCode ?? w.code ?? null,
+        const mapped: WinnerRow[] = winners.map((w: any) => ({
+          id: String(w.id ?? crypto.randomUUID()),
+          kind: w.kind ?? w.winnerKind ?? w.type ?? null,
+          label: w.label ?? null,
+          drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
+          ticketCode: w.ticketCode ?? w.code ?? null,
 
-            amountXpot: w.amountXpot ?? w.amount ?? null,
+          amountXpot: w.amountXpot ?? w.amount ?? null,
 
-            walletAddress: w.walletAddress ?? w.wallet ?? null,
+          walletAddress: w.walletAddress ?? w.wallet ?? null,
 
-            handle: w.handle ?? w.xHandle ?? null,
-            name: w.name ?? w.xName ?? null,
-            avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
+          handle: w.handle ?? w.xHandle ?? null,
+          name: w.name ?? w.xName ?? null,
+          avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
 
-            isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
-            txUrl: w.txUrl ?? w.txLink ?? null,
-            txSig: w.txSig ?? w.signature ?? null,
-          })),
-        );
+          isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
+          txUrl: w.txUrl ?? w.txLink ?? null,
+          txSig: w.txSig ?? w.signature ?? null,
+        }));
+
+        // 1) Sort newest first (by drawDate, fallback: 0)
+        mapped.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
+
+        // 2) Dedupe (keep first occurrence, which is newest because of sort)
+        const seen = new Set<string>();
+        const deduped: WinnerRow[] = [];
+        for (const r of mapped) {
+          const key = makeDedupeKey(r);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          deduped.push(r);
+        }
+
+        setRows(deduped);
       } catch (e) {
         if (!alive) return;
         setError((e as Error)?.message || 'Failed to load winners.');
@@ -401,12 +440,32 @@ export default function WinnersPage() {
   }, [rows, query, kindFilter, showTxOnly]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, WinnerRow[]>();
+    // group by date-only key, but keep a real ms sort key (newest first)
+    const map = new Map<string, { key: string; ms: number; items: WinnerRow[] }>();
+
     for (const r of filteredRows) {
+      const ms = safeTimeMs(r.drawDate);
       const key = r.drawDate ? formatDate(r.drawDate) : '—';
-      map.set(key, [...(map.get(key) || []), r]);
+
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, { key, ms, items: [r] });
+      } else {
+        existing.items.push(r);
+        // ensure group ms is the newest ms inside that day
+        existing.ms = Math.max(existing.ms, ms);
+      }
     }
-    return Array.from(map.entries());
+
+    const arr = Array.from(map.values());
+    arr.sort((a, b) => b.ms - a.ms);
+
+    // also sort items within each day (newest first)
+    for (const g of arr) {
+      g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
+    }
+
+    return arr;
   }, [filteredRows]);
 
   const visibleGrouped = useMemo(() => grouped.slice(0, visibleDays), [grouped, visibleDays]);
@@ -430,6 +489,7 @@ export default function WinnersPage() {
       pageTag="hub"
     >
       <section className="mt-6 space-y-6">
+        {/* Header / filters */}
         <section className="xpot-panel px-5 py-5 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -523,15 +583,14 @@ export default function WinnersPage() {
           </div>
         </section>
 
+        {/* Log */}
         <section className="xpot-card-primary" data-glow="magenta">
           <div className="xpot-nebula-halo" />
           <div className="relative z-10 px-5 py-5 sm:px-6 sm:py-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-100">Winner log</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Completed draws and bonus drops. 
-                </p>
+                <p className="mt-1 text-xs text-slate-400">Completed draws and bonus drops.</p>
               </div>
 
               <Badge tone="slate">
@@ -551,15 +610,15 @@ export default function WinnersPage() {
                 <div className="xpot-card px-4 py-4 text-sm text-slate-500">No winners yet.</div>
               ) : (
                 <div className="space-y-6">
-                  {visibleGrouped.map(([dateKey, items]) => (
-                    <section key={dateKey} className="space-y-3">
+                  {visibleGrouped.map(g => (
+                    <section key={g.key} className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{dateKey}</p>
-                        <span className="text-xs text-slate-500">{items.length} entries</span>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
+                        <span className="text-xs text-slate-500">{g.items.length} entries</span>
                       </div>
 
                       <div className="space-y-2">
-                        {items.map(w => {
+                        {g.items.map(w => {
                           const kind = String(w.kind || '').toUpperCase();
                           const isMain = kind === 'MAIN';
                           const isBonus = kind === 'BONUS';
@@ -573,7 +632,10 @@ export default function WinnersPage() {
                               : '—';
 
                           return (
-                            <article key={w.id} className="xpot-card px-4 py-4">
+                            <article
+                              key={makeDedupeKey(w)}
+                              className="xpot-card px-4 py-4"
+                            >
                               <div className="flex flex-wrap items-center gap-2">
                                 <span
                                   className={[
@@ -627,7 +689,6 @@ export default function WinnersPage() {
                                   walletAddress={w.walletAddress}
                                 />
 
-                                {/* Amount - deliberately smaller */}
                                 <div className="flex justify-start sm:justify-center">
                                   <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
                                     <GoldAmount value={amountText} suffix="XPOT" size="md" />
@@ -678,6 +739,7 @@ export default function WinnersPage() {
             </div>
 
             <div className="mt-6 xpot-divider" />
+          </div>
         </section>
 
         {/* Footer */}
