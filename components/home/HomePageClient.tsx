@@ -286,10 +286,9 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl"
       style={{
         background:
-          // aurora: cyan + violet + gold (premium)
-          'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.16), transparent 60%),' +
-          'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.12), transparent 62%),' +
-          'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.14), transparent 62%)',
+  'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.16), transparent 60%),' +
+  'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.12), transparent 62%),' +
+  'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.14), transparent 62%)',
       }}
     />
     <span
@@ -343,7 +342,9 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
   </div>
 </div>
 
-          <p className="mt-3 font-mono text-[11px] text-slate-500">mint: {shortenAddress(mint, 8, 8)}</p>
+          <p className="mt-4 font-mono text-[11px] text-slate-500/90">
+  mint: <span className="text-slate-400">{shortenAddress(mint, 8, 8)}</span>
+</p>
         </div>
       </div>
     </div>
