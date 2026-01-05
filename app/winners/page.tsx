@@ -351,7 +351,7 @@ export default function WinnersPage() {
         setError(null);
         setLoading(true);
 
-        const res = await fetch('/api/winners/recent?limit=120', { cache: 'no-store' });
+        const res = await fetch('/api/winners/recent?limit=1000', { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to load winners');
 
         const data = await res.json();
