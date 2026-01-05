@@ -1184,7 +1184,7 @@ function HomePageInner() {
         />
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-          <PremiumCard className="p-6" halo>
+          <PremiumCard className="p-6" halo={false}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
