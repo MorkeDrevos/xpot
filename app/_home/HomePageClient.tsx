@@ -1066,8 +1066,7 @@ function HomePageInner() {
                       </h1>
 
                       <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-slate-300">
-                        A daily entry, unlocked by XPOT holdings.
-Claim once per day in the hub.
+                        A daily entry, unlocked by XPOT holdings. Claim once per day in the hub.
                       </p>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">

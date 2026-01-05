@@ -543,7 +543,7 @@ export default function WinnersPage() {
                   <Link href="/hub" className="xpot-btn h-10 px-5 text-[12px]">
                     Go to Hub
                   </Link>
-                  <Link href="/hub/live" className="xpot-btn h-10 px-5 text-[12px]">
+                  <Link href="/hub/protocol" className="xpot-btn h-10 px-5 text-[12px]">
                     Live view
                   </Link>
                 </div>
