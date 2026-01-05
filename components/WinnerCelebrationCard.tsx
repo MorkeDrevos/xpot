@@ -70,7 +70,7 @@ export default function WinnerCelebrationCard({
 
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-400">
-                Winner just took home
+                LATEST WINNER
               </p>
               <p className="mt-0.5 text-[12px] text-slate-300">Paid on-chain, published with a real @handle</p>
             </div>
