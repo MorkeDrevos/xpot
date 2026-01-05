@@ -28,10 +28,6 @@ type WinnerKind = 'MAIN' | 'BONUS';
 
 type WinnerRow = {
   id: string;
-
-  // ✅ IMPORTANT: drawId is the canonical de-dupe key (one draw = one winner row)
-  drawId?: string | null;
-
   kind?: WinnerKind | string | null;
 
   drawDate?: string | null;
@@ -58,15 +54,9 @@ function shortWallet(addr: string) {
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
-function safeTimeMs(iso?: string | null) {
-  const t = iso ? Date.parse(iso) : NaN;
-  return Number.isFinite(t) ? t : 0;
-}
-
 function formatDate(date: string) {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '—';
-  // date-only, no time
   return d.toLocaleDateString('en-GB');
 }
 
@@ -314,33 +304,6 @@ function WinnerIdentity({
   );
 }
 
-function makeDedupeKey(w: WinnerRow) {
-  // ✅ Canonical: one draw = one winner row
-  const drawId = (w.drawId || '').trim();
-  if (drawId) {
-    const k = String(w.kind || '').toUpperCase();
-    return `draw:${drawId}|${k || 'WIN'}`;
-  }
-
-  // Prefer strong unique identifiers next
-  const sig = (w.txSig || '').trim();
-  if (sig) return `sig:${sig}`;
-
-  const tx = (w.txUrl || '').trim();
-  if (tx) return `tx:${tx}`;
-
-  const id = (w.id || '').trim();
-  if (id) return `id:${id}`;
-
-  // Fallback fingerprint: date + kind + handle + wallet + amount
-  const d = (w.drawDate || '').trim();
-  const k = String(w.kind || '').toUpperCase();
-  const h = (normalizeHandle(w.handle) || '').trim();
-  const wa = (w.walletAddress || '').trim();
-  const a = typeof w.amountXpot === 'number' ? String(Math.round(w.amountXpot)) : '';
-  return `fp:${d}|${k}|${h}|${wa}|${a}`;
-}
-
 export default function WinnersPage() {
   const [rows, setRows] = useState<WinnerRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -350,90 +313,47 @@ export default function WinnersPage() {
   const [kindFilter, setKindFilter] = useState<'ALL' | 'MAIN' | 'BONUS'>('ALL');
   const [showTxOnly, setShowTxOnly] = useState(false);
 
+  const [visibleDays, setVisibleDays] = useState(7);
+
   const liveIsOpen = false;
 
   useEffect(() => {
     let alive = true;
 
-    async function loadAll() {
+    async function load() {
       try {
         setError(null);
         setLoading(true);
 
-        // ✅ We must display ALL winners.
-        // We try to paginate if the API returns a cursor. If it doesn’t, we still fetch a large limit.
-        const all: any[] = [];
-        let cursor: string | null = null;
+        const res = await fetch('/api/winners/recent?limit=80', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to load winners');
 
-        // safety cap (prevents infinite loops if backend bugs)
-        for (let page = 0; page < 20; page++) {
-          const params = new URLSearchParams();
-          params.set('limit', '5000'); // big page size so "all winners" loads in one go if possible
-          if (cursor) params.set('cursor', cursor);
-
-          const res = await fetch(`/api/winners/recent?${params.toString()}`, { cache: 'no-store' });
-          if (!res.ok) throw new Error('Failed to load winners');
-
-          const data = await res.json();
-
-          const batch = Array.isArray(data?.winners) ? data.winners : [];
-          for (const w of batch) all.push(w);
-
-          // support common cursor shapes
-          const next =
-            (typeof data?.nextCursor === 'string' && data.nextCursor) ||
-            (typeof data?.cursor === 'string' && data.cursor) ||
-            (typeof data?.next_page_token === 'string' && data.next_page_token) ||
-            null;
-
-          if (!next || batch.length === 0) {
-            cursor = null;
-            break;
-          }
-
-          cursor = next;
-        }
+        const data = await res.json();
+        const winners = Array.isArray(data?.winners) ? data.winners : [];
 
         if (!alive) return;
 
-        const mapped: WinnerRow[] = all.map((w: any) => ({
-          id: String(w.id ?? crypto.randomUUID()),
+        setRows(
+          winners.map((w: any) => ({
+            id: String(w.id ?? crypto.randomUUID()),
+            kind: w.kind ?? w.winnerKind ?? w.type ?? null,
+            label: w.label ?? null,
+            drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
+            ticketCode: w.ticketCode ?? w.code ?? null,
 
-          // ✅ pull draw id if backend provides it (many of your endpoints do)
-          drawId: w.drawId ?? w.draw_id ?? w.draw?.id ?? null,
+            amountXpot: w.amountXpot ?? w.amount ?? null,
 
-          kind: w.kind ?? w.winnerKind ?? w.type ?? null,
-          label: w.label ?? null,
-          drawDate: w.drawDate ?? w.date ?? w.createdAt ?? null,
-          ticketCode: w.ticketCode ?? w.code ?? null,
+            walletAddress: w.walletAddress ?? w.wallet ?? null,
 
-          amountXpot: w.amountXpot ?? w.amount ?? null,
+            handle: w.handle ?? w.xHandle ?? null,
+            name: w.name ?? w.xName ?? null,
+            avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
 
-          walletAddress: w.walletAddress ?? w.wallet ?? null,
-
-          handle: w.handle ?? w.xHandle ?? null,
-          name: w.name ?? w.xName ?? null,
-          avatarUrl: w.avatarUrl ?? w.xAvatarUrl ?? null,
-
-          isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
-          txUrl: w.txUrl ?? w.txLink ?? null,
-          txSig: w.txSig ?? w.signature ?? null,
-        }));
-
-        // 1) Sort newest first (by drawDate, fallback: 0)
-        mapped.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
-
-        // 2) Dedupe by drawId (preferred), otherwise strong ids
-        const seen = new Set<string>();
-        const deduped: WinnerRow[] = [];
-        for (const r of mapped) {
-          const key = makeDedupeKey(r);
-          if (seen.has(key)) continue;
-          seen.add(key);
-          deduped.push(r);
-        }
-
-        setRows(deduped);
+            isPaidOut: typeof w.isPaidOut === 'boolean' ? w.isPaidOut : null,
+            txUrl: w.txUrl ?? w.txLink ?? null,
+            txSig: w.txSig ?? w.signature ?? null,
+          })),
+        );
       } catch (e) {
         if (!alive) return;
         setError((e as Error)?.message || 'Failed to load winners.');
@@ -443,7 +363,7 @@ export default function WinnersPage() {
       }
     }
 
-    loadAll();
+    load();
     return () => {
       alive = false;
     };
@@ -472,7 +392,6 @@ export default function WinnersPage() {
         r.txSig || '',
         r.txUrl || '',
         r.label || '',
-        r.drawId || '',
       ]
         .join(' ')
         .toLowerCase();
@@ -482,35 +401,15 @@ export default function WinnersPage() {
   }, [rows, query, kindFilter, showTxOnly]);
 
   const grouped = useMemo(() => {
-    // group by date-only key, but keep a real ms sort key (newest first)
-    const map = new Map<string, { key: string; ms: number; items: WinnerRow[] }>();
-
+    const map = new Map<string, WinnerRow[]>();
     for (const r of filteredRows) {
-      const ms = safeTimeMs(r.drawDate);
       const key = r.drawDate ? formatDate(r.drawDate) : '—';
-
-      const existing = map.get(key);
-      if (!existing) {
-        map.set(key, { key, ms, items: [r] });
-      } else {
-        existing.items.push(r);
-        existing.ms = Math.max(existing.ms, ms);
-      }
+      map.set(key, [...(map.get(key) || []), r]);
     }
-
-    const arr = Array.from(map.values());
-    arr.sort((a, b) => b.ms - a.ms);
-
-    // sort items within each day (newest first)
-    for (const g of arr) {
-      g.items.sort((a, b) => safeTimeMs(b.drawDate) - safeTimeMs(a.drawDate));
-    }
-
-    return arr;
+    return Array.from(map.entries());
   }, [filteredRows]);
 
-  // ✅ show ALL days (no “recent only”)
-  const visibleGrouped = grouped;
+  const visibleGrouped = useMemo(() => grouped.slice(0, visibleDays), [grouped, visibleDays]);
 
   const totals = useMemo(() => {
     const main = filteredRows.filter(r => String(r.kind || '').toUpperCase() === 'MAIN').length;
@@ -531,7 +430,6 @@ export default function WinnersPage() {
       pageTag="hub"
     >
       <section className="mt-6 space-y-6">
-        {/* Header / filters */}
         <section className="xpot-panel px-5 py-5 sm:px-6 sm:py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -625,14 +523,15 @@ export default function WinnersPage() {
           </div>
         </section>
 
-        {/* Log */}
         <section className="xpot-card-primary" data-glow="magenta">
           <div className="xpot-nebula-halo" />
           <div className="relative z-10 px-5 py-5 sm:px-6 sm:py-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-100">Winner log</p>
-                <p className="mt-1 text-xs text-slate-400">Completed draws and bonus drops.</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Completed draws and bonus drops. Link out to the TX whenever available.
+                </p>
               </div>
 
               <Badge tone="slate">
@@ -652,15 +551,15 @@ export default function WinnersPage() {
                 <div className="xpot-card px-4 py-4 text-sm text-slate-500">No winners yet.</div>
               ) : (
                 <div className="space-y-6">
-                  {visibleGrouped.map(g => (
-                    <section key={g.key} className="space-y-3">
+                  {visibleGrouped.map(([dateKey, items]) => (
+                    <section key={dateKey} className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
-                        <span className="text-xs text-slate-500">{g.items.length} entries</span>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{dateKey}</p>
+                        <span className="text-xs text-slate-500">{items.length} entries</span>
                       </div>
 
                       <div className="space-y-2">
-                        {g.items.map(w => {
+                        {items.map(w => {
                           const kind = String(w.kind || '').toUpperCase();
                           const isMain = kind === 'MAIN';
                           const isBonus = kind === 'BONUS';
@@ -674,7 +573,7 @@ export default function WinnersPage() {
                               : '—';
 
                           return (
-                            <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
+                            <article key={w.id} className="xpot-card px-4 py-4">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span
                                   className={[
@@ -728,6 +627,7 @@ export default function WinnersPage() {
                                   walletAddress={w.walletAddress}
                                 />
 
+                                {/* Amount - deliberately smaller */}
                                 <div className="flex justify-start sm:justify-center">
                                   <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
                                     <GoldAmount value={amountText} suffix="XPOT" size="md" />
@@ -758,11 +658,27 @@ export default function WinnersPage() {
                       </div>
                     </section>
                   ))}
+
+                  {grouped.length > visibleDays && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        className="xpot-btn h-11 w-full text-sm"
+                        onClick={() => setVisibleDays(v => Math.min(v + 7, grouped.length))}
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <ChevronDown className="h-4 w-4" />
+                          Load more days
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             <div className="mt-6 xpot-divider" />
+            <div className="mt-4 text-xs text-slate-500">Next upgrade: verified TX and a compact “Proof” drawer per win.</div>
           </div>
         </section>
 
