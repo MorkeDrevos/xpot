@@ -21,15 +21,47 @@ function safeIso(d: unknown) {
   }
 }
 
+// ✅ Convert Prisma.Decimal / string / bigint / number -> number | null
+function toNumberOrNull(v: any): number | null {
+  try {
+    if (v === null || v === undefined) return null;
+
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+
+    if (typeof v === 'string') {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    if (typeof v === 'bigint') {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    // Prisma.Decimal usually has toNumber() and toString()
+    if (typeof v === 'object') {
+      if (typeof v.toNumber === 'function') {
+        const n = v.toNumber();
+        return typeof n === 'number' && Number.isFinite(n) ? n : null;
+      }
+      if (typeof v.toString === 'function') {
+        const n = Number(v.toString());
+        return Number.isFinite(n) ? n : null;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function pickAmountXpot(w: any): number | null {
-  const candidates = [
-    w?.amountXpot,
-    w?.payoutXpot,
-    w?.amount,
-    w?.payoutAmount,
-  ];
+  const candidates = [w?.amountXpot, w?.payoutXpot, w?.amount, w?.payoutAmount];
+
   for (const c of candidates) {
-    if (typeof c === 'number' && Number.isFinite(c)) return c;
+    const n = toNumberOrNull(c);
+    if (typeof n === 'number') return n;
   }
   return null;
 }
@@ -82,11 +114,7 @@ export async function GET(req: NextRequest) {
     const uniq: any[] = [];
 
     for (const w of rows) {
-      const key =
-        String(w.drawId ?? '') ||
-        String(w.draw?.id ?? '') ||
-        String(w.id);
-
+      const key = String(w.drawId ?? '') || String(w.draw?.id ?? '') || String(w.id);
       if (seen.has(key)) continue;
       seen.add(key);
       uniq.push(w);
@@ -99,10 +127,7 @@ export async function GET(req: NextRequest) {
       .map(w => w.walletAddress ?? w.ticket?.walletAddress ?? w.ticket?.wallet?.address)
       .filter(Boolean) as string[];
 
-    const walletToUser = new Map<
-      string,
-      { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }
-    >();
+    const walletToUser = new Map<string, { xHandle: string | null; xName: string | null; xAvatarUrl: string | null }>();
 
     if (walletAddrsNeedingLookup.length) {
       const wallets = await prisma.wallet.findMany({
@@ -125,13 +150,10 @@ export async function GET(req: NextRequest) {
       const wallet = ticket?.wallet;
       const user = wallet?.user;
 
-      const walletAddress =
-        w.walletAddress ??
-        ticket?.walletAddress ??
-        wallet?.address ??
-        null;
-
+      const walletAddress = w.walletAddress ?? ticket?.walletAddress ?? wallet?.address ?? null;
       const fallbackUser = walletAddress ? walletToUser.get(walletAddress) : null;
+
+      const amountXpot = pickAmountXpot(w);
 
       return {
         id: w.id,
@@ -141,10 +163,10 @@ export async function GET(req: NextRequest) {
         label: w.label ?? null,
 
         drawDate: safeIso(draw?.drawDate ?? w.date ?? w.createdAt),
-
         ticketCode: w.ticketCode ?? ticket?.code ?? null,
 
-        amountXpot: pickAmountXpot(w),
+        // ✅ now always a real number when present
+        amountXpot,
 
         walletAddress,
 
@@ -167,16 +189,12 @@ export async function GET(req: NextRequest) {
           fetchedRows: rows.length,
           returned: payload.length,
         },
-        // ✅ IMPORTANT: transparency link
         winnersPageUrl: '/winners',
       },
       { status: 200 },
     );
   } catch (err: any) {
     console.error('GET /api/winners/recent error', err);
-    return NextResponse.json(
-      { ok: false, error: err?.message || 'INTERNAL_ERROR' },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: err?.message || 'INTERNAL_ERROR' }, { status: 500 });
   }
 }
