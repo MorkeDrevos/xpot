@@ -249,7 +249,25 @@ function RoyalContractBar({ mint }: { mint: string }) {
 function TradeOnJupiterCard({ mint }: { mint: string }) {
   return (
     <div className="relative overflow-hidden">
-      <div className="pointer-events-none absolute -inset-28 opacity-85 blur-3xl bg-[radial-gradient(circle_at_16%_20%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_85%_25%,rgba(16,185,129,0.10),transparent_62%),radial-gradient(circle_at_50%_0%,rgba(var(--xpot-gold),0.18),transparent_62%)]" />
+      <div
+  aria-hidden
+  className="pointer-events-none absolute -inset-28 blur-3xl"
+  style={{
+    opacity: 0.9,
+    background:
+      // Left cool lift (sky)
+      'radial-gradient(circle at 14% 28%, rgba(56,189,248,0.14), transparent 60%),' +
+
+      // Right luxury depth (violet)
+      'radial-gradient(circle at 88% 30%, rgba(139,92,246,0.12), transparent 62%),' +
+
+      // Center gold anchor (subtle, not dominant)
+      'radial-gradient(circle at 48% 42%, rgba(var(--xpot-gold),0.10), transparent 65%),' +
+
+      // Bottom falloff (keeps edges dark)
+      'radial-gradient(circle at 50% 85%, rgba(0,0,0,0.55), transparent 70%)',
+  }}
+/>
 
       <div className="relative flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -259,6 +277,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
           </p>
 
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
   {/* PRIMARY */}
   <a
     href={XPOT_JUP_SWAP_URL}
@@ -266,10 +285,12 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
     rel="noopener noreferrer"
     title="Trade XPOT on Jupiter"
     className="
-      xpot-btn-vault group relative isolate
-      inline-flex w-full sm:w-auto items-center justify-center
-      !rounded-full overflow-hidden
-      h-[46px] px-6
+      xpot-btn-vault
+      group
+      relative
+      inline-flex items-center justify-center
+      w-full sm:w-auto
+      px-6 py-3
       text-sm font-semibold
       transition
       hover:brightness-[1.03]
@@ -277,32 +298,23 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       active:scale-[0.99]
     "
   >
-    <span className="relative z-10">Trade on Jupiter</span>
-    <ArrowRight className="relative z-10 ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+    Trade on Jupiter
+    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 
-    {/* Lightshow (new palette) */}
     <span
       aria-hidden
       className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl"
       style={{
         background:
-  'radial-gradient(circle at 22% 40%, rgba(16,185,129,0.14), transparent 60%),' +
-  'radial-gradient(circle at 78% 30%, rgba(var(--xpot-gold),0.18), transparent 62%),' +
-  'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06), transparent 62%)',
-      }}
-    />
-    <span
-      aria-hidden
-      className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition"
-      style={{
-        background:
-          'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.10), transparent 55%),' +
-          'linear-gradient(90deg, rgba(34,211,238,0.00), rgba(168,85,247,0.08), rgba(34,211,238,0.00))',
+          // Aurora royal (cyan + violet + gold)
+          'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.16), transparent 60%),' +
+          'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.12), transparent 62%),' +
+          'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.14), transparent 62%)',
       }}
     />
   </a>
 
-  {/* SECONDARIES (mobile: 2 columns) */}
+  {/* SECONDARIES */}
   <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
     <a
       href={XPOT_DEXSCREENER_URL}
@@ -311,10 +323,9 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       title="View chart"
       className="
         xpot-btn xpot-btn-utility
-        inline-flex items-center justify-center gap-2
-        !rounded-full
-        h-[46px] w-full sm:w-auto
-        px-4 text-[13px]
+        w-full sm:w-auto
+        px-5 py-3
+        text-[13px]
       "
     >
       <TrendingUp className="h-4 w-4" />
@@ -329,10 +340,9 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       title="View on Solscan"
       className="
         xpot-btn xpot-btn-utility
-        inline-flex items-center justify-center gap-2
-        !rounded-full
-        h-[46px] w-full sm:w-auto
-        px-4 text-[13px]
+        w-full sm:w-auto
+        px-5 py-3
+        text-[13px]
       "
     >
       <ShieldCheck className="h-4 w-4" />
@@ -342,7 +352,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
   </div>
 </div>
 
-          <p className="mt-4 font-mono text-[11px] text-slate-500/90">
+<p className="mt-4 font-mono text-[11px] text-slate-500/90">
   mint: <span className="text-slate-400">{shortenAddress(mint, 8, 8)}</span>
 </p>
         </div>
