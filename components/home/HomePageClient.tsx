@@ -157,10 +157,7 @@ function avatarUrlForRow(row: Pick<EntryRow, 'handle' | 'avatarUrl'>) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
   const cache = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
-  return (
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cache}`
-  );
+  return row.avatarUrl ?? `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cache}`;
 }
 
 /**
@@ -514,9 +511,7 @@ function AvatarBubble({
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="truncate text-[13px] font-semibold text-slate-100">
-                  {row.name || clean || 'Unknown'}
-                </div>
+                <div className="truncate text-[13px] font-semibold text-slate-100">{row.name || clean || 'Unknown'}</div>
 
                 {/* XPOT badge for winners */}
                 {isWinner ? (
@@ -665,28 +660,54 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   </Link>
                 </div>
               ) : mode === 'bubbles' ? (
-<div className="relative z-10 flex flex-wrap items-center justify-center gap-3">
-  {cleanEntries.slice(0, 18).map((e, idx) => {
-    const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
+                <div className="relative z-10 flex flex-wrap items-center justify-center gap-3">
+                  {cleanEntries.slice(0, 18).map((e, idx) => {
+                    const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
 
-    const isWinner =
-      !!winnerHandle &&
-      normalizeHandle(e.handle).toLowerCase() === normalizeHandle(winnerHandle).toLowerCase();
+                    const isWinner =
+                      !!winnerHandle &&
+                      normalizeHandle(e.handle).toLowerCase() === normalizeHandle(winnerHandle).toLowerCase();
 
-    return (
-      <AvatarBubble
-        key={(e.id ?? e.handle).toString()}
-        row={e}
-        size={size}
-        isWinner={isWinner}
-      />
-    );
-  })}
+                    return <AvatarBubble key={(e.id ?? e.handle).toString()} row={e} size={size} isWinner={isWinner} />;
+                  })}
 
-  <div className="w-full pt-2 text-center text-[12px] text-slate-400">
-    <span className="text-slate-200">{uniqCount}</span> today
-  </div>
-</div>
+                  <div className="w-full pt-2 text-center text-[12px] text-slate-400">
+                    <span className="text-slate-200">{uniqCount}</span> today
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {cleanEntries.slice(0, 10).map(e => {
+                    const h = normalizeHandle(e.handle);
+                    const img = avatarUrlForRow(e);
+
+                    return (
+                      <a
+                        key={(e.id ?? h).toString()}
+                        href={`https://x.com/${encodeURIComponent(h.replace('@', ''))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
+                        title={h}
+                      >
+                        <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={img} alt={h} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                        </span>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-semibold text-slate-100">{e.name || h.slice(1)}</p>
+                          <p className="truncate text-[12px] text-slate-400">{h}</p>
+                        </div>
+
+                        <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
+                      </a>
+                    );
+                  })}
+                  <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Latest winner */}
@@ -760,9 +781,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 </span>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-semibold text-slate-100">
-                    {winnerName || winnerHandle || 'Winner'}
-                  </p>
+                  <p className="truncate text-[14px] font-semibold text-slate-100">{winnerName || winnerHandle || 'Winner'}</p>
                   <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
                 </div>
 
@@ -1091,9 +1110,7 @@ function HomeInner() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
-                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-                  Always verify the official mint before interacting.
-                </p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">Always verify the official mint before interacting.</p>
               </div>
               <RoyalContractBar mint={XPOT_CA} />
             </div>
@@ -1142,9 +1159,7 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
+              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
             </div>
 
             <Link
