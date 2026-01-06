@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { LayoutGrid, List as ListIcon, Users } from 'lucide-react';
+import { CheckCircle2, Crown, LayoutGrid, List as ListIcon, Users } from 'lucide-react';
 
 export type EntryRow = {
   id?: string;
@@ -14,10 +14,29 @@ export type EntryRow = {
   verified?: boolean | null;
 };
 
+type LiveActivityModuleProps = {
+  /**
+   * Optional: if you want to mark a specific handle as "winner" in the bubbles hover card
+   * (for example: pass latestWinner.handle from Stage).
+   *
+   * If you do NOT pass this, XPOT badge won't show (still shows verified if present).
+   */
+  winnerHandle?: string | null;
+
+  /**
+   * Optional: override polling interval (ms)
+   */
+  pollMs?: number;
+
+  /**
+   * Optional: override limit
+   */
+  limit?: number;
+};
+
 function normalizeHandle(h: any) {
   const s = String(h ?? '').trim();
   if (!s) return '';
-  // ensure exactly one leading @
   const core = s.replace(/^@+/, '');
   return core ? `@${core}` : '';
 }
@@ -59,14 +78,20 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
 
 function avatarUrlFor(handle: string, avatarUrl?: string | null) {
   const clean = normalizeHandle(handle).replace(/^@/, '');
-  // cache-buster changes only every 6h, so it won't cause render jitter
-  const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
+  const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
   return avatarUrl ?? `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${bucket}`;
 }
 
 function initialsFor(handle: string) {
   const clean = normalizeHandle(handle).replace(/^@/, '').trim();
   return (clean || 'x').slice(0, 1).toUpperCase();
+}
+
+function isSameHandle(a?: string | null, b?: string | null) {
+  const aa = normalizeHandle(a).toLowerCase();
+  const bb = normalizeHandle(b).toLowerCase();
+  if (!aa || !bb) return false;
+  return aa === bb;
 }
 
 function AvatarTile({
@@ -87,11 +112,18 @@ function AvatarTile({
   imgClass: string;
 }) {
   const [failed, setFailed] = useState(false);
-
   const src = useMemo(() => avatarUrlFor(handle, avatarUrl), [handle, avatarUrl]);
 
   return (
-    <span className={`relative inline-flex items-center justify-center overflow-hidden ${roundedClass} ${borderClass} ${bgClass} ${sizeClass}`}>
+    <span
+      className={[
+        'relative inline-flex items-center justify-center overflow-hidden',
+        roundedClass,
+        borderClass,
+        bgClass,
+        sizeClass,
+      ].join(' ')}
+    >
       {!failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -121,10 +153,7 @@ function AvatarBubble({
 }) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
-
-  const img =
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+  const img = useMemo(() => avatarUrlFor(handle, row.avatarUrl), [handle, row.avatarUrl]);
 
   return (
     <a
@@ -249,6 +278,7 @@ function AvatarBubble({
     </a>
   );
 }
+
 function EntryRowLine({ e }: { e: EntryRow }) {
   const h = normalizeHandle(e.handle);
   const clean = h.replace(/^@/, '');
@@ -281,7 +311,11 @@ function EntryRowLine({ e }: { e: EntryRow }) {
   );
 }
 
-export default function LiveActivityModule() {
+export default function LiveActivityModule({
+  winnerHandle = null,
+  pollMs = 25_000,
+  limit = 24,
+}: LiveActivityModuleProps) {
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
@@ -310,7 +344,7 @@ export default function LiveActivityModule() {
       abortRef.current = new AbortController();
 
       try {
-        const res = await fetch('/api/public/entries/latest?limit=24', {
+        const res = await fetch(`/api/public/entries/latest?limit=${encodeURIComponent(String(limit))}`, {
           cache: 'no-store',
           signal: abortRef.current.signal,
         });
@@ -352,7 +386,6 @@ export default function LiveActivityModule() {
         }
       } catch (e: any) {
         if (e?.name === 'AbortError') return;
-        // never clear rows (prevents flicker)
       } finally {
         if (!alive) return;
         setInitialLoading(false);
@@ -361,7 +394,7 @@ export default function LiveActivityModule() {
     }
 
     load();
-    const t = window.setInterval(load, 25_000);
+    const t = window.setInterval(load, pollMs);
 
     return () => {
       alive = false;
@@ -370,7 +403,7 @@ export default function LiveActivityModule() {
         abortRef.current?.abort();
       } catch {}
     };
-  }, [disabled]);
+  }, [disabled, pollMs, limit]);
 
   const uniqCount = useMemo(() => {
     const s = new Set(rows.map(r => normalizeHandle(r.handle).toLowerCase()).filter(Boolean));
@@ -442,7 +475,12 @@ export default function LiveActivityModule() {
       ) : mode === 'bubbles' ? (
         <div className="flex flex-wrap items-center gap-3 py-1">
           {bubbles.map(({ e, size }) => (
-            <AvatarBubble key={(e.id ?? e.handle).toString()} e={e} size={size} />
+            <AvatarBubble
+              key={(e.id ?? e.handle).toString()}
+              row={e}
+              size={size}
+              isWinner={isSameHandle(e.handle, winnerHandle)}
+            />
           ))}
           <div className="ml-auto text-[12px] text-slate-400">
             <span className="text-slate-200">{uniqCount}</span> today
