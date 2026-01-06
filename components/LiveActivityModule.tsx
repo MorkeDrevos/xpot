@@ -32,7 +32,7 @@ import FinalDrawDate from '@/components/FinalDrawDate';
 
 import { RUN_DAYS, RUN_END_EU } from '@/lib/xpotRun';
 
-import { useNextDraw } from '@/components/home/NextDrawProvider';
+import NextDrawProvider, { useNextDraw } from '@/components/home/NextDrawProvider';
 import { calcRunProgress, runTitle } from './madrid';
 import { useBonusActive } from './hooks/useBonusActive';
 import { useLatestWinner } from './hooks/useLatestWinner';
