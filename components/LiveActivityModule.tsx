@@ -111,7 +111,9 @@ function AvatarTile({
 }
 
 function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
-  const clean = normalizeHandle(e.handle).replace(/^@/, '');
+  const handle = normalizeHandle(e.handle);
+  const clean = handle.replace(/^@/, '');
+  const img = avatarUrlFor(handle, e.avatarUrl);
 
   return (
     <a
@@ -119,35 +121,89 @@ function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
       target="_blank"
       rel="noopener noreferrer"
       className="group relative"
-      title={normalizeHandle(e.handle)}
+      title={handle}
     >
+      {/* Hover card (desktop only) */}
+      <div
+        className="
+          pointer-events-none
+          absolute bottom-full left-1/2 z-20
+          hidden -translate-x-1/2 pb-3
+          group-hover:block
+          lg:block
+        "
+      >
+        <div
+          className="
+            w-44
+            rounded-2xl
+            border border-white/10
+            bg-slate-950/95
+            px-3 py-2.5
+            shadow-[0_20px_60px_rgba(0,0,0,0.6)]
+            backdrop-blur
+            animate-fade-in
+          "
+        >
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img}
+                alt={handle}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </span>
+
+            <div className="min-w-0">
+              <div className="truncate text-[12px] font-semibold text-slate-100">
+                {e.name || handle.slice(1)}
+              </div>
+              <div className="truncate text-[11px] text-slate-400">{handle}</div>
+            </div>
+          </div>
+
+          <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-500">
+            View on X →
+          </div>
+        </div>
+      </div>
+
+      {/* Glow */}
       <span
         aria-hidden
-        className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100
-                   bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.20),transparent_62%),
-                       radial-gradient(circle_at_60%_55%,rgba(255,215,97,0.16),transparent_60%)]"
+        className="
+          pointer-events-none absolute -inset-2
+          rounded-full opacity-0 blur-xl
+          transition group-hover:opacity-100
+          bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.20),transparent_62%),
+              radial-gradient(circle_at_60%_55%,rgba(255,215,97,0.16),transparent_60%)]
+        "
       />
 
+      {/* Avatar */}
       <span
-        className="relative inline-flex items-center justify-center overflow-hidden rounded-full
-                   border border-white/10 bg-white/[0.03]
-                   shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+        className="
+          relative inline-flex items-center justify-center
+          overflow-hidden rounded-full
+          border border-white/10
+          bg-white/[0.03]
+          shadow-[0_18px_60px_rgba(0,0,0,0.45)]
+        "
         style={{ width: size, height: size }}
       >
-        <AvatarTile
-          handle={normalizeHandle(e.handle)}
-          avatarUrl={e.avatarUrl}
-          sizeClass="h-full w-full"
-          roundedClass="rounded-full"
-          borderClass="border-0"
-          bgClass="bg-transparent"
-          imgClass="h-full w-full object-cover"
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={img}
+          alt={handle}
+          className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
         />
       </span>
     </a>
   );
 }
-
 function EntryRowLine({ e }: { e: EntryRow }) {
   const h = normalizeHandle(e.handle);
   const clean = h.replace(/^@/, '');
