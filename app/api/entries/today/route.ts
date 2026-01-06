@@ -1,3 +1,4 @@
+// app/api/entries/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -71,10 +72,7 @@ export async function GET(req: NextRequest) {
     const limit = intParam(req.nextUrl.searchParams.get('limit'), 24);
     const { startUtc, endUtc } = madridDayRangeUtc();
 
-    // IMPORTANT:
-    // I’m assuming your “entries” are tickets/claims created when someone claims in the hub.
-    // If your model name is NOT `ticket`, rename it here to match your Prisma schema.
-    const rows = await prisma.ticket.findMany({
+    const tickets = await prisma.ticket.findMany({
       where: {
         createdAt: { gte: startUtc, lt: endUtc },
       },
@@ -83,16 +81,22 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         createdAt: true,
-        // Adjust these fields to match your schema
-        handle: true,
-        name: true,
-        avatarUrl: true,
-        verified: true,
       },
     });
 
-    return NextResponse.json({ entries: rows });
-  } catch (e) {
+    // Minimal shape so your HomePageClient won't crash.
+    // We'll wire real handle/avatar once we use the correct relation fields.
+    const entries = tickets.map(t => ({
+      id: t.id,
+      createdAt: t.createdAt,
+      handle: '',
+      name: null,
+      avatarUrl: null,
+      verified: false,
+    }));
+
+    return NextResponse.json({ entries });
+  } catch {
     return NextResponse.json({ entries: [] }, { status: 200 });
   }
 }
