@@ -136,9 +136,13 @@ function useTodayEntries(limit: number) {
         });
 
         if (!res.ok) {
-          if (alive) setRows([]);
-          return;
-        }
+  if (alive) setRows([]);
+
+  // stop spamming if the endpoint doesn't exist in this env
+  if (res.status === 404) return;
+
+  return;
+}
 
         const json: any = await res.json();
         const candidates = (json?.entries || json?.rows || json?.data || []) as any[];
