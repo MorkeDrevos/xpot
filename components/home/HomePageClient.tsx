@@ -73,13 +73,6 @@ const XPOT_DEXSCREENER_URL =
 const XPOT_SOLSCAN_URL =
   process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
-const BTN_ROYAL_PRIMARY =
-  'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold ' +
-  'bg-gradient-to-br from-amber-200 via-white to-sky-200 text-slate-950 ' +
-  'shadow-[0_26px_90px_rgba(251,191,36,0.22),0_18px_55px_rgba(0,0,0,0.55)] ' +
-  'hover:brightness-[1.05] active:brightness-[0.98] transition ' +
-  'ring-1 ring-white/[0.14]';
-
 const BTN_ROYAL_SECONDARY =
   'inline-flex items-center justify-center rounded-full px-5 py-3 text-[13px] font-semibold ' +
   'border border-white/12 bg-slate-950/40 text-slate-100 hover:bg-slate-950/55 transition ' +
@@ -159,18 +152,14 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   return out;
 }
 
-/**
- * ✅ Unified avatar URL logic (fixes: list view had empty placeholders)
- * - If API provides avatarUrl -> use it
- * - Otherwise -> fall back to unavatar by handle
- */
-function entryAvatarUrl(row: EntryRow) {
-  const handle = normalizeHandle(row?.handle);
+// ✅ One avatar resolver for bubbles + list (fixes “empty avatar” list mode)
+function avatarUrlForRow(row: Pick<EntryRow, 'handle' | 'avatarUrl'>) {
+  const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
-  const cache = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h buckets
+  const cache = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
   return (
-    row?.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${encodeURIComponent(String(cache))}`
+    row.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cache}`
   );
 }
 
@@ -436,7 +425,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
 function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
-  const img = entryAvatarUrl(row);
+  const img = avatarUrlForRow(row);
 
   return (
     <a
@@ -453,13 +442,7 @@ function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
         style={{ width: size, height: size }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={img}
-          alt={handle}
-          className="h-full w-full object-cover"
-          referrerPolicy="no-referrer"
-          loading="lazy"
-        />
+        <img src={img} alt={handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
       </span>
     </a>
   );
@@ -467,8 +450,6 @@ function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
 
 /* =========================
    ✅ Stage (TOP-LEVEL)
-   FIX: Entries/avatars moved to LEFT on desktop (lg),
-   winner moves to RIGHT. Mobile stays natural stack.
 ========================= */
 function Stage({ latestWinner }: { latestWinner: any }) {
   const { rows: entries, initialLoading, refreshing } = useTodayEntries(24);
@@ -511,7 +492,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          {/* ✅ Entries FIRST (left) */}
+          {/* Entries */}
           <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 lg:order-1">
             <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
@@ -585,7 +566,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 <div className="space-y-2">
                   {cleanEntries.slice(0, 10).map(e => {
                     const h = normalizeHandle(e.handle);
-                    const img = entryAvatarUrl(e);
+                    const img = avatarUrlForRow(e);
 
                     return (
                       <a
@@ -598,13 +579,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                       >
                         <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={img}
-                            alt={h}
-                            className="h-full w-full object-cover"
-                            referrerPolicy="no-referrer"
-                            loading="lazy"
-                          />
+                          <img src={img} alt={h} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                         </span>
 
                         <div className="min-w-0">
@@ -622,7 +597,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
             </div>
           </div>
 
-          {/* ✅ Latest winner SECOND (right) */}
+          {/* Latest winner */}
           <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 lg:order-2">
             <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_86%_26%,rgba(56,189,248,0.12),transparent_62%)]" />
 
@@ -684,13 +659,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
                   {winnerAvatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={winnerAvatar}
-                      alt={winnerHandle || 'winner'}
-                      className="h-full w-full object-cover"
-                      referrerPolicy="no-referrer"
-                      loading="lazy"
-                    />
+                    <img src={winnerAvatar} alt={winnerHandle || 'winner'} className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-sm font-semibold text-slate-200">
                       {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
@@ -875,9 +844,7 @@ function HomeInner() {
                         />
                         <div className="relative flex flex-wrap items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                              Next draw
-                            </p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Next draw</p>
 
                             <p className="mt-1 flex items-baseline gap-2 text-[12px] text-slate-400">
                               <span className="text-slate-500">In</span>
