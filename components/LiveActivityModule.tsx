@@ -111,17 +111,20 @@ function AvatarTile({
 }
 
 function AvatarBubble({
-  e,
-  size,
+  row,
+  size = 56,
   isWinner,
 }: {
-  e: EntryRow;
-  size: number;
+  row: EntryRow;
+  size?: number;
   isWinner?: boolean;
 }) {
-  const handle = normalizeHandle(e.handle);
+  const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
-  const img = avatarUrlFor(handle, e.avatarUrl);
+
+  const img =
+    row.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
 
   return (
     <a
@@ -131,28 +134,26 @@ function AvatarBubble({
       className="group relative"
       title={handle}
     >
-      {/* Hover card (desktop only) */}
+      {/* Hover card (desktop) */}
       <div
         className="
           pointer-events-none
-          absolute bottom-full left-1/2 z-20
+          absolute bottom-full left-1/2 z-30
           hidden -translate-x-1/2 pb-3
           lg:block
-          opacity-0 translate-y-1
+          opacity-0 translate-y-1 scale-[0.98]
           transition duration-150 ease-out
           delay-150
-          group-hover:opacity-100 group-hover:translate-y-0
+          group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100
         "
       >
         <div
           className="
-            relative
-            w-48
-            rounded-2xl
-            border border-white/10
+            relative w-56
+            rounded-2xl border border-white/10
             bg-slate-950/95
-            px-3 py-2.5
-            shadow-[0_20px_60px_rgba(0,0,0,0.6)]
+            px-3.5 py-3
+            shadow-[0_26px_80px_rgba(0,0,0,0.70)]
             backdrop-blur
           "
         >
@@ -165,43 +166,45 @@ function AvatarBubble({
               h-3 w-3 rotate-45
               border border-white/10
               bg-slate-950/95
-              shadow-[0_12px_30px_rgba(0,0,0,0.45)]
+              shadow-[0_14px_40px_rgba(0,0,0,0.55)]
             "
           />
 
-          <div className="flex items-center gap-2">
-            <span className="relative inline-flex h-9 w-9 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
+          <div className="flex items-center gap-3">
+            <span className="relative inline-flex h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img}
                 alt={handle}
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
               />
 
-              {/* Verified badge (small overlay) */}
-              {e.verified ? (
+              {/* Verified badge */}
+              {row.verified ? (
                 <span
                   className="
                     absolute -bottom-1 -right-1
                     inline-flex h-5 w-5 items-center justify-center
-                    rounded-full
-                    border border-white/10
+                    rounded-full border border-white/10
                     bg-sky-500/20
                     ring-1 ring-sky-400/20
+                    shadow-[0_10px_30px_rgba(0,0,0,0.35)]
                     backdrop-blur
                   "
                   title="Verified"
                 >
-                  <span className="text-[11px] leading-none text-sky-200">✓</span>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-sky-200" />
                 </span>
               ) : null}
             </span>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="truncate text-[12px] font-semibold text-slate-100">
-                  {e.name || handle.slice(1)}
+                <div className="truncate text-[13px] font-semibold text-slate-100">
+                  {row.name || clean || 'Unknown'}
                 </div>
 
                 {/* XPOT badge for winners */}
@@ -219,51 +222,29 @@ function AvatarBubble({
                     "
                     title="Winner"
                   >
+                    <Crown className="h-3 w-3" />
                     XPOT
                   </span>
                 ) : null}
               </div>
 
-              <div className="truncate text-[11px] text-slate-400">{handle}</div>
+              <div className="truncate text-[12px] text-slate-400">{handle || '@unknown'}</div>
+              <div className="mt-1 text-[11px] text-slate-500">View on X →</div>
             </div>
-          </div>
-
-          <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-500">
-            View on X →
           </div>
         </div>
       </div>
 
       {/* Glow */}
-      <span
-        aria-hidden
-        className="
-          pointer-events-none absolute -inset-2
-          rounded-full opacity-0 blur-xl
-          transition group-hover:opacity-100
-          bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.20),transparent_62%),
-              radial-gradient(circle_at_60%_55%,rgba(255,215,97,0.16),transparent_60%)]
-        "
-      />
+      <span className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100 bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_60%_55%,rgba(var(--xpot-gold),0.18),transparent_60%)]" />
 
       {/* Avatar */}
       <span
-        className="
-          relative inline-flex items-center justify-center
-          overflow-hidden rounded-full
-          border border-white/10
-          bg-white/[0.03]
-          shadow-[0_18px_60px_rgba(0,0,0,0.45)]
-        "
+        className="relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
         style={{ width: size, height: size }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={img}
-          alt={handle}
-          className="h-full w-full object-cover"
-          referrerPolicy="no-referrer"
-        />
+        <img src={img} alt={handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
       </span>
     </a>
   );
