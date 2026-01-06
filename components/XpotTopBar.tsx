@@ -608,6 +608,17 @@ function PublicNavCenter({
 
             <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
+                {/* ✅ ORDER: Winners first (strongest social proof) */}
+                <Link
+                  href={WINNERS_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Trophy className="h-4 w-4 text-amber-300" />
+                  </span>
+                  Winners
+                </Link>
+
                 <Link
                   href={TOKENOMICS_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
@@ -626,16 +637,6 @@ function PublicNavCenter({
                     <Map className="h-4 w-4 text-sky-300" />
                   </span>
                   Roadmap
-                </Link>
-
-                <Link
-                  href={WINNERS_HREF}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
-                >
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Trophy className="h-4 w-4 text-amber-300" />
-                  </span>
-                  Winners
                 </Link>
 
                 <Link
@@ -1261,6 +1262,17 @@ function MobileMenu({
                 </span>
               </Link>
 
+              {/* ✅ Winners first in mobile nav too */}
+              <Link
+                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                href={WINNERS_HREF}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-300" />
+                  Winners
+                </span>
+              </Link>
+
               <Link
                 className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                 href={TOKENOMICS_HREF}
@@ -1278,16 +1290,6 @@ function MobileMenu({
                 <span className="inline-flex items-center gap-2">
                   <Map className="h-4 w-4 text-sky-300" />
                   Roadmap
-                </span>
-              </Link>
-
-              <Link
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-                href={WINNERS_HREF}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-amber-300" />
-                  Winners
                 </span>
               </Link>
 
