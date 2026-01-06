@@ -13,14 +13,9 @@ type Entry = {
   verified?: boolean | null;
 };
 
-const ROUTE_HUB = '/hub';
+const ENDPOINT = '/api/public/entries/latest?limit=24';
 
-// Prefer the route you actually have in your repo.
-// Fallback to the older public route if needed.
-const PRIMARY_URL = (limit: number) => `/api/entries/today?limit=${encodeURIComponent(String(limit))}`;
-const FALLBACK_URL = (limit: number) => `/api/public/entries/latest?limit=${encodeURIComponent(String(limit))}`;
-
-function normalizeHandle(h: any) {
+function normalizeHandle(h: unknown) {
   const s = String(h ?? '').trim();
   if (!s) return '';
   return s.startsWith('@') ? s : `@${s}`;
@@ -59,36 +54,6 @@ function dedupeByHandleKeepLatest(rows: Entry[]) {
   return out;
 }
 
-function pickEntriesArray(json: any): any[] {
-  // supports: { entries: [...] } or { ok:true, entries:[...] }
-  if (Array.isArray(json?.entries)) return json.entries;
-  // supports other shapes if you ever change it later
-  if (Array.isArray(json?.rows)) return json.rows;
-  if (Array.isArray(json?.data)) return json.data;
-  if (Array.isArray(json?.items)) return json.items;
-  return [];
-}
-
-function mapEntries(raw: any[]): Entry[] {
-  const mapped: Entry[] = [];
-
-  for (const r of raw ?? []) {
-    const handle = normalizeHandle(r?.handle ?? r?.xHandle ?? r?.username);
-    if (!handle) continue;
-
-    mapped.push({
-      id: r?.id ?? undefined,
-      handle,
-      name: r?.name ?? r?.displayName ?? null,
-      avatarUrl: r?.avatarUrl ?? r?.avatar ?? r?.image ?? null,
-      createdAt: r?.createdAt ?? r?.created_at ?? null,
-      verified: r?.verified ?? r?.isVerified ?? null,
-    });
-  }
-
-  return dedupeByHandleKeepLatest(mapped);
-}
-
 function AvatarBubble({ e, size }: { e: Entry; size: number }) {
   const clean = e.handle.replace(/^@/, '');
 
@@ -107,13 +72,13 @@ function AvatarBubble({ e, size }: { e: Entry; size: number }) {
       <span
         aria-hidden
         className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100
-          bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.20),transparent_62%),
-              radial-gradient(circle_at_60%_55%,rgba(255,215,97,0.16),transparent_60%)]"
+                   bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.20),transparent_62%),
+                       radial-gradient(circle_at_60%_55%,rgba(255,215,97,0.16),transparent_60%)]"
       />
       <span
         className="relative inline-flex items-center justify-center overflow-hidden rounded-full
-          border border-white/10 bg-white/[0.03]
-          shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+                   border border-white/10 bg-white/[0.03]
+                   shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
         style={{ width: size, height: size }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -152,33 +117,19 @@ function EntryRowLine({ e }: { e: Entry }) {
   );
 }
 
-async function fetchJson(url: string, signal: AbortSignal) {
-  const res = await fetch(url, { cache: 'no-store', signal });
-  if (!res.ok) {
-    const err: any = new Error(`HTTP ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  return res.json();
-}
-
-export default function LiveActivityModule({ limit = 24 }: { limit?: number }) {
+export default function LiveActivityModule() {
   const [rows, setRows] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
-  // stop interval spam if BOTH routes don't exist in this env
-  const [disabled, setDisabled] = useState(false);
-
   const abortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
-    if (disabled) return;
-
-    let alive = true;
+    mountedRef.current = true;
 
     async function load() {
-      if (!alive || disabled) return;
+      if (!mountedRef.current) return;
 
       try {
         abortRef.current?.abort();
@@ -188,34 +139,45 @@ export default function LiveActivityModule({ limit = 24 }: { limit?: number }) {
       setLoading(true);
 
       try {
-        // 1) Try /api/entries/today first
-        let json: any;
-        try {
-          json = await fetchJson(PRIMARY_URL(limit), abortRef.current.signal);
-        } catch (e: any) {
-          // If missing, try fallback
-          if (e?.status === 404) {
-            json = await fetchJson(FALLBACK_URL(limit), abortRef.current.signal);
-          } else {
-            // other errors also try fallback once (network etc)
-            json = await fetchJson(FALLBACK_URL(limit), abortRef.current.signal);
-          }
+        const res = await fetch(ENDPOINT, {
+          cache: 'no-store',
+          signal: abortRef.current.signal,
+        });
+
+        if (!res.ok) {
+          if (mountedRef.current) setRows([]);
+          return;
         }
 
-        const raw = pickEntriesArray(json);
-        const deduped = mapEntries(raw);
+        const json: any = await res.json();
 
-        if (alive) setRows(deduped);
+        // Your route returns: { ok: true, entries: [...] }
+        const raw = Array.isArray(json?.entries) ? json.entries : [];
+
+        const mapped: Entry[] = raw
+          .map((r: any) => {
+            const handle = normalizeHandle(r?.handle);
+            if (!handle) return null;
+
+            return {
+              id: r?.id ?? undefined,
+              handle,
+              name: r?.name ?? null,
+              avatarUrl: r?.avatarUrl ?? null,
+              createdAt: r?.createdAt ?? null,
+              verified: r?.verified ?? null,
+            } as Entry;
+          })
+          .filter(Boolean);
+
+        const deduped = dedupeByHandleKeepLatest(mapped);
+
+        if (mountedRef.current) setRows(deduped);
       } catch (e: any) {
         if (e?.name === 'AbortError') return;
-
-        // If BOTH routes are missing, stop retry spam.
-        // We can only confidently detect this if the thrown error was 404 from fallback as well.
-        // Since we throw generic errors, we just disable on repeated hard failures is risky.
-        // But if you want: you can console.log e.message here.
-        if (alive) setRows([]);
+        if (mountedRef.current) setRows([]);
       } finally {
-        if (alive) setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
     }
 
@@ -223,13 +185,13 @@ export default function LiveActivityModule({ limit = 24 }: { limit?: number }) {
     const t = window.setInterval(load, 25_000);
 
     return () => {
-      alive = false;
+      mountedRef.current = false;
       window.clearInterval(t);
       try {
         abortRef.current?.abort();
       } catch {}
     };
-  }, [limit, disabled]);
+  }, []);
 
   const uniqCount = rows.length;
 
@@ -260,7 +222,6 @@ export default function LiveActivityModule({ limit = 24 }: { limit?: number }) {
           >
             Bubbles
           </button>
-
           <button
             type="button"
             onClick={() => setMode('list')}
@@ -279,7 +240,7 @@ export default function LiveActivityModule({ limit = 24 }: { limit?: number }) {
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
           <span className="text-sm text-slate-400">Claim in the hub to appear here.</span>
           <Link
-            href={ROUTE_HUB}
+            href="/hub"
             className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-semibold text-white hover:bg-white/[0.08] transition"
           >
             Claim in hub →
