@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import {
   ArrowRight,
@@ -73,7 +73,6 @@ const XPOT_DEXSCREENER_URL =
 const XPOT_SOLSCAN_URL =
   process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
-// Royal = ceremonial gold + onyx + precision highlights (premium, not cheesy)
 const BTN_ROYAL_PRIMARY =
   'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold ' +
   'bg-gradient-to-br from-amber-200 via-white to-sky-200 text-slate-950 ' +
@@ -118,61 +117,141 @@ type EntryRow = {
   name?: string | null;
   avatarUrl?: string | null;
   verified?: boolean;
-  createdAt?: string;
+  createdAt?: string | null;
 };
 
+function normalizeHandle(h: any) {
+  const s = String(h ?? '').trim();
+  if (!s) return '';
+  return s.startsWith('@') ? s : `@${s.replace(/^@/, '')}`;
+}
+
+function safeTimeMs(iso?: string | null) {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? t : 0;
+}
+
+function dedupeByHandleKeepLatest(rows: EntryRow[]) {
+  const map = new Map<string, EntryRow>();
+
+  for (const r of rows || []) {
+    const handle = normalizeHandle(r?.handle);
+    if (!handle) continue;
+
+    const key = handle.toLowerCase();
+    const cur = map.get(key);
+
+    const rt = safeTimeMs(r?.createdAt ?? null);
+    const ct = cur ? safeTimeMs(cur.createdAt ?? null) : -1;
+
+    if (!cur || rt >= ct) {
+      map.set(key, {
+        ...r,
+        handle,
+        name: r?.name ? String(r.name).trim() : r?.name ?? null,
+        createdAt: r?.createdAt ?? null,
+      });
+    }
+  }
+
+  const out = Array.from(map.values());
+  out.sort((a, b) => safeTimeMs(b.createdAt ?? null) - safeTimeMs(a.createdAt ?? null));
+  return out;
+}
+
+/**
+ * ✅ No more flashing:
+ * - never clears rows on refresh errors
+ * - separate initial load vs refreshing
+ */
 function useTodayEntries(limit: number) {
   const [rows, setRows] = useState<EntryRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [disabled, setDisabled] = useState(false);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const hasLoadedOnceRef = useRef(false);
 
   useEffect(() => {
+    if (disabled) return;
+
     let alive = true;
 
     async function run() {
-      setLoading(true);
+      if (!alive || disabled) return;
+
+      if (!hasLoadedOnceRef.current) setInitialLoading(true);
+      else setRefreshing(true);
+
       try {
-        const res = await fetch(`/api/entries/today?limit=${encodeURIComponent(String(limit))}`, {
+        abortRef.current?.abort();
+      } catch {}
+      abortRef.current = new AbortController();
+
+      try {
+        const res = await fetch(`/api/public/entries/latest?limit=${encodeURIComponent(String(limit))}`, {
           cache: 'no-store',
+          signal: abortRef.current.signal,
         });
 
+        if (res.status === 404) {
+          if (alive) setDisabled(true);
+          return;
+        }
+
         if (!res.ok) {
-          if (alive) setRows([]);
+          // ✅ do NOT clear rows (prevents flicker)
           return;
         }
 
         const json: any = await res.json();
-        const candidates = (json?.entries || json?.rows || json?.data || []) as any[];
+        const candidates = Array.isArray(json?.entries) ? json.entries : [];
 
-        const mapped: EntryRow[] = Array.isArray(candidates)
-          ? candidates
-              .map(r => ({
-                id: r?.id ?? undefined,
-                handle: String(r?.handle ?? '').trim(),
-                name: r?.name ?? null,
-                avatarUrl: r?.avatarUrl ?? null,
-                verified: !!r?.verified,
-                createdAt: r?.createdAt ?? null,
-              }))
-              .filter(r => r.handle)
-          : [];
+        const mapped: EntryRow[] = candidates
+          .map((r: any) => {
+            const handle = normalizeHandle(r?.handle);
+            if (!handle) return null;
+            return {
+              id: r?.id ?? undefined,
+              createdAt: r?.createdAt ?? null,
+              handle,
+              name: r?.name ?? null,
+              avatarUrl: r?.avatarUrl ?? null,
+              verified: !!r?.verified,
+            } as EntryRow;
+          })
+          .filter(Boolean) as EntryRow[];
 
-        if (alive) setRows(mapped);
-      } catch {
-        if (alive) setRows([]);
+        const clean = dedupeByHandleKeepLatest(mapped);
+
+        if (alive) {
+          setRows(clean);
+          hasLoadedOnceRef.current = true;
+        }
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return;
+        // ✅ do NOT clear rows on errors
       } finally {
-        if (alive) setLoading(false);
+        if (!alive) return;
+        setInitialLoading(false);
+        setRefreshing(false);
       }
     }
 
     run();
     const t = window.setInterval(run, 25_000);
+
     return () => {
       alive = false;
       window.clearInterval(t);
+      try {
+        abortRef.current?.abort();
+      } catch {}
     };
-  }, [limit]);
+  }, [limit, disabled]);
 
-  return { rows, loading };
+  return { rows, initialLoading, refreshing, disabled };
 }
 
 function RoyalContractBar({ mint }: { mint: string }) {
@@ -249,7 +328,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
 function TradeOnJupiterCard({ mint }: { mint: string }) {
   return (
     <div className="relative overflow-hidden">
-      {/* FIXED: premium “vault glow” - no broken right-side panel */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -270,9 +348,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             Primary venue is Jupiter. Always verify the mint and use official links.
           </p>
 
-          {/* CTA block */}
           <div className="mt-3 grid gap-2 sm:flex sm:items-center">
-            {/* PRIMARY */}
             <a
               href={XPOT_JUP_SWAP_URL}
               target="_blank"
@@ -296,7 +372,6 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
               Trade on Jupiter
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 
-              {/* Lightshow (kept but darker + contained) */}
               <span
                 aria-hidden
                 className="pointer-events-none absolute -inset-10 opacity-55 blur-2xl"
@@ -309,7 +384,6 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
               />
             </a>
 
-            {/* SECONDARIES */}
             <div className="grid grid-cols-2 gap-2 sm:flex">
               <a
                 href={XPOT_DEXSCREENER_URL}
@@ -344,26 +418,287 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
   );
 }
 
-function AvatarBubble({ row }: { row: EntryRow }) {
-  const handle = row.handle.startsWith('@') ? row.handle : `@${row.handle}`;
+function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
+  const handle = normalizeHandle(row.handle);
+  const clean = handle.replace(/^@/, '');
+
+  const img =
+    row.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+
   return (
     <a
-      href={`https://x.com/${encodeURIComponent(handle.replace('@', ''))}`}
+      href={`https://x.com/${encodeURIComponent(clean)}`}
       target="_blank"
       rel="noopener noreferrer"
       className="group relative"
       title={handle}
     >
       <span className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100 bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_60%_55%,rgba(var(--xpot-gold),0.18),transparent_60%)]" />
-      <span className="relative inline-flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
-        {row.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.avatarUrl} alt={handle} className="h-full w-full object-cover" />
-        ) : (
-          <span className="text-sm font-semibold text-slate-200">{handle.slice(1, 2).toUpperCase()}</span>
-        )}
+
+      <span
+        className="relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+        style={{ width: size, height: size }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img} alt={handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
       </span>
     </a>
+  );
+}
+
+/* =========================
+   ✅ Stage (TOP-LEVEL)
+========================= */
+function Stage({ latestWinner }: { latestWinner: any }) {
+  const { rows: entries, initialLoading, refreshing } = useTodayEntries(24);
+  const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
+
+  const cleanEntries = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
+
+  const uniqCount = useMemo(() => {
+    const s = new Set(cleanEntries.map(e => (e.handle || '').toLowerCase()));
+    s.delete('');
+    return s.size;
+  }, [cleanEntries]);
+
+  const winnerHandle = (latestWinner as any)?.handle ?? null;
+  const winnerName = (latestWinner as any)?.name ?? null;
+  const winnerAvatar = (latestWinner as any)?.avatarUrl ?? null;
+  const winnerAmount = (latestWinner as any)?.amountXpot ?? null;
+  const winnerTxUrl = (latestWinner as any)?.txUrl ?? null;
+  const winnerDate = formatDateShort((latestWinner as any)?.drawDate ?? null);
+
+  const showEmpty = !initialLoading && cleanEntries.length === 0;
+
+  return (
+    <section className="mt-7">
+      <PremiumCard className="p-6 sm:p-8" halo sheen>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Live activity</p>
+            <h2 className="mt-2 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">The XPOT stage</h2>
+          </div>
+
+          <Link
+            href={ROUTE_HUB}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+            title="Enter the hub"
+          >
+            Enter today&apos;s XPOT
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {/* Latest winner */}
+          <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+            <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_86%_26%,rgba(56,189,248,0.12),transparent_62%)]" />
+
+            <div className="relative flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <Trophy className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                    Latest winner
+                  </span>
+                </p>
+                <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                  Winner just took home
+                </p>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-3xl font-semibold text-[rgba(var(--xpot-gold),1)]">
+                    {typeof winnerAmount === 'number' ? winnerAmount.toLocaleString() : '1,000,000'}
+                  </span>
+                  <span className="text-[12px] font-semibold text-slate-400">XPOT</span>
+                </div>
+                <p className="mt-2 text-[12px] text-slate-400">
+                  {winnerDate ? (
+                    <>
+                      Claimed <span className="text-slate-200">{winnerDate}</span>
+                    </>
+                  ) : (
+                    <>Claimed on-chain</>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {winnerTxUrl ? (
+                  <a
+                    href={winnerTxUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                    title="View transaction"
+                  >
+                    Tx
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                  </a>
+                ) : null}
+
+                <Link
+                  href={ROUTE_WINNERS}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                  title="Open winners archive"
+                >
+                  Archive
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+                  {winnerAvatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={winnerAvatar} alt={winnerHandle || 'winner'} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-semibold text-slate-200">
+                      {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                </span>
+
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-semibold text-slate-100">
+                    {winnerName || winnerHandle || 'Winner'}
+                  </p>
+                  <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
+                </div>
+
+                <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-100">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.55)]" />
+                  Live
+                </span>
+              </div>
+            </div>
+
+            <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">See more winners</p>
+                <p className="mt-1 text-[12px] text-slate-400">Full archive, TX links and history on the winners page.</p>
+              </div>
+              <Link
+                href={ROUTE_WINNERS}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+              >
+                Open winners
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Entries */}
+          <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+            <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+
+            <div className="relative flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-slate-400" />
+                    Entries
+                  </span>
+                </p>
+                <p className="mt-2 text-[12px] text-slate-400">
+                  {initialLoading ? 'Updating…' : `${uniqCount || 0} unique entrants`}
+                  {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
+                </p>
+              </div>
+
+              <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode('bubbles')}
+                  className={[
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                    mode === 'bubbles' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  ].join(' ')}
+                  title="Bubbles"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Bubbles
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode('list')}
+                  className={[
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                    mode === 'list' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  ].join(' ')}
+                  title="List"
+                >
+                  <ListIcon className="h-3.5 w-3.5" />
+                  List
+                </button>
+              </div>
+            </div>
+
+            <div className="relative mt-6">
+              {showEmpty ? (
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                  <p className="text-[12px] text-slate-400">Claim in the hub to appear here.</p>
+                  <Link
+                    href={ROUTE_HUB}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                  >
+                    Claim in hub
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              ) : mode === 'bubbles' ? (
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {cleanEntries.slice(0, 18).map((e, idx) => {
+                    const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
+                    return <AvatarBubble key={(e.id ?? e.handle).toString()} row={e} size={size} />;
+                  })}
+
+                  <div className="w-full pt-2 text-center text-[12px] text-slate-400">
+                    <span className="text-slate-200">{uniqCount}</span> today
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {cleanEntries.slice(0, 10).map(e => {
+                    const h = normalizeHandle(e.handle);
+                    return (
+                      <a
+                        key={(e.id ?? h).toString()}
+                        href={`https://x.com/${encodeURIComponent(h.replace('@', ''))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
+                        title={h}
+                      >
+                        <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+                          {e.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={e.avatarUrl} alt={h} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-semibold text-slate-200">{h.slice(1, 2).toUpperCase()}</span>
+                          )}
+                        </span>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-semibold text-slate-100">{e.name || h.slice(1)}</p>
+                          <p className="truncate text-[12px] text-slate-400">{h}</p>
+                        </div>
+
+                        <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
+                      </a>
+                    );
+                  })}
+                  <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </PremiumCard>
+    </section>
   );
 }
 
@@ -454,7 +789,6 @@ function HomeInner() {
                   lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.52fr)]
                 "
               >
-                {/* LEFT: keep it clean (story + next draw + CTA) */}
                 <div className="flex flex-col justify-between gap-6 lg:pt-8">
                   <div className="space-y-6">
                     <div className="relative p-2 sm:p-3">
@@ -491,7 +825,6 @@ function HomeInner() {
                         <div className="mt-5 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),transparent)]" />
                       </div>
 
-                      {/* MOBILE: jackpot right after H1 */}
                       <div className="mt-4 grid gap-4 lg:hidden">
                         <PremiumCard className="p-4" halo sheen>
                           <div className="xpot-console-sweep" aria-hidden />
@@ -501,7 +834,6 @@ function HomeInner() {
                         </PremiumCard>
                       </div>
 
-                      {/* Next draw bar */}
                       <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
                         <div
                           className="pointer-events-none absolute -inset-12 opacity-70 blur-2xl"
@@ -536,7 +868,6 @@ function HomeInner() {
                         </div>
                       </div>
 
-                      {/* Bonus vault */}
                       {bonusActive ? (
                         <div className="mt-5">
                           <BonusVault>
@@ -572,39 +903,38 @@ function HomeInner() {
                         </div>
                       ) : null}
 
-                      {/* CTAs */}
                       <div className="mt-6 flex flex-wrap items-center gap-3">
                         <Link
-  href={ROUTE_HUB}
-  title="Enter the hub"
-  className="
-    xpot-btn-vault
-    group
-    relative
-    inline-flex items-center justify-center
-    w-full sm:w-auto
-    rounded-full
-    px-6 py-3.5
-    text-sm font-semibold
-    transition
-    hover:brightness-[1.03]
-    active:brightness-[0.99]
-    active:scale-[0.99]
-  "
->
-  Enter the hub
-  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                          href={ROUTE_HUB}
+                          title="Enter the hub"
+                          className="
+                            xpot-btn-vault
+                            group
+                            relative
+                            inline-flex items-center justify-center
+                            w-full sm:w-auto
+                            rounded-full
+                            px-6 py-3.5
+                            text-sm font-semibold
+                            transition
+                            hover:brightness-[1.03]
+                            active:brightness-[0.99]
+                            active:scale-[0.99]
+                          "
+                        >
+                          Enter the hub
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 
-  <span
-    aria-hidden
-    className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
-    style={{
-      background:
-        'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
-        'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
-    }}
-  />
-</Link>
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
+                            style={{
+                              background:
+                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
+                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
+                            }}
+                          />
+                        </Link>
 
                         <a
                           href={XPOT_JUP_SWAP_URL}
@@ -620,7 +950,6 @@ function HomeInner() {
                     </div>
                   </div>
 
-                  {/* mini stats */}
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
@@ -628,7 +957,6 @@ function HomeInner() {
                   </div>
                 </div>
 
-                {/* RIGHT (desktop only) */}
                 <motion.div
                   className="hidden gap-4 lg:grid"
                   style={
@@ -664,260 +992,11 @@ function HomeInner() {
     </section>
   );
 
-  // XPOT stage (latest winner + entries)
-  const Stage = () => {
-    const { rows: entries, loading } = useTodayEntries(24);
-    const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
-
-    const uniqCount = useMemo(() => {
-      const s = new Set(entries.map(e => (e.handle || '').toLowerCase()));
-      s.delete('');
-      return s.size;
-    }, [entries]);
-
-    const winnerHandle = (latestWinner as any)?.handle ?? null;
-    const winnerName = (latestWinner as any)?.name ?? null;
-    const winnerAvatar = (latestWinner as any)?.avatarUrl ?? null;
-    const winnerAmount = (latestWinner as any)?.amountXpot ?? null;
-    const winnerTxUrl = (latestWinner as any)?.txUrl ?? null;
-    const winnerDate = formatDateShort((latestWinner as any)?.drawDate ?? null);
-
-    return (
-      <section className="mt-7">
-        <PremiumCard className="p-6 sm:p-8" halo sheen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Live activity</p>
-              <h2 className="mt-2 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">The XPOT stage</h2>
-            </div>
-
-            <Link
-              href={ROUTE_HUB}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-              title="Enter the hub"
-            >
-              Enter today&apos;s XPOT
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {/* Latest winner */}
-            <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_86%_26%,rgba(56,189,248,0.12),transparent_62%)]" />
-
-              <div className="relative flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                    <span className="inline-flex items-center gap-2">
-                      <Trophy className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                      Latest winner
-                    </span>
-                  </p>
-                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                    Winner just took home
-                  </p>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-3xl font-semibold text-[rgba(var(--xpot-gold),1)]">
-                      {typeof winnerAmount === 'number' ? winnerAmount.toLocaleString() : '1,000,000'}
-                    </span>
-                    <span className="text-[12px] font-semibold text-slate-400">XPOT</span>
-                  </div>
-                  <p className="mt-2 text-[12px] text-slate-400">
-                    {winnerDate ? (
-                      <>
-                        Claimed <span className="text-slate-200">{winnerDate}</span>
-                      </>
-                    ) : (
-                      <>Claimed on-chain</>
-                    )}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {winnerTxUrl ? (
-                    <a
-                      href={winnerTxUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-                      title="View transaction"
-                    >
-                      Tx
-                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                    </a>
-                  ) : null}
-
-                  <Link
-                    href={ROUTE_WINNERS}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-                    title="Open winners archive"
-                  >
-                    Archive
-                    <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                  </Link>
-                </div>
-              </div>
-
-              <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-                    {winnerAvatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={winnerAvatar} alt={winnerHandle || 'winner'} className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-sm font-semibold text-slate-200">
-                        {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
-                      </span>
-                    )}
-                  </span>
-
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-slate-100">
-                      {winnerName || winnerHandle || 'Winner'}
-                    </p>
-                    <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
-                  </div>
-
-                  <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-100">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.55)]" />
-                    Live
-                  </span>
-                </div>
-              </div>
-
-              <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">See more winners</p>
-                  <p className="mt-1 text-[12px] text-slate-400">Full archive, TX links and history on the winners page.</p>
-                </div>
-                <Link
-                  href={ROUTE_WINNERS}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-                >
-                  Open winners
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Entries */}
-            <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
-
-              <div className="relative flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                    <span className="inline-flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 text-slate-400" />
-                      Entries
-                    </span>
-                  </p>
-                  <p className="mt-2 text-[12px] text-slate-400">
-                    {loading ? 'Updating…' : `${uniqCount || 0} unique entrants`}
-                  </p>
-                </div>
-
-                <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
-                  <button
-                    type="button"
-                    onClick={() => setMode('bubbles')}
-                    className={[
-                      'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
-                      mode === 'bubbles' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                    ].join(' ')}
-                    title="Bubbles"
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                    Bubbles
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMode('list')}
-                    className={[
-                      'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
-                      mode === 'list' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                    ].join(' ')}
-                    title="List"
-                  >
-                    <ListIcon className="h-3.5 w-3.5" />
-                    List
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative mt-6">
-                {entries.length === 0 ? (
-                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                    <p className="text-[12px] text-slate-400">Claim in the hub to appear here.</p>
-                    <Link
-                      href={ROUTE_HUB}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-                    >
-                      Claim in hub
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </div>
-                ) : mode === 'bubbles' ? (
-                  <div className="flex flex-wrap items-center gap-3">
-                    {entries.slice(0, 12).map((e, idx) => (
-                      <AvatarBubble key={e.id || `${e.handle}-${idx}`} row={e} />
-                    ))}
-                    <div className="ml-auto text-[12px] text-slate-400">
-                      <span className="text-slate-200">{uniqCount}</span> today
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {entries.slice(0, 10).map((e, idx) => {
-                      const h = e.handle.startsWith('@') ? e.handle : `@${e.handle}`;
-                      return (
-                        <a
-                          key={e.id || `${e.handle}-${idx}`}
-                          href={`https://x.com/${encodeURIComponent(h.replace('@', ''))}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
-                          title={h}
-                        >
-                          <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
-                            {e.avatarUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={e.avatarUrl} alt={h} className="h-full w-full object-cover" />
-                            ) : (
-                              <span className="text-sm font-semibold text-slate-200">{h.slice(1, 2).toUpperCase()}</span>
-                            )}
-                          </span>
-
-                          <div className="min-w-0">
-                            <p className="truncate text-[13px] font-semibold text-slate-100">
-                              {e.name || h.replace('@', '')}
-                            </p>
-                            <p className="truncate text-[12px] text-slate-400">{h}</p>
-                          </div>
-
-                          <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
-                        </a>
-                      );
-                    })}
-                    <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </PremiumCard>
-      </section>
-    );
-  };
-
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* XPOT STAGE (important stuff first) */}
-      <Stage />
+      {/* ✅ FIXED: pass latestWinner */}
+      <Stage latestWinner={latestWinner} />
 
-      {/* OFFICIAL LINKS (moved out of hero so left is not messy) */}
       <section className="mt-7">
         <div className="grid gap-4 lg:grid-cols-2">
           <PremiumCard className="p-6 sm:p-7" halo={false}>
@@ -938,7 +1017,6 @@ function HomeInner() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
       <section className="mt-7">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -976,34 +1054,31 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
+              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
             </div>
 
             <Link
-  href={ROUTE_HUB}
-  title="Claim your entry"
-  className="
-    xpot-btn-vault
-    group
-    w-full sm:w-auto
-    px-6 py-3
-    text-sm font-semibold
-    rounded-full
-    inline-flex items-center justify-center
-    transition
-    active:scale-[0.99]
-  "
->
-  Claim your entry
-  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-</Link>
+              href={ROUTE_HUB}
+              title="Claim your entry"
+              className="
+                xpot-btn-vault
+                group
+                w-full sm:w-auto
+                px-6 py-3
+                text-sm font-semibold
+                rounded-full
+                inline-flex items-center justify-center
+                transition
+                active:scale-[0.99]
+              "
+            >
+              Claim your entry
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
         </PremiumCard>
       </section>
 
-      {/* PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1035,7 +1110,6 @@ function HomeInner() {
         </div>
       </section>
 
-      {/* ECOSYSTEM */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1129,7 +1203,6 @@ function HomeInner() {
         </PremiumCard>
       </section>
 
-      {/* FAQ */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo={false}>
           <div className="flex flex-wrap items-start justify-between gap-4">
