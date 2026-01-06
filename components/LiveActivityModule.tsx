@@ -157,6 +157,7 @@ function Avatar({
   size: number;
 }) {
   const clean = handle.replace('@', '');
+
   const img =
     src ??
     `https://unavatar.io/twitter/${clean}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
