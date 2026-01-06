@@ -124,44 +124,68 @@ type EntryRow = {
 function useTodayEntries(limit: number) {
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [disabled, setDisabled] = useState(false);
 
   useEffect(() => {
+    if (disabled) return;
+
     let alive = true;
+    let controller: AbortController | null = null;
 
     async function run() {
-      setLoading(true);
+      if (!alive || disabled) return;
+
       try {
-        const res = await fetch(`/api/entries/today?limit=${encodeURIComponent(String(limit))}`, {
-          cache: 'no-store',
-        });
+        controller?.abort();
+      } catch {}
+      controller = new AbortController();
+
+      setLoading(true);
+
+      try {
+        const res = await fetch(
+          `/api/public/entries/latest?limit=${encodeURIComponent(String(limit))}`,
+          { cache: 'no-store', signal: controller.signal },
+        );
+
+        // If route missing in this env, stop retry spam
+        if (res.status === 404) {
+          if (alive) {
+            setRows([]);
+            setDisabled(true);
+          }
+          return;
+        }
 
         if (!res.ok) {
-  if (alive) setRows([]);
-
-  // stop spamming if the endpoint doesn't exist in this env
-  if (res.status === 404) return;
-
-  return;
-}
+          if (alive) setRows([]);
+          return;
+        }
 
         const json: any = await res.json();
-        const candidates = (json?.entries || json?.rows || json?.data || []) as any[];
+        const candidates = (json?.entries || json?.rows || json?.data || json?.items || []) as any[];
 
         const mapped: EntryRow[] = Array.isArray(candidates)
           ? candidates
-              .map(r => ({
-                id: r?.id ?? undefined,
-                handle: String(r?.handle ?? '').trim(),
-                name: r?.name ?? null,
-                avatarUrl: r?.avatarUrl ?? null,
-                verified: !!r?.verified,
-                createdAt: r?.createdAt ?? null,
-              }))
+              .map(r => {
+                const handleRaw = String(r?.handle ?? r?.xHandle ?? r?.username ?? '').trim();
+                const handle = handleRaw.startsWith('@') ? handleRaw : handleRaw ? `@${handleRaw}` : '';
+
+                return {
+                  id: r?.id ?? undefined,
+                  createdAt: r?.createdAt ?? r?.created_at ?? null,
+                  handle,
+                  name: r?.name ?? r?.displayName ?? null,
+                  avatarUrl: r?.avatarUrl ?? r?.avatar ?? r?.image ?? null,
+                  verified: !!(r?.verified ?? r?.isVerified ?? false),
+                } as EntryRow;
+              })
               .filter(r => r.handle)
           : [];
 
         if (alive) setRows(mapped);
-      } catch {
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return;
         if (alive) setRows([]);
       } finally {
         if (alive) setLoading(false);
@@ -170,11 +194,15 @@ function useTodayEntries(limit: number) {
 
     run();
     const t = window.setInterval(run, 25_000);
+
     return () => {
       alive = false;
+      try {
+        controller?.abort();
+      } catch {}
       window.clearInterval(t);
     };
-  }, [limit]);
+  }, [limit, disabled]);
 
   return { rows, loading };
 }
