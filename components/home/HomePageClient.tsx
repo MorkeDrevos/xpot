@@ -286,9 +286,9 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
       className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl"
       style={{
         background:
-  'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.16), transparent 60%),' +
-  'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.12), transparent 62%),' +
-  'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.14), transparent 62%)',
+  'radial-gradient(circle at 22% 40%, rgba(16,185,129,0.14), transparent 60%),' +
+  'radial-gradient(circle at 78% 30%, rgba(var(--xpot-gold),0.18), transparent 62%),' +
+  'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06), transparent 62%)',
       }}
     />
     <span
