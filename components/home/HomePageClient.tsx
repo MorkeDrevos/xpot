@@ -255,12 +255,17 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            // Deep base (uniform, prevents “split” feeling)
-            'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.00), rgba(0,0,0,0.68) 72%),' +
-            // Gold anchor (primary, subtle but present)
-            'radial-gradient(circle at 22% 48%, rgba(var(--xpot-gold),0.18), transparent 58%),' +
-            // Cool protocol hint (very restrained)
-            'radial-gradient(circle at 68% 46%, rgba(56,189,248,0.06), transparent 60%)',
+  /* Base sink (neutral, kills brown completely) */
+  'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.00), rgba(0,0,0,0.72) 74%),' +
+
+  /* Gold anchor (clean, premium, no mud) */
+  'radial-gradient(circle at 22% 48%, rgba(var(--xpot-gold),0.18), transparent 56%),' +
+
+  /* Violet shadow depth (this replaces brown) */
+  'radial-gradient(circle at 70% 46%, rgba(139,92,246,0.16), transparent 62%),' +
+
+  /* Very subtle protocol cool (kept quiet) */
+  'radial-gradient(circle at 58% 60%, rgba(56,189,248,0.05), transparent 65%)',,
           opacity: 1,
         }}
       />
