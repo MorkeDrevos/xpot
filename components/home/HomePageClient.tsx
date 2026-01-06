@@ -32,7 +32,7 @@ import FinalDrawDate from '@/components/FinalDrawDate';
 
 import { RUN_DAYS, RUN_END_EU } from '@/lib/xpotRun';
 
-import NextDrawProvider, { useNextDraw } from './NextDrawProvider';
+import NextDrawProvider, { useNextDraw } from '@/components/home/NextDrawProvider';
 import { calcRunProgress, runTitle } from './madrid';
 import { useBonusActive } from './hooks/useBonusActive';
 import { useLatestWinner } from './hooks/useLatestWinner';
@@ -72,13 +72,6 @@ const XPOT_DEXSCREENER_URL =
 
 const XPOT_SOLSCAN_URL =
   process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
-
-const BTN_ROYAL_PRIMARY =
-  'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold ' +
-  'bg-gradient-to-br from-amber-200 via-white to-sky-200 text-slate-950 ' +
-  'shadow-[0_26px_90px_rgba(251,191,36,0.22),0_18px_55px_rgba(0,0,0,0.55)] ' +
-  'hover:brightness-[1.05] active:brightness-[0.98] transition ' +
-  'ring-1 ring-white/[0.14]';
 
 const BTN_ROYAL_SECONDARY =
   'inline-flex items-center justify-center rounded-full px-5 py-3 text-[13px] font-semibold ' +
@@ -157,6 +150,17 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   const out = Array.from(map.values());
   out.sort((a, b) => safeTimeMs(b.createdAt ?? null) - safeTimeMs(a.createdAt ?? null));
   return out;
+}
+
+// ✅ One avatar resolver for bubbles + list (fixes “empty avatar” list mode)
+function avatarUrlForRow(row: Pick<EntryRow, 'handle' | 'avatarUrl'>) {
+  const handle = normalizeHandle(row.handle);
+  const clean = handle.replace(/^@/, '');
+  const cache = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
+  return (
+    row.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cache}`
+  );
 }
 
 /**
@@ -421,10 +425,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
 function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
-
-  const img =
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+  const img = avatarUrlForRow(row);
 
   return (
     <a
@@ -491,8 +492,113 @@ function Stage({ latestWinner }: { latestWinner: any }) {
         </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {/* Entries */}
+          <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 lg:order-1">
+            <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+
+            <div className="relative flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-slate-400" />
+                    Entries
+                  </span>
+                </p>
+                <p className="mt-2 text-[12px] text-slate-400">
+                  {initialLoading ? 'Updating…' : `${uniqCount || 0} unique entrants`}
+                  {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
+                </p>
+              </div>
+
+              <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode('bubbles')}
+                  className={[
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                    mode === 'bubbles' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  ].join(' ')}
+                  title="Bubbles"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Bubbles
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode('list')}
+                  className={[
+                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                    mode === 'list' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  ].join(' ')}
+                  title="List"
+                >
+                  <ListIcon className="h-3.5 w-3.5" />
+                  List
+                </button>
+              </div>
+            </div>
+
+            <div className="relative mt-6">
+              {showEmpty ? (
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                  <p className="text-[12px] text-slate-400">Claim in the hub to appear here.</p>
+                  <Link
+                    href={ROUTE_HUB}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                  >
+                    Claim in hub
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              ) : mode === 'bubbles' ? (
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {cleanEntries.slice(0, 18).map((e, idx) => {
+                    const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
+                    return <AvatarBubble key={(e.id ?? e.handle).toString()} row={e} size={size} />;
+                  })}
+
+                  <div className="w-full pt-2 text-center text-[12px] text-slate-400">
+                    <span className="text-slate-200">{uniqCount}</span> today
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {cleanEntries.slice(0, 10).map(e => {
+                    const h = normalizeHandle(e.handle);
+                    const img = avatarUrlForRow(e);
+
+                    return (
+                      <a
+                        key={(e.id ?? h).toString()}
+                        href={`https://x.com/${encodeURIComponent(h.replace('@', ''))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
+                        title={h}
+                      >
+                        <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={img} alt={h} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                        </span>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-semibold text-slate-100">{e.name || h.slice(1)}</p>
+                          <p className="truncate text-[12px] text-slate-400">{h}</p>
+                        </div>
+
+                        <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
+                      </a>
+                    );
+                  })}
+                  <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Latest winner */}
-          <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+          <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 lg:order-2">
             <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_86%_26%,rgba(56,189,248,0.12),transparent_62%)]" />
 
             <div className="relative flex items-start justify-between gap-3">
@@ -587,113 +693,6 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 Open winners
                 <ArrowRight className="h-4 w-4" />
               </Link>
-            </div>
-          </div>
-
-          {/* Entries */}
-          <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-            <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
-
-            <div className="relative flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                  <span className="inline-flex items-center gap-2">
-                    <Users className="h-3.5 w-3.5 text-slate-400" />
-                    Entries
-                  </span>
-                </p>
-                <p className="mt-2 text-[12px] text-slate-400">
-                  {initialLoading ? 'Updating…' : `${uniqCount || 0} unique entrants`}
-                  {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
-                </p>
-              </div>
-
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
-                <button
-                  type="button"
-                  onClick={() => setMode('bubbles')}
-                  className={[
-                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
-                    mode === 'bubbles' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                  ].join(' ')}
-                  title="Bubbles"
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  Bubbles
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMode('list')}
-                  className={[
-                    'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
-                    mode === 'list' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                  ].join(' ')}
-                  title="List"
-                >
-                  <ListIcon className="h-3.5 w-3.5" />
-                  List
-                </button>
-              </div>
-            </div>
-
-            <div className="relative mt-6">
-              {showEmpty ? (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                  <p className="text-[12px] text-slate-400">Claim in the hub to appear here.</p>
-                  <Link
-                    href={ROUTE_HUB}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-                  >
-                    Claim in hub
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              ) : mode === 'bubbles' ? (
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  {cleanEntries.slice(0, 18).map((e, idx) => {
-                    const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
-                    return <AvatarBubble key={(e.id ?? e.handle).toString()} row={e} size={size} />;
-                  })}
-
-                  <div className="w-full pt-2 text-center text-[12px] text-slate-400">
-                    <span className="text-slate-200">{uniqCount}</span> today
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {cleanEntries.slice(0, 10).map(e => {
-                    const h = normalizeHandle(e.handle);
-                    return (
-                      <a
-                        key={(e.id ?? h).toString()}
-                        href={`https://x.com/${encodeURIComponent(h.replace('@', ''))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
-                        title={h}
-                      >
-                        <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
-                          {e.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={e.avatarUrl} alt={h} className="h-full w-full object-cover" />
-                          ) : (
-                            <span className="text-sm font-semibold text-slate-200">{h.slice(1, 2).toUpperCase()}</span>
-                          )}
-                        </span>
-
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-slate-100">{e.name || h.slice(1)}</p>
-                          <p className="truncate text-[12px] text-slate-400">{h}</p>
-                        </div>
-
-                        <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
-                      </a>
-                    );
-                  })}
-                  <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -845,9 +844,7 @@ function HomeInner() {
                         />
                         <div className="relative flex flex-wrap items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                              Next draw
-                            </p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Next draw</p>
 
                             <p className="mt-1 flex items-baseline gap-2 text-[12px] text-slate-400">
                               <span className="text-slate-500">In</span>
@@ -994,7 +991,6 @@ function HomeInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* ✅ FIXED: pass latestWinner */}
       <Stage latestWinner={latestWinner} />
 
       <section className="mt-7">
@@ -1054,7 +1050,9 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
             </div>
 
             <Link
