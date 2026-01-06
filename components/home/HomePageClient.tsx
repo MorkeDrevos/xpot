@@ -249,21 +249,19 @@ function RoyalContractBar({ mint }: { mint: string }) {
 function TradeOnJupiterCard({ mint }: { mint: string }) {
   return (
     <div className="relative overflow-hidden">
-      {/* Background lightshow */}
+      {/* FIXED: premium “vault glow” - no broken right-side panel */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-28 blur-3xl"
+        className="pointer-events-none absolute inset-0"
         style={{
-          opacity: 0.9,
           background:
-            // Left cool lift (sky)
-            'radial-gradient(circle at 14% 28%, rgba(56,189,248,0.14), transparent 60%),' +
-            // Right luxury depth (violet)
-            'radial-gradient(circle at 88% 30%, rgba(139,92,246,0.12), transparent 62%),' +
-            // Center gold anchor (subtle, not dominant)
-            'radial-gradient(circle at 48% 42%, rgba(var(--xpot-gold),0.10), transparent 65%),' +
-            // Bottom falloff (keeps edges dark)
-            'radial-gradient(circle at 50% 85%, rgba(0,0,0,0.55), transparent 70%)',
+            // Deep base (uniform, prevents “split” feeling)
+            'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.00), rgba(0,0,0,0.68) 72%),' +
+            // Gold anchor (primary, subtle but present)
+            'radial-gradient(circle at 22% 48%, rgba(var(--xpot-gold),0.18), transparent 58%),' +
+            // Cool protocol hint (very restrained)
+            'radial-gradient(circle at 68% 46%, rgba(56,189,248,0.06), transparent 60%)',
+          opacity: 1,
         }}
       />
 
@@ -274,7 +272,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             Primary venue is Jupiter. Always verify the mint and use official links.
           </p>
 
-          {/* ✅ FIXED: single wrapper (your build failed because it had an extra wrapper + missing closing tags) */}
+          {/* CTA block */}
           <div className="mt-3 grid gap-2 sm:flex sm:items-center">
             {/* PRIMARY */}
             <a
@@ -287,8 +285,9 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
                 group
                 relative
                 inline-flex items-center justify-center
+                rounded-full
                 w-full sm:w-auto
-                px-6 py-3
+                px-6 py-3.5
                 text-sm font-semibold
                 transition
                 hover:brightness-[1.03]
@@ -299,32 +298,27 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
               Trade on Jupiter
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 
-              {/* CTA lightshow (kept) */}
+              {/* Lightshow (kept but darker + contained) */}
               <span
                 aria-hidden
-                className="pointer-events-none absolute -inset-10 opacity-70 blur-2xl"
+                className="pointer-events-none absolute -inset-10 opacity-55 blur-2xl"
                 style={{
                   background:
-                    'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.16), transparent 60%),' +
-                    'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.12), transparent 62%),' +
-                    'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.14), transparent 62%)',
+                    'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.10), transparent 60%),' +
+                    'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.08), transparent 62%),' +
+                    'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.12), transparent 62%)',
                 }}
               />
             </a>
 
-            {/* SECONDARIES (mobile: 2 columns, desktop: inline) */}
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
+            {/* SECONDARIES */}
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <a
                 href={XPOT_DEXSCREENER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="View chart"
-                className="
-                  xpot-btn xpot-btn-utility
-                  w-full sm:w-auto
-                  px-5 py-3
-                  text-[13px]
-                "
+                className="xpot-btn xpot-btn-utility rounded-full w-full sm:w-auto px-4 py-3 text-[13px]"
               >
                 <TrendingUp className="h-4 w-4" />
                 Chart
@@ -336,12 +330,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 title="View on Solscan"
-                className="
-                  xpot-btn xpot-btn-utility
-                  w-full sm:w-auto
-                  px-5 py-3
-                  text-[13px]
-                "
+                className="xpot-btn xpot-btn-utility rounded-full w-full sm:w-auto px-4 py-3 text-[13px]"
               >
                 <ShieldCheck className="h-4 w-4" />
                 Explorer
@@ -350,9 +339,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             </div>
           </div>
 
-          <p className="mt-4 font-mono text-[11px] text-slate-500/90">
-            mint: <span className="text-slate-400">{shortenAddress(mint, 8, 8)}</span>
-          </p>
+          <p className="mt-3 font-mono text-[11px] text-slate-500">mint: {shortenAddress(mint, 8, 8)}</p>
         </div>
       </div>
     </div>
@@ -590,36 +577,36 @@ function HomeInner() {
                       {/* CTAs */}
                       <div className="mt-6 flex flex-wrap items-center gap-3">
                         <Link
-                          href={ROUTE_HUB}
-                          title="Enter the hub"
-                          className="
-                            xpot-btn-vault
-                            group
-                            relative
-                            inline-flex items-center justify-center
-                            w-full sm:w-auto
-                            rounded-full
-                            px-6 py-3.5
-                            text-sm font-semibold
-                            transition
-                            hover:brightness-[1.03]
-                            active:brightness-[0.99]
-                            active:scale-[0.99]
-                          "
-                        >
-                          Enter the hub
-                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+  href={ROUTE_HUB}
+  title="Enter the hub"
+  className="
+    xpot-btn-vault
+    group
+    relative
+    inline-flex items-center justify-center
+    w-full sm:w-auto
+    rounded-full
+    px-6 py-3.5
+    text-sm font-semibold
+    transition
+    hover:brightness-[1.03]
+    active:brightness-[0.99]
+    active:scale-[0.99]
+  "
+>
+  Enter the hub
+  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
-                            style={{
-                              background:
-                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
-                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
-                            }}
-                          />
-                        </Link>
+  <span
+    aria-hidden
+    className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
+    style={{
+      background:
+        'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
+        'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
+    }}
+  />
+</Link>
 
                         <a
                           href={XPOT_JUP_SWAP_URL}
@@ -991,27 +978,29 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
             </div>
 
             <Link
-              href={ROUTE_HUB}
-              title="Claim your entry"
-              className="
-                xpot-btn-vault
-                group
-                w-full sm:w-auto
-                px-6 py-3
-                text-sm font-semibold
-                rounded-full
-                inline-flex items-center justify-center
-                transition
-                active:scale-[0.99]
-              "
-            >
-              Claim your entry
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+  href={ROUTE_HUB}
+  title="Claim your entry"
+  className="
+    xpot-btn-vault
+    group
+    w-full sm:w-auto
+    px-6 py-3
+    text-sm font-semibold
+    rounded-full
+    inline-flex items-center justify-center
+    transition
+    active:scale-[0.99]
+  "
+>
+  Claim your entry
+  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+</Link>
           </div>
         </PremiumCard>
       </section>
