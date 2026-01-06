@@ -59,10 +59,16 @@ function avatarUrlFor(handle: string, avatarUrl?: string | null) {
   const clean = handle.replace(/^@/, '');
   // cache-buster changes only every 6h, so it won't cause render jitter
   const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
-  return (
-    avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${bucket}`
-  );
+  return avatarUrl ?? `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${bucket}`;
+}
+
+function initialsFor(e: EntryRow) {
+  const src = (e.name && String(e.name).trim()) || e.handle.replace(/^@/, '');
+  const parts = src.split(/\s+/).filter(Boolean);
+  const a = (parts[0]?.[0] ?? '').toUpperCase();
+  const b = (parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1]) ?? '';
+  const out = `${a}${String(b).toUpperCase()}`.trim();
+  return out || '?';
 }
 
 function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
@@ -95,33 +101,73 @@ function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
           alt={e.handle}
           className="h-full w-full object-cover"
           referrerPolicy="no-referrer"
+          loading="lazy"
+          decoding="async"
         />
       </span>
     </a>
   );
 }
 
+function ListAvatar({ e }: { e: EntryRow }) {
+  const img = avatarUrlFor(e.handle, e.avatarUrl);
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <span
+        className="
+          inline-flex h-9 w-9 items-center justify-center
+          rounded-full border border-white/10 bg-white/[0.03]
+          text-[12px] font-semibold text-slate-200
+        "
+        aria-label={`${e.handle} avatar`}
+      >
+        {initialsFor(e)}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="
+        inline-flex h-9 w-9 items-center justify-center overflow-hidden
+        rounded-full border border-white/10 bg-white/[0.03]
+      "
+      aria-label={`${e.handle} avatar`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={img}
+        alt={e.handle}
+        className="h-full w-full object-cover"
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </span>
+  );
+}
+
 function EntryRowLine({ e }: { e: EntryRow }) {
   const clean = e.handle.replace(/^@/, '');
-  const img = avatarUrlFor(e.handle, e.avatarUrl);
 
   return (
     <a
       href={`https://x.com/${encodeURIComponent(clean)}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
+      className="
+        group flex items-center gap-3
+        rounded-2xl border border-white/10 bg-white/[0.02]
+        px-4 py-3
+        hover:bg-white/[0.035]
+        transition
+      "
       title={e.handle}
     >
-      <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={img}
-          alt={e.handle}
-          className="h-full w-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-      </span>
+      <ListAvatar e={e} />
 
       <div className="min-w-0">
         <div className="truncate text-[13px] font-semibold text-slate-100">
@@ -182,7 +228,7 @@ export default function LiveActivityModule() {
         }
 
         if (!res.ok) {
-          // DO NOT clear rows here (this is what caused the flashing)
+          // DO NOT clear rows here (prevents flashing)
           return;
         }
 
@@ -310,7 +356,7 @@ export default function LiveActivityModule() {
         </div>
       ) : (
         <div className="space-y-2">
-          {rows.slice(0, 10).map((e) => (
+          {rows.slice(0, 10).map(e => (
             <EntryRowLine key={(e.id ?? e.handle).toString()} e={e} />
           ))}
           <div className="pt-1 text-[12px] text-slate-500">
