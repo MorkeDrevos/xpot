@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Crown, Info, Sparkles, TrendingUp, ChevronDown } from 'lucide-react';
+import { Crown, Info, Sparkles, TrendingUp, ChevronDown, ArrowRight, ExternalLink } from 'lucide-react';
 
 import XpotLogo from '@/components/XpotLogo';
 import { TOKEN_MINT, XPOT_POOL_SIZE } from '@/lib/xpot';
@@ -31,6 +31,10 @@ export type JackpotPanelProps = {
 
 const JACKPOT_XPOT = XPOT_POOL_SIZE;
 const PRICE_POLL_MS = 4000; // 4s
+
+const ROUTE_HUB = '/hub';
+const SOL_MINT = 'So11111111111111111111111111111111111111112';
+const JUP_SWAP_URL = `https://jup.ag/?sell=${SOL_MINT}&buy=${encodeURIComponent(TOKEN_MINT)}`;
 
 const MILESTONES = [
   5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
@@ -144,11 +148,8 @@ export default function JackpotPanel({
 
     let raf = 0;
 
-    // NOTE:
-    // "wide" is only used for subtle styling toggles, but we still compute it.
-    // These thresholds are tuned so mid-size desktop/laptop screens flip "wide" sooner.
-    const WIDE_ON = 820; // was 900
-    const WIDE_OFF = 760; // was 840
+    const WIDE_ON = 820;
+    const WIDE_OFF = 760;
 
     const applyWidth = (w: number) => {
       const curr = autoWideRef.current;
@@ -221,35 +222,35 @@ export default function JackpotPanel({
 
   const rightMilestoneLabel = nextMilestone ? formatUsd(nextMilestone) : '-';
 
-  // Wider feel on smaller laptops:
-  // When this panel lives in the right column on the homepage, the parent grid can feel tight.
-  // We "spill" a little into the gap on md/lg (WITHOUT breaking mobile).
   const heroSpill =
     isHero && variant !== 'embedded'
-      ? [
-          // slightly wider on medium/desktop
-          'md:-mr-2 md:pr-2',
-          'lg:-mr-4 lg:pr-4',
-          'xl:-mr-6 xl:pr-6',
-          '2xl:-mr-8 2xl:pr-8',
-        ].join(' ')
+      ? ['md:-mr-2 md:pr-2', 'lg:-mr-4 lg:pr-4', 'xl:-mr-6 xl:pr-6', '2xl:-mr-8 2xl:pr-8'].join(' ')
       : '';
 
-  // Borders toned down (less “white frame”)
   const panelChrome =
     variant === 'embedded'
       ? 'w-full max-w-none rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
       : 'w-full max-w-none rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
-  // ✅ Mobile: make the top capsule row full-width and centered (matches your screenshot request)
-  // - Capsule becomes wide (up to ~92vw) and perfectly centered
-  // - Desktop keeps the original "inline" feel
+  // CTA styling (always visible, never "invisible")
+  const CTA_PRIMARY =
+    'relative inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-[13px] font-semibold ' +
+    'bg-amber-200 text-slate-950 ' +
+    'bg-[linear-gradient(135deg,rgba(234,179,8,0.98),rgba(255,255,255,0.90),rgba(56,189,248,0.18))] ' +
+    'ring-1 ring-white/10 shadow-[0_22px_70px_rgba(234,179,8,0.18),0_18px_55px_rgba(0,0,0,0.55)] ' +
+    'hover:brightness-[1.05] active:brightness-[0.98] transition';
+
+  const CTA_SECONDARY =
+    'inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] ' +
+    'px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition ' +
+    'shadow-[0_12px_40px_rgba(0,0,0,0.35)]';
+
+  // capsule
   const capsuleWrap = 'group relative inline-flex w-full max-w-full items-center sm:w-auto';
 
   const capsuleInner = [
     'relative grid w-full max-w-full grid-cols-1 gap-2 rounded-2xl',
     'sm:grid sm:w-auto sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-3',
-    // mobile width target: wide and centered, not edge-to-edge
     'mx-auto max-w-[92vw] sm:mx-0 sm:max-w-none',
     isHero ? 'bg-black/65 px-4 py-3 sm:px-6 sm:py-4' : 'bg-black/55 px-3 py-2.5 sm:px-4 sm:py-3',
     'shadow-[0_0_0_1px_rgba(15,23,42,0.85),0_28px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl',
@@ -270,7 +271,6 @@ export default function JackpotPanel({
     isHero ? 'text-[1.05rem] sm:text-[1.15rem]' : 'text-[1.0rem] sm:text-[1.05rem]',
   ].join(' ');
 
-  // Click-only details (no hover)
   const [manualOpen, setManualOpen] = useState(false);
   const isOpen = manualOpen;
 
@@ -283,31 +283,15 @@ export default function JackpotPanel({
           55% { opacity: 0.18; }
           100% { transform: translateX(130%) skewX(-12deg); opacity: 0.0; }
         }
-
-        @keyframes xpotFloat {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-2px); }
-          100% { transform: translateY(0px); }
-        }
-
-        @keyframes xpotBreathe {
-          0% { opacity: 0.18; transform: scale(1); }
-          50% { opacity: 0.44; transform: scale(1.01); }
-          100% { opacity: 0.18; transform: scale(1); }
-        }
-
-        @keyframes xpotGridDrift {
-          0% { transform: translateX(-6%) translateY(0%); opacity: 0.12; }
-          50% { transform: translateX(6%) translateY(-2%); opacity: 0.22; }
-          100% { transform: translateX(-6%) translateY(0%); opacity: 0.12; }
-        }
+        @keyframes xpotFloat { 0% { transform: translateY(0px); } 50% { transform: translateY(-2px); } 100% { transform: translateY(0px); } }
+        @keyframes xpotBreathe { 0% { opacity: 0.18; transform: scale(1); } 50% { opacity: 0.44; transform: scale(1.01); } 100% { opacity: 0.18; transform: scale(1); } }
+        @keyframes xpotGridDrift { 0% { transform: translateX(-6%) translateY(0%); opacity: 0.12; } 50% { transform: translateX(6%) translateY(-2%); opacity: 0.22; } 100% { transform: translateX(-6%) translateY(0%); opacity: 0.12; } }
 
         .xpot-live-sweep { animation: xpotSweep 3.2s ease-in-out infinite; }
         .xpot-usd-float { animation: xpotFloat 4.6s ease-in-out infinite; will-change: transform; }
         .xpot-ambient-breathe { animation: xpotBreathe 5.4s ease-in-out infinite; }
         .xpot-grid-drift { animation: xpotGridDrift 9.2s ease-in-out infinite; }
 
-        /* Smooth open/close for details body */
         .xpot-details-body {
           overflow: hidden;
           max-height: 0px;
@@ -347,17 +331,9 @@ export default function JackpotPanel({
           }
         }
 
-        /* USD box becomes a container so the $ number sizes to the box width */
         .xpot-usd-box { container-type: inline-size; }
+        .xpot-usd-amount { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: clip; }
 
-        .xpot-usd-amount {
-          white-space: nowrap;
-          max-width: 100%;
-          overflow: hidden;
-          text-overflow: clip;
-        }
-
-        /* Container query sizing (best) */
         .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
           font-size: clamp(4.4rem, 26cqw, 12.8rem);
           line-height: 0.80;
@@ -370,16 +346,8 @@ export default function JackpotPanel({
         }
 
         @supports not (font-size: 1cqw) {
-          .xpot-usd-box[data-hero="1"] .xpot-usd-amount {
-            font-size: clamp(4.4rem, 9.6vw, 12.8rem);
-            line-height: 0.80;
-            letter-spacing: -0.045em;
-          }
-          .xpot-usd-box[data-hero="0"] .xpot-usd-amount {
-            font-size: clamp(3.4rem, 7.8vw, 9.2rem);
-            line-height: 0.84;
-            letter-spacing: -0.04em;
-          }
+          .xpot-usd-box[data-hero="1"] .xpot-usd-amount { font-size: clamp(4.4rem, 9.6vw, 12.8rem); line-height: 0.80; letter-spacing: -0.045em; }
+          .xpot-usd-box[data-hero="0"] .xpot-usd-amount { font-size: clamp(3.4rem, 7.8vw, 9.2rem); line-height: 0.84; letter-spacing: -0.04em; }
         }
       `}</style>
 
@@ -411,7 +379,6 @@ export default function JackpotPanel({
           className={[
             'relative z-10 overflow-visible rounded-3xl bg-black/10 ring-1 ring-white/5',
             isHero ? 'mt-3 px-4 py-4 sm:mt-4 sm:p-6' : 'mt-4 px-4 py-4 sm:p-5',
-            // when "wide" / "autoWide" we just ensure no accidental max widths ever apply
             'w-full max-w-none',
             layout === 'wide' ? 'w-full' : '',
             layout === 'auto' && autoWide ? 'w-full' : '',
@@ -427,6 +394,7 @@ export default function JackpotPanel({
               filter: 'blur(10px)',
             }}
           />
+
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-3xl"
@@ -449,27 +417,10 @@ export default function JackpotPanel({
             }}
           />
 
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-3xl opacity-60"
-            style={{
-              background: 'linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.03) 22%, transparent 45%)',
-              transform: 'translateX(-12%)',
-              maskImage: 'radial-gradient(circle at 50% 30%, black 45%, transparent 70%)',
-              WebkitMaskImage: 'radial-gradient(circle at 50% 30%, black 45%, transparent 70%)',
-            }}
-          />
-
-          {/* ✅ MOBILE: stack, center and widen the capsule */}
           <div className="relative flex flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex w-full justify-center sm:w-auto sm:justify-start">
               <div className={capsuleWrap}>
                 <div className={capsuleInner}>
-                  <div className="pointer-events-none absolute inset-0 rounded-2xl xpot-capsule-border" />
-                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-70 xpot-capsule-glow" />
-                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-65 xpot-sheen" />
-                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-60 xpot-capsule-shimmer" />
-
                   <span className={capsuleTag}>
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
                     Today&apos;s XPOT
@@ -512,76 +463,10 @@ export default function JackpotPanel({
                   'radial-gradient(circle_at_20%_25%, rgba(56,189,248,0.11), transparent 55%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.08), transparent 60%), linear-gradient(180deg, rgba(2,6,23,0.34), rgba(0,0,0,0.06))',
               }}
             >
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -inset-10 rounded-[28px] xpot-ambient-breathe"
-                style={{
-                  background:
-                    'radial-gradient(circle at 18% 35%, rgba(124,200,255,0.14), transparent 58%), radial-gradient(circle at 82% 18%, rgba(236,72,153,0.10), transparent 62%)',
-                  filter: 'blur(22px)',
-                }}
-              />
-
-              <div aria-hidden className="pointer-events-none absolute inset-0 opacity-60">
-                <div
-                  className="absolute inset-0 xpot-grid-drift"
-                  style={{
-                    backgroundImage:
-                      'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
-                    backgroundSize: '48px 48px',
-                    maskImage:
-                      'radial-gradient(circle at 40% 35%, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.35) 40%, transparent 72%)',
-                    WebkitMaskImage:
-                      'radial-gradient(circle at 40% 35%, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.35) 40%, transparent 72%)',
-                  }}
-                />
-              </div>
-
-              <div
-                aria-hidden
-                className={[
-                  'pointer-events-none absolute -inset-2 rounded-3xl opacity-0 transition-opacity duration-300',
-                  justUpdated ? 'opacity-100' : '',
-                ].join(' ')}
-                style={{
-                  background:
-                    'radial-gradient(circle at 30% 30%, rgba(124,200,255,0.18), transparent 55%), radial-gradient(circle at 80% 20%, rgba(236,72,153,0.11), transparent 60%)',
-                  filter: 'blur(10px)',
-                }}
-              />
-
-              <div aria-hidden className="pointer-events-none absolute inset-0">
-                <div
-                  className={[
-                    'absolute -left-1/2 top-0 h-full w-1/2 opacity-[0.18]',
-                    justUpdated ? 'opacity-[0.32]' : '',
-                    'xpot-live-sweep',
-                  ].join(' ')}
-                  style={{
-                    background:
-                      'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 40%, rgba(124,200,255,0.14) 55%, transparent 100%)',
-                    filter: 'blur(0.3px)',
-                  }}
-                />
-              </div>
-
-              {/* ✅ INNER PADDING WRAPPER */}
               <div className="relative z-10 px-4 py-4 sm:px-5 sm:py-5">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between">
                   <div className="min-w-0 overflow-hidden">
                     <div className="relative pt-3 pb-2 sm:pt-4 sm:pb-3">
-                      <div
-                        aria-hidden
-                        className={[
-                          'pointer-events-none absolute inset-0 translate-y-[2px] blur-[12px] opacity-60',
-                          justUpdated ? 'opacity-100' : '',
-                        ].join(' ')}
-                        style={{
-                          background:
-                            'radial-gradient(circle at 30% 40%, rgba(124,200,255,0.28), transparent 60%), radial-gradient(circle at 80% 25%, rgba(236,72,153,0.18), transparent 62%)',
-                        }}
-                      />
-
                       <div
                         className={[
                           'xpot-usd-amount xpot-usd-live xpot-usd-float font-semibold tabular-nums',
@@ -645,10 +530,24 @@ export default function JackpotPanel({
                   <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
                 )}
 
-                {/* Latest winner (DISABLED until admin is fixed) */}
-                {/*
-                  Winner strip intentionally disabled.
-                */}
+                {/* ✅ ALWAYS-VISIBLE ACTIONS */}
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <Link href={ROUTE_HUB} className={CTA_PRIMARY} title="Enter today’s XPOT draw">
+                    Enter today&apos;s XPOT
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+
+                  <a
+                    href={JUP_SWAP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={CTA_SECONDARY}
+                    title="Buy XPOT on Jupiter"
+                  >
+                    Buy XPOT
+                    <ExternalLink className="h-4 w-4 text-slate-500" />
+                  </a>
+                </div>
               </div>
             </div>
 
