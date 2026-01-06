@@ -121,6 +121,23 @@ type EntryRow = {
   createdAt?: string | null;
 };
 
+function dedupeByHandleKeepLatest(rows: EntryRow[]) {
+  const map = new Map<string, EntryRow>();
+
+  for (const r of rows || []) {
+    const h = String(r?.handle || '').trim().toLowerCase();
+    if (!h) continue;
+
+    const cur = map.get(h);
+    const rt = r?.createdAt ? Date.parse(r.createdAt) : 0;
+    const ct = cur?.createdAt ? Date.parse(cur.createdAt) : -1;
+
+    if (!cur || rt >= ct) map.set(h, r);
+  }
+
+  return Array.from(map.values());
+}
+
 function useTodayEntries(limit: number) {
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -144,9 +161,9 @@ function useTodayEntries(limit: number) {
 
       try {
         const res = await fetch(
-  `/api/entries/today?limit=${encodeURIComponent(String(limit))}`,
-  { cache: 'no-store', signal: controller.signal },
-);
+          `/api/public/entries/latest?limit=${encodeURIComponent(String(limit))}`,
+          { cache: 'no-store', signal: controller.signal },
+        );
 
         // If route missing in this env, stop retry spam
         if (res.status === 404) {
@@ -163,20 +180,24 @@ function useTodayEntries(limit: number) {
         }
 
         const json: any = await res.json();
-
-        // Route returns { ok: true, entries: [...] }
         const candidates = (json?.entries || []) as any[];
 
         const mapped: EntryRow[] = Array.isArray(candidates)
           ? candidates
-              .map(r => ({
-                id: r?.id ?? undefined,
-                handle: String(r?.handle ?? '').trim(),
-                name: r?.name ?? null,
-                avatarUrl: r?.avatarUrl ?? null,
-                verified: !!r?.verified,
-                createdAt: r?.createdAt ?? null,
-              }))
+              .map(r => {
+                const handleRaw = String(r?.handle ?? '').trim();
+                const handle =
+                  handleRaw.startsWith('@') ? handleRaw : handleRaw ? `@${handleRaw.replace(/^@/, '')}` : '';
+
+                return {
+                  id: r?.id ?? undefined,
+                  createdAt: r?.createdAt ?? null,
+                  handle,
+                  name: r?.name ?? null,
+                  avatarUrl: r?.avatarUrl ?? null,
+                  verified: !!r?.verified,
+                } as EntryRow;
+              })
               .filter(r => r.handle)
           : [];
 
@@ -369,7 +390,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
   );
 }
 
-function AvatarBubble({ row }: { row: EntryRow }) {
+function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
   const handle = row.handle.startsWith('@') ? row.handle : `@${row.handle}`;
   const clean = handle.replace('@', '');
 
@@ -387,7 +408,10 @@ function AvatarBubble({ row }: { row: EntryRow }) {
     >
       <span className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100 bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_60%_55%,rgba(var(--xpot-gold),0.18),transparent_60%)]" />
 
-      <span className="relative inline-flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
+      <span
+        className="relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+        style={{ width: size, height: size }}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={img} alt={handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
       </span>
@@ -685,15 +709,18 @@ function HomeInner() {
     </section>
   );
 
+  // XPOT stage (latest winner + entries)
   const Stage = () => {
     const { rows: entries, loading } = useTodayEntries(24);
     const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
+    const cleanEntries = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
+
     const uniqCount = useMemo(() => {
-      const s = new Set(entries.map(e => (e.handle || '').toLowerCase()));
+      const s = new Set(cleanEntries.map(e => (e.handle || '').toLowerCase()));
       s.delete('');
       return s.size;
-    }, [entries]);
+    }, [cleanEntries]);
 
     const winnerHandle = (latestWinner as any)?.handle ?? null;
     const winnerName = (latestWinner as any)?.name ?? null;
@@ -701,16 +728,6 @@ function HomeInner() {
     const winnerAmount = (latestWinner as any)?.amountXpot ?? null;
     const winnerTxUrl = (latestWinner as any)?.txUrl ?? null;
     const winnerDate = formatDateShort((latestWinner as any)?.drawDate ?? null);
-
-    const dedupedEntries = useMemo(() => {
-      const map = new Map<string, EntryRow>();
-      for (const e of entries) {
-        const k = (e.handle || '').toLowerCase();
-        if (!k) continue;
-        if (!map.has(k)) map.set(k, e);
-      }
-      return Array.from(map.values());
-    }, [entries]);
 
     return (
       <section className="mt-7">
@@ -732,6 +749,7 @@ function HomeInner() {
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {/* Latest winner */}
             <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_86%_26%,rgba(56,189,248,0.12),transparent_62%)]" />
 
@@ -830,6 +848,7 @@ function HomeInner() {
               </div>
             </div>
 
+            {/* Entries */}
             <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
@@ -876,7 +895,7 @@ function HomeInner() {
               </div>
 
               <div className="relative mt-6">
-                {dedupedEntries.length === 0 ? (
+                {cleanEntries.length === 0 ? (
                   <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
                     <p className="text-[12px] text-slate-400">Claim in the hub to appear here.</p>
                     <Link
@@ -888,17 +907,19 @@ function HomeInner() {
                     </Link>
                   </div>
                 ) : mode === 'bubbles' ? (
-                  <div className="flex flex-wrap items-center gap-3">
-                    {dedupedEntries.slice(0, 12).map(e => (
-                      <AvatarBubble key={e.handle.toLowerCase()} row={e} />
-                    ))}
-                    <div className="ml-auto text-[12px] text-slate-400">
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    {cleanEntries.slice(0, 18).map((e, idx) => {
+                      const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
+                      return <AvatarBubble key={e.handle.toLowerCase()} row={e} size={size} />;
+                    })}
+
+                    <div className="w-full pt-2 text-center text-[12px] text-slate-400">
                       <span className="text-slate-200">{uniqCount}</span> today
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {dedupedEntries.slice(0, 10).map(e => {
+                    {cleanEntries.slice(0, 10).map((e, idx) => {
                       const h = e.handle.startsWith('@') ? e.handle : `@${e.handle}`;
                       return (
                         <a
