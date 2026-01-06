@@ -144,9 +144,9 @@ function useTodayEntries(limit: number) {
 
       try {
         const res = await fetch(
-          `/api/public/entries/latest?limit=${encodeURIComponent(String(limit))}`,
-          { cache: 'no-store', signal: controller.signal },
-        );
+  `/api/entries/today?limit=${encodeURIComponent(String(limit))}`,
+  { cache: 'no-store', signal: controller.signal },
+);
 
         // If route missing in this env, stop retry spam
         if (res.status === 404) {
