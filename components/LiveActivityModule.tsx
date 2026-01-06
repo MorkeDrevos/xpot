@@ -110,7 +110,15 @@ function AvatarTile({
   );
 }
 
-function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
+function AvatarBubble({
+  e,
+  size,
+  isWinner,
+}: {
+  e: EntryRow;
+  size: number;
+  isWinner?: boolean;
+}) {
   const handle = normalizeHandle(e.handle);
   const clean = handle.replace(/^@/, '');
   const img = avatarUrlFor(handle, e.avatarUrl);
@@ -129,24 +137,40 @@ function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
           pointer-events-none
           absolute bottom-full left-1/2 z-20
           hidden -translate-x-1/2 pb-3
-          group-hover:block
           lg:block
+          opacity-0 translate-y-1
+          transition duration-150 ease-out
+          delay-150
+          group-hover:opacity-100 group-hover:translate-y-0
         "
       >
         <div
           className="
-            w-44
+            relative
+            w-48
             rounded-2xl
             border border-white/10
             bg-slate-950/95
             px-3 py-2.5
             shadow-[0_20px_60px_rgba(0,0,0,0.6)]
             backdrop-blur
-            animate-fade-in
           "
         >
+          {/* Soft caret */}
+          <div
+            aria-hidden
+            className="
+              absolute left-1/2 top-full
+              -translate-x-1/2
+              h-3 w-3 rotate-45
+              border border-white/10
+              bg-slate-950/95
+              shadow-[0_12px_30px_rgba(0,0,0,0.45)]
+            "
+          />
+
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
+            <span className="relative inline-flex h-9 w-9 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img}
@@ -154,12 +178,52 @@ function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />
+
+              {/* Verified badge (small overlay) */}
+              {e.verified ? (
+                <span
+                  className="
+                    absolute -bottom-1 -right-1
+                    inline-flex h-5 w-5 items-center justify-center
+                    rounded-full
+                    border border-white/10
+                    bg-sky-500/20
+                    ring-1 ring-sky-400/20
+                    backdrop-blur
+                  "
+                  title="Verified"
+                >
+                  <span className="text-[11px] leading-none text-sky-200">✓</span>
+                </span>
+              ) : null}
             </span>
 
             <div className="min-w-0">
-              <div className="truncate text-[12px] font-semibold text-slate-100">
-                {e.name || handle.slice(1)}
+              <div className="flex items-center gap-2">
+                <div className="truncate text-[12px] font-semibold text-slate-100">
+                  {e.name || handle.slice(1)}
+                </div>
+
+                {/* XPOT badge for winners */}
+                {isWinner ? (
+                  <span
+                    className="
+                      inline-flex items-center gap-1
+                      rounded-full
+                      border border-amber-300/20
+                      bg-amber-500/10
+                      px-2 py-0.5
+                      text-[10px] font-semibold
+                      text-amber-200
+                      shadow-[0_0_0_1px_rgba(251,191,36,0.10)]
+                    "
+                    title="Winner"
+                  >
+                    XPOT
+                  </span>
+                ) : null}
               </div>
+
               <div className="truncate text-[11px] text-slate-400">{handle}</div>
             </div>
           </div>
