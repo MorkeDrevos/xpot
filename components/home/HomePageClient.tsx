@@ -163,6 +163,49 @@ function useTodayEntries(limit: number) {
         }
 
         const json: any = await res.json();
+
+        // ✅ your route returns { ok: true, entries: [...] }
+        const candidates = (json?.entries || []) as any[];
+
+        const mapped: EntryRow[] = Array.isArray(candidates)
+          ? candidates
+              .map(r => ({
+                id: r?.id ?? undefined,
+                handle: String(r?.handle ?? '').trim(),
+                name: r?.name ?? null,
+                avatarUrl: r?.avatarUrl ?? null,
+                verified: !!r?.verified,
+                createdAt: r?.createdAt ?? null,
+              }))
+              .filter(r => r.handle)
+          : [];
+
+        if (alive) setRows(mapped);
+      } catch (e: any) {
+        // Abort is expected when we refresh - don’t nuke state
+        if (e?.name === 'AbortError') return;
+        if (alive) setRows([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    run();
+    const t = window.setInterval(run, 25_000);
+
+    return () => {
+      alive = false;
+      try {
+        controller?.abort();
+      } catch {}
+      window.clearInterval(t);
+    };
+  }, [limit, disabled]);
+
+  return { rows, loading, disabled };
+}
+
+        const json: any = await res.json();
         const candidates = (json?.entries || json?.rows || json?.data || json?.items || []) as any[];
 
         const mapped: EntryRow[] = Array.isArray(candidates)
