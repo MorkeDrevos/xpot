@@ -1,45 +1,154 @@
-// components/LiveActivityModule.tsx
+// components/home/HomePageClient.tsx
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
+import {
+  ArrowRight,
+  Blocks,
+  CheckCircle2,
+  Crown,
+  ExternalLink,
+  Globe,
+  Radio,
+  ShieldCheck,
+  Sparkles,
+  Timer,
+  TrendingUp,
+  Users,
+  Wand2,
+  Zap,
+  Trophy,
+  LayoutGrid,
+  List as ListIcon,
+} from 'lucide-react';
 
-type Entry = {
+import JackpotPanel from '@/components/JackpotPanel';
+import BonusStrip from '@/components/BonusStrip';
+import XpotPageShell from '@/components/XpotPageShell';
+import XpotFooter from '@/components/XpotFooter';
+import FinalDrawDate from '@/components/FinalDrawDate';
+
+import { RUN_DAYS, RUN_END_EU } from '@/lib/xpotRun';
+
+import NextDrawProvider, { useNextDraw } from './NextDrawProvider';
+import { calcRunProgress, runTitle } from './madrid';
+import { useBonusActive } from './hooks/useBonusActive';
+import { useLatestWinner } from './hooks/useLatestWinner';
+
+import MissionBanner from './hero/MissionBanner';
+import CosmicHeroBackdrop from './hero/CosmicHeroBackdrop';
+import BonusVault from './hero/BonusVault';
+import LiveControlRoom from './hero/LiveControlRoom';
+
+import {
+  Accordion,
+  GOLD_BG_WASH,
+  GOLD_BORDER_SOFT,
+  GOLD_TEXT,
+  GOLD_TEXT_DIM,
+  MiniStat,
+  Pill,
+  PremiumCard,
+  shortenAddress,
+} from './ui';
+
+const ROUTE_HUB = '/hub';
+const ROUTE_WINNERS = '/winners';
+const ROUTE_TOKENOMICS_RESERVE = '/tokenomics?tab=rewards&focus=reserve';
+
+const XPOT_CA =
+  process.env.NEXT_PUBLIC_XPOT_MINT ||
+  process.env.NEXT_PUBLIC_XPOT_CA ||
+  'FYeJCZvfzwUcFLq7mr82zJFu8qvoJ3kQB3W1kd1Ejko1';
+
+const XPOT_JUP_SWAP_URL =
+  process.env.NEXT_PUBLIC_XPOT_JUP_SWAP_URL ||
+  `https://jup.ag/?sell=So11111111111111111111111111111111111111112&buy=${XPOT_CA}`;
+
+const XPOT_DEXSCREENER_URL =
+  process.env.NEXT_PUBLIC_XPOT_DEXSCREENER_URL || `https://dexscreener.com/solana/${XPOT_CA}`;
+
+const XPOT_SOLSCAN_URL =
+  process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
+
+// Royal = ceremonial gold + onyx + precision highlights (premium, not cheesy)
+const BTN_ROYAL_PRIMARY =
+  'relative inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold ' +
+  'bg-gradient-to-br from-amber-200 via-white to-sky-200 text-slate-950 ' +
+  'shadow-[0_26px_90px_rgba(251,191,36,0.22),0_18px_55px_rgba(0,0,0,0.55)] ' +
+  'hover:brightness-[1.05] active:brightness-[0.98] transition ' +
+  'ring-1 ring-white/[0.14]';
+
+const BTN_ROYAL_SECONDARY =
+  'inline-flex items-center justify-center rounded-full px-5 py-3 text-[13px] font-semibold ' +
+  'border border-white/12 bg-slate-950/40 text-slate-100 hover:bg-slate-950/55 transition ' +
+  'shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur';
+
+function setMeta(name: string, content: string) {
+  if (typeof document === 'undefined') return;
+  let tag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute('name', name);
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute('content', content);
+}
+
+function formatDateShort(iso?: string | null) {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(t));
+  } catch {
+    return null;
+  }
+}
+
+type EntryRow = {
   id?: string;
   handle: string;
   name?: string | null;
   avatarUrl?: string | null;
+  verified?: boolean;
   createdAt?: string | null;
-  verified?: boolean | null;
 };
 
-const ENDPOINT = '/api/public/entries/latest?limit=24';
-
-function normalizeHandle(h: unknown) {
+/** ✅ enforce @ + trim */
+function normalizeHandle(h: any) {
   const s = String(h ?? '').trim();
   if (!s) return '';
-  return s.startsWith('@') ? s : `@${s}`;
+  return s.startsWith('@') ? s : `@${s.replace(/^@/, '')}`;
 }
 
+/** ✅ safe date parse */
 function safeTimeMs(iso?: string | null) {
   const t = iso ? Date.parse(iso) : NaN;
   return Number.isFinite(t) ? t : 0;
 }
 
-function dedupeByHandleKeepLatest(rows: Entry[]) {
-  const map = new Map<string, Entry>();
+/** ✅ dedupe by normalized @handle, keep latest by createdAt, return sorted newest-first */
+function dedupeByHandleKeepLatest(rows: EntryRow[]) {
+  const map = new Map<string, EntryRow>();
 
-  for (const r of rows ?? []) {
+  for (const r of rows || []) {
     const handle = normalizeHandle(r?.handle);
     if (!handle) continue;
 
     const key = handle.toLowerCase();
     const cur = map.get(key);
 
-    const ts = safeTimeMs(r?.createdAt ?? null);
-    const curTs = cur ? safeTimeMs(cur.createdAt ?? null) : -1;
+    const rt = safeTimeMs(r?.createdAt ?? null);
+    const ct = cur ? safeTimeMs(cur.createdAt ?? null) : -1;
 
-    if (!cur || ts >= curTs) {
+    if (!cur || rt >= ct) {
       map.set(key, {
         ...r,
         handle,
@@ -54,11 +163,265 @@ function dedupeByHandleKeepLatest(rows: Entry[]) {
   return out;
 }
 
-function AvatarBubble({ e, size }: { e: Entry; size: number }) {
-  const clean = e.handle.replace(/^@/, '');
+function useTodayEntries(limit: number) {
+  const [rows, setRows] = useState<EntryRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [disabled, setDisabled] = useState(false);
+
+  useEffect(() => {
+    if (disabled) return;
+
+    let alive = true;
+    let controller: AbortController | null = null;
+
+    async function run() {
+      if (!alive || disabled) return;
+
+      try {
+        controller?.abort();
+      } catch {}
+      controller = new AbortController();
+
+      setLoading(true);
+
+      try {
+        const res = await fetch(
+          `/api/public/entries/latest?limit=${encodeURIComponent(String(limit))}`,
+          { cache: 'no-store', signal: controller.signal },
+        );
+
+        // If route missing in this env, stop retry spam
+        if (res.status === 404) {
+          if (alive) {
+            setRows([]);
+            setDisabled(true);
+          }
+          return;
+        }
+
+        if (!res.ok) {
+          if (alive) setRows([]);
+          return;
+        }
+
+        const json: any = await res.json();
+        const candidates = (json?.entries || []) as any[];
+
+        const mapped: EntryRow[] = Array.isArray(candidates)
+          ? candidates
+              .map(r => {
+                const handle = normalizeHandle(r?.handle);
+                if (!handle) return null;
+
+                return {
+                  id: r?.id ?? undefined,
+                  createdAt: r?.createdAt ?? null,
+                  handle,
+                  name: r?.name ?? null,
+                  avatarUrl: r?.avatarUrl ?? null,
+                  verified: !!r?.verified,
+                } as EntryRow;
+              })
+              .filter(Boolean) as EntryRow[]
+          : [];
+
+        const clean = dedupeByHandleKeepLatest(mapped);
+
+        if (alive) setRows(clean);
+      } catch (e: any) {
+        // Abort is expected when we refresh - don’t nuke state
+        if (e?.name === 'AbortError') return;
+        if (alive) setRows([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    run();
+    const t = window.setInterval(run, 25_000);
+
+    return () => {
+      alive = false;
+      try {
+        controller?.abort();
+      } catch {}
+      window.clearInterval(t);
+    };
+  }, [limit, disabled]);
+
+  return { rows, loading, disabled };
+}
+
+function RoyalContractBar({ mint }: { mint: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(mint);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {}
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div
+        className={`
+          relative inline-flex items-center gap-3
+          rounded-full border ${GOLD_BORDER_SOFT} bg-slate-950/55
+          px-3.5 py-2
+          shadow-[0_22px_90px_rgba(var(--xpot-gold),0.12)]
+          backdrop-blur-md
+        `}
+        title={mint}
+      >
+        <div
+          className="
+            pointer-events-none absolute -inset-10 rounded-full opacity-80 blur-2xl
+            bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.24),transparent_62%),
+                radial-gradient(circle_at_85%_35%,rgba(255,255,255,0.06),transparent_62%)]
+          "
+        />
+
+        <span className="relative z-10 inline-flex items-center gap-2">
+          <span
+            className={`
+              inline-flex h-7 w-7 items-center justify-center rounded-full
+              border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+              shadow-[0_0_22px_rgba(var(--xpot-gold),0.22)]
+            `}
+          >
+            <ShieldCheck className={`h-4 w-4 ${GOLD_TEXT}`} />
+          </span>
+
+          <span className="flex flex-col leading-tight">
+            <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${GOLD_TEXT_DIM}`}>
+              Official contract
+            </span>
+
+            <span className="font-mono text-[12px] text-slate-100/90">{shortenAddress(mint, 6, 6)}</span>
+          </span>
+        </span>
+
+        <span className="relative z-10 h-6 w-px bg-white/10" />
+
+        <button
+          type="button"
+          onClick={onCopy}
+          className="
+            relative z-10 inline-flex items-center gap-2
+            rounded-full border border-white/10 bg-white/[0.03]
+            px-3 py-1.5 text-[11px] text-slate-200
+            hover:bg-white/[0.06] transition
+          "
+          title="Copy official contract address"
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TradeOnJupiterCard({ mint }: { mint: string }) {
+  return (
+    <div className="relative overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.00), rgba(0,0,0,0.72) 74%),' +
+            'radial-gradient(circle at 22% 48%, rgba(var(--xpot-gold),0.18), transparent 56%),' +
+            'radial-gradient(circle at 70% 46%, rgba(139,92,246,0.16), transparent 62%),' +
+            'radial-gradient(circle at 58% 60%, rgba(56,189,248,0.05), transparent 65%)',
+          opacity: 1,
+        }}
+      />
+
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Trade</p>
+          <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+            Primary venue is Jupiter. Always verify the mint and use official links.
+          </p>
+
+          <div className="mt-3 grid gap-2 sm:flex sm:items-center">
+            <a
+              href={XPOT_JUP_SWAP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Trade XPOT on Jupiter"
+              className="
+                xpot-btn-vault
+                group
+                relative
+                inline-flex items-center justify-center
+                rounded-full
+                w-full sm:w-auto
+                px-6 py-3.5
+                text-sm font-semibold
+                transition
+                hover:brightness-[1.03]
+                active:brightness-[0.99]
+                active:scale-[0.99]
+              "
+            >
+              Trade on Jupiter
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -inset-10 opacity-55 blur-2xl"
+                style={{
+                  background:
+                    'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.10), transparent 60%),' +
+                    'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.08), transparent 62%),' +
+                    'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.12), transparent 62%)',
+                }}
+              />
+            </a>
+
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <a
+                href={XPOT_DEXSCREENER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View chart"
+                className="xpot-btn xpot-btn-utility rounded-full w-full sm:w-auto px-4 py-3 text-[13px]"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Chart
+                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+              </a>
+
+              <a
+                href={XPOT_SOLSCAN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View on Solscan"
+                className="xpot-btn xpot-btn-utility rounded-full w-full sm:w-auto px-4 py-3 text-[13px]"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Explorer
+                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+              </a>
+            </div>
+          </div>
+
+          <p className="mt-3 font-mono text-[11px] text-slate-500">mint: {shortenAddress(mint, 8, 8)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
+  const handle = normalizeHandle(row.handle);
+  const clean = handle.replace(/^@/, '');
 
   const img =
-    e.avatarUrl ??
+    row.avatarUrl ??
     `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
 
   return (
@@ -67,202 +430,800 @@ function AvatarBubble({ e, size }: { e: Entry; size: number }) {
       target="_blank"
       rel="noopener noreferrer"
       className="group relative"
-      title={e.handle}
+      title={handle}
     >
+      <span className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100 bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_60%_55%,rgba(var(--xpot-gold),0.18),transparent_60%)]" />
+
       <span
-        aria-hidden
-        className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100
-                   bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.20),transparent_62%),
-                       radial-gradient(circle_at_60%_55%,rgba(255,215,97,0.16),transparent_60%)]"
-      />
-      <span
-        className="relative inline-flex items-center justify-center overflow-hidden rounded-full
-                   border border-white/10 bg-white/[0.03]
-                   shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+        className="relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
         style={{ width: size, height: size }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={img} alt={e.handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+        <img src={img} alt={handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
       </span>
     </a>
   );
 }
 
-function EntryRowLine({ e }: { e: Entry }) {
-  const clean = e.handle.replace(/^@/, '');
-  const img =
-    e.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+function HomeInner() {
+  const bonusActive = useBonusActive();
+  const latestWinner = useLatestWinner();
 
-  return (
-    <a
-      href={`https://x.com/${encodeURIComponent(clean)}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
-      title={e.handle}
-    >
-      <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={img} alt={e.handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-      </span>
+  const { countdown, cutoffLabel, nowMs } = useNextDraw();
+  const run = useMemo(() => calcRunProgress(new Date(nowMs)), [nowMs]);
+  const runLine = useMemo(() => `DAY ${run.day}/${RUN_DAYS}`, [run.day]);
 
-      <div className="min-w-0">
-        <div className="truncate text-[13px] font-semibold text-slate-100">{e.name || clean}</div>
-        <div className="truncate text-[12px] text-slate-400">{e.handle}</div>
-      </div>
+  const reduceMotion = useReducedMotion();
+  const { scrollY } = useScroll();
 
-      <span className="ml-auto text-[12px] text-slate-500 group-hover:text-slate-300 transition">View</span>
-    </a>
-  );
-}
+  const floatY = useTransform(scrollY, [0, 900], [0, -18]);
+  const floatYSpring = useSpring(floatY, { stiffness: 80, damping: 22, mass: 0.6 });
 
-export default function LiveActivityModule() {
-  const [rows, setRows] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
+  const tilt = useTransform(scrollY, [0, 900], [0, -0.25]);
+  const tiltSpring = useSpring(tilt, { stiffness: 70, damping: 20, mass: 0.6 });
 
-  const abortRef = useRef<AbortController | null>(null);
-  const mountedRef = useRef(false);
+  const depth = useTransform(scrollY, [0, 900], [0, 1]);
+  const depthShadow = useTransform(depth, v => {
+    const a = 0.55 + v * 0.06;
+    const b = 0.22 + v * 0.06;
+    return `0 40px 140px rgba(0,0,0,${a}), 0 14px 60px rgba(0,0,0,${b})`;
+  });
 
   useEffect(() => {
-    mountedRef.current = true;
+    document.title = runTitle(run.day, run.started, run.ended, cutoffLabel);
+    setMeta(
+      'description',
+      `XPOT is a daily draw protocol with handle-first identity and on-chain proof. Final draw: ${RUN_END_EU}.`,
+    );
+  }, [run.day, run.started, run.ended, cutoffLabel]);
 
-    async function load() {
-      if (!mountedRef.current) return;
+  const faq = useMemo(
+    () => [
+      {
+        q: 'What is “The Final Draw” exactly?',
+        a: `It’s the finale of a 7000-day global XPOT run. Daily entries happen through the hub and the run ends at ${RUN_END_EU}.`,
+      },
+      {
+        q: 'Do I need tickets to enter?',
+        a: 'No tickets. Eligibility is holdings-based. Hold XPOT, verify eligibility in the hub and claim your entry.',
+      },
+      {
+        q: 'Why do winners show as @handle?',
+        a: 'XPOT is handle-first: winners and history are presented by X handle for a clean public layer while claims remain self-custody and wallet-native.',
+      },
+      {
+        q: 'How can anyone verify outcomes?',
+        a: 'Outcomes are on-chain. Proof is the product. Anyone can verify distributions in an explorer.',
+      },
+    ],
+    [],
+  );
 
-      try {
-        abortRef.current?.abort();
-      } catch {}
-      abortRef.current = new AbortController();
+  const hero = (
+    <section className="relative">
+      <div aria-hidden className="h-[calc(var(--xpot-banner-h,56px)+var(--xpot-topbar-h,112px)+14px)]" />
+      <MissionBanner reservesHref={ROUTE_TOKENOMICS_RESERVE} />
 
-      setLoading(true);
+      <div className="relative overflow-hidden border-y border-slate-900/60 bg-slate-950/20 shadow-[0_60px_220px_rgba(0,0,0,0.65)]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.06),rgba(0,0,0,0.60))]" />
 
-      try {
-        const res = await fetch(ENDPOINT, {
-          cache: 'no-store',
-          signal: abortRef.current.signal,
-        });
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={{
+            background:
+              'radial-gradient(circle at 12% 18%, rgba(var(--xpot-gold),0.16), transparent 55%),' +
+              'radial-gradient(circle at 86% 22%, rgba(56,189,248,0.10), transparent 58%),' +
+              'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06), transparent 62%),' +
+              'linear-gradient(90deg, rgba(0,0,0,0), rgba(var(--xpot-gold),0.04), rgba(0,0,0,0))',
+          }}
+        />
 
-        if (!res.ok) {
-          if (mountedRef.current) setRows([]);
-          return;
-        }
+        <div className="relative z-10 w-full px-0">
+          <div className="py-5 sm:py-7">
+            <div className="relative w-full overflow-hidden rounded-[38px] border border-slate-900/70 bg-slate-950/35 shadow-[0_40px_140px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <CosmicHeroBackdrop />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.55),rgba(255,255,255,0.10),rgba(56,189,248,0.28),transparent)]" />
 
-        const json: any = await res.json();
+              <div
+                className="
+                  relative z-10
+                  grid gap-6 p-4 sm:p-6 lg:p-8
+                  lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.52fr)]
+                "
+              >
+                <div className="flex flex-col justify-between gap-6 lg:pt-8">
+                  <div className="space-y-6">
+                    <div className="relative p-2 sm:p-3">
+                      <div className="relative mt-2">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <span
+                            className={[
+                              'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.26em]',
+                              `border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`,
+                              'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10),0_18px_60px_rgba(0,0,0,0.55)]',
+                            ].join(' ')}
+                          >
+                            <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                            Royal protocol run
+                          </span>
 
-        // Your route returns: { ok: true, entries: [...] }
-        const raw = Array.isArray(json?.entries) ? json.entries : [];
+                          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+                            <Radio className="h-3.5 w-3.5 text-emerald-200" />
+                            Live cadence
+                          </span>
+                        </div>
 
-        const mapped: Entry[] = raw
-          .map((r: any) => {
-            const handle = normalizeHandle(r?.handle);
-            if (!handle) return null;
+                        <h1 className="text-5xl font-semibold tracking-tight text-white">
+                          One protocol.
+                          <br />
+                          One daily <span className="xpot-xpotword">XPOT</span> draw.
+                        </h1>
 
-            return {
-              id: r?.id ?? undefined,
-              handle,
-              name: r?.name ?? null,
-              avatarUrl: r?.avatarUrl ?? null,
-              createdAt: r?.createdAt ?? null,
-              verified: r?.verified ?? null,
-            } as Entry;
-          })
-          .filter(Boolean);
+                        <p className="mt-3 max-w-xl text-[13px] leading-relaxed text-slate-400">
+                          Ceremonial by design. Verifiable by default. <span className="text-slate-200">Final Draw</span>{' '}
+                          ends on <FinalDrawDate className="text-slate-200" />.
+                        </p>
 
-        const deduped = dedupeByHandleKeepLatest(mapped);
+                        <div className="mt-5 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),transparent)]" />
+                      </div>
 
-        if (mountedRef.current) setRows(deduped);
-      } catch (e: any) {
-        if (e?.name === 'AbortError') return;
-        if (mountedRef.current) setRows([]);
-      } finally {
-        if (mountedRef.current) setLoading(false);
-      }
-    }
+                      <div className="mt-4 grid gap-4 lg:hidden">
+                        <PremiumCard className="p-4" halo sheen>
+                          <div className="xpot-console-sweep" aria-hidden />
+                          <div className="relative z-10">
+                            <JackpotPanel variant="standalone" layout="wide" />
+                          </div>
+                        </PremiumCard>
+                      </div>
 
-    load();
-    const t = window.setInterval(load, 25_000);
+                      <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
+                        <div
+                          className="pointer-events-none absolute -inset-12 opacity-70 blur-2xl"
+                          style={{
+                            background:
+                              'radial-gradient(circle at 18% 40%, rgba(var(--xpot-gold),0.14), transparent 60%),' +
+                              'radial-gradient(circle at 82% 30%, rgba(56,189,248,0.08), transparent 62%)',
+                          }}
+                        />
+                        <div className="relative flex flex-wrap items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                              Next draw
+                            </p>
 
-    return () => {
-      mountedRef.current = false;
-      window.clearInterval(t);
-      try {
-        abortRef.current?.abort();
-      } catch {}
-    };
-  }, []);
+                            <p className="mt-1 flex items-baseline gap-2 text-[12px] text-slate-400">
+                              <span className="text-slate-500">In</span>
+                              <span className="font-semibold tabular-nums text-slate-100">{countdown}</span>
+                              <span className="text-[11px] text-slate-500">Madrid 22:00</span>
+                            </p>
+                          </div>
 
-  const uniqCount = rows.length;
+                          <span
+                            className={[
+                              'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]',
+                              `border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`,
+                            ].join(' ')}
+                          >
+                            <Zap className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                            Cutoff approaches
+                          </span>
+                        </div>
+                      </div>
 
-  const bubbles = useMemo(() => {
-    return rows.slice(0, 12).map((e, idx) => ({
-      e,
-      size: idx === 0 ? 56 : idx < 4 ? 48 : 40,
-    }));
-  }, [rows]);
+                      {bonusActive ? (
+                        <div className="mt-5">
+                          <BonusVault>
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                              <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)]">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="absolute inset-0 rounded-full bg-violet-400/60 animate-ping" />
+                                  <span className="relative h-2 w-2 rounded-full bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.9)]" />
+                                </span>
+                                Bonus XPOT active
+                              </span>
 
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-slate-400">Entries</div>
-          <div className="mt-1 text-[12px] text-slate-400">{loading ? 'Updating…' : `${uniqCount} unique entrants`}</div>
-        </div>
+                              <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-100 ring-1 ring-violet-400/20">
+                                Same entry
+                                <span className="h-1 w-1 rounded-full bg-white/20" />
+                                Paid on-chain
+                              </span>
+                            </div>
 
-        <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
-          <button
-            type="button"
-            onClick={() => setMode('bubbles')}
-            className={[
-              'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
-              mode === 'bubbles' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
-            ].join(' ')}
-            title="Bubbles"
-          >
-            Bubbles
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('list')}
-            className={[
-              'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
-              mode === 'list' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
-            ].join(' ')}
-            title="List"
-          >
-            List
-          </button>
-        </div>
-      </div>
+                            <BonusStrip variant="home" />
 
-      {rows.length === 0 ? (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-          <span className="text-sm text-slate-400">Claim in the hub to appear here.</span>
-          <Link
-            href="/hub"
-            className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-semibold text-white hover:bg-white/[0.08] transition"
-          >
-            Claim in hub →
-          </Link>
-        </div>
-      ) : mode === 'bubbles' ? (
-        <div className="flex flex-wrap items-center gap-3 py-1">
-          {bubbles.map(({ e, size }) => (
-            <AvatarBubble key={(e.id ?? e.handle).toString()} e={e} size={size} />
-          ))}
-          <div className="ml-auto text-[12px] text-slate-400">
-            <span className="text-slate-200">{uniqCount}</span> today
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                              <p className="text-[12px] text-slate-300">
+                                Bonus window is live - same entry, extra payout, proof on-chain.
+                              </p>
+
+                              <span className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200 ring-1 ring-violet-400/20">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Vault reveal
+                              </span>
+                            </div>
+                          </BonusVault>
+                        </div>
+                      ) : null}
+
+                      <div className="mt-6 flex flex-wrap items-center gap-3">
+                        <Link
+                          href={ROUTE_HUB}
+                          title="Enter the hub"
+                          className="
+                            xpot-btn-vault
+                            group
+                            relative
+                            inline-flex items-center justify-center
+                            w-full sm:w-auto
+                            rounded-full
+                            px-6 py-3.5
+                            text-sm font-semibold
+                            transition
+                            hover:brightness-[1.03]
+                            active:brightness-[0.99]
+                            active:scale-[0.99]
+                          "
+                        >
+                          Enter the hub
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
+                            style={{
+                              background:
+                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
+                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
+                            }}
+                          />
+                        </Link>
+
+                        <a
+                          href={XPOT_JUP_SWAP_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={BTN_ROYAL_SECONDARY}
+                          title="Buy XPOT on Jupiter"
+                        >
+                          Buy XPOT
+                          <ExternalLink className="ml-2 h-4 w-4 text-slate-500" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
+                    <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
+                    <MiniStat label="Final draw" value={<FinalDrawDate variant="short" />} tone="sky" />
+                  </div>
+                </div>
+
+                <motion.div
+                  className="hidden gap-4 lg:grid"
+                  style={
+                    reduceMotion
+                      ? undefined
+                      : {
+                          y: floatYSpring as any,
+                          rotateZ: tiltSpring as any,
+                          transformOrigin: '50% 10%',
+                        }
+                  }
+                >
+                  <motion.div style={reduceMotion ? undefined : { boxShadow: depthShadow as any }}>
+                    <PremiumCard className="p-5 sm:p-6" halo sheen>
+                      <div className="xpot-console-sweep" aria-hidden />
+                      <div className="relative z-10">
+                        <JackpotPanel variant="standalone" layout="wide" />
+                      </div>
+                    </PremiumCard>
+                  </motion.div>
+
+                  <PremiumCard className="p-5 sm:p-6" halo={false}>
+                    <LiveControlRoom countdown={countdown} cutoffLabel={cutoffLabel} runLine={runLine} />
+                  </PremiumCard>
+                </motion.div>
+              </div>
+
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.40),rgba(255,255,255,0.08),transparent)]" />
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {rows.slice(0, 10).map(e => (
-            <EntryRowLine key={(e.id ?? e.handle).toString()} e={e} />
-          ))}
-          <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
+      </div>
+    </section>
+  );
+
+  // XPOT stage (latest winner + entries)
+  const Stage = () => {
+    const { rows: cleanEntries, loading } = useTodayEntries(24);
+    const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
+
+    // ✅ already deduped in hook
+    const uniqCount = cleanEntries.length;
+
+    const winnerHandle = (latestWinner as any)?.handle ?? null;
+    const winnerName = (latestWinner as any)?.name ?? null;
+    const winnerAvatar = (latestWinner as any)?.avatarUrl ?? null;
+    const winnerAmount = (latestWinner as any)?.amountXpot ?? null;
+    const winnerTxUrl = (latestWinner as any)?.txUrl ?? null;
+    const winnerDate = formatDateShort((latestWinner as any)?.drawDate ?? null);
+
+    return (
+      <section className="mt-7">
+        <PremiumCard className="p-6 sm:p-8" halo sheen>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Live activity</p>
+              <h2 className="mt-2 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">The XPOT stage</h2>
+            </div>
+
+            <Link
+              href={ROUTE_HUB}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+              title="Enter the hub"
+            >
+              Enter today&apos;s XPOT
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {/* Latest winner */}
+            <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_86%_26%,rgba(56,189,248,0.12),transparent_62%)]" />
+
+              <div className="relative flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                    <span className="inline-flex items-center gap-2">
+                      <Trophy className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                      Latest winner
+                    </span>
+                  </p>
+                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                    Winner just took home
+                  </p>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-3xl font-semibold text-[rgba(var(--xpot-gold),1)]">
+                      {typeof winnerAmount === 'number' ? winnerAmount.toLocaleString() : '1,000,000'}
+                    </span>
+                    <span className="text-[12px] font-semibold text-slate-400">XPOT</span>
+                  </div>
+                  <p className="mt-2 text-[12px] text-slate-400">
+                    {winnerDate ? (
+                      <>
+                        Claimed <span className="text-slate-200">{winnerDate}</span>
+                      </>
+                    ) : (
+                      <>Claimed on-chain</>
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {winnerTxUrl ? (
+                    <a
+                      href={winnerTxUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                      title="View transaction"
+                    >
+                      Tx
+                      <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                    </a>
+                  ) : null}
+
+                  <Link
+                    href={ROUTE_WINNERS}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                    title="Open winners archive"
+                  >
+                    Archive
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+                    {winnerAvatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={winnerAvatar} alt={winnerHandle || 'winner'} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-semibold text-slate-200">
+                        {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold text-slate-100">
+                      {winnerName || winnerHandle || 'Winner'}
+                    </p>
+                    <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
+                  </div>
+
+                  <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-100">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.55)]" />
+                    Live
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">See more winners</p>
+                  <p className="mt-1 text-[12px] text-slate-400">Full archive, TX links and history on the winners page.</p>
+                </div>
+                <Link
+                  href={ROUTE_WINNERS}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                >
+                  Open winners
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Entries */}
+            <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
+
+              <div className="relative flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                    <span className="inline-flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 text-slate-400" />
+                      Entries
+                    </span>
+                  </p>
+                  <p className="mt-2 text-[12px] text-slate-400">
+                    {loading ? 'Updating…' : `${uniqCount} unique entrants`}
+                  </p>
+                </div>
+
+                <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
+                  <button
+                    type="button"
+                    onClick={() => setMode('bubbles')}
+                    className={[
+                      'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                      mode === 'bubbles' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                    ].join(' ')}
+                    title="Bubbles"
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    Bubbles
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMode('list')}
+                    className={[
+                      'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+                      mode === 'list' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                    ].join(' ')}
+                    title="List"
+                  >
+                    <ListIcon className="h-3.5 w-3.5" />
+                    List
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative mt-6">
+                {cleanEntries.length === 0 ? (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                    <p className="text-[12px] text-slate-400">Claim in the hub to appear here.</p>
+                    <Link
+                      href={ROUTE_HUB}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
+                    >
+                      Claim in hub
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                ) : mode === 'bubbles' ? (
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    {cleanEntries.slice(0, 18).map((e, idx) => {
+                      const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
+                      return <AvatarBubble key={e.handle.toLowerCase()} row={e} size={size} />;
+                    })}
+
+                    <div className="w-full pt-2 text-center text-[12px] text-slate-400">
+                      <span className="text-slate-200">{uniqCount}</span> today
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {cleanEntries.slice(0, 10).map(e => {
+                      const h = normalizeHandle(e.handle);
+                      return (
+                        <a
+                          key={h.toLowerCase()}
+                          href={`https://x.com/${encodeURIComponent(h.replace('@', ''))}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
+                          title={h}
+                        >
+                          <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+                            {e.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={e.avatarUrl} alt={h} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-sm font-semibold text-slate-200">{h.slice(1, 2).toUpperCase()}</span>
+                            )}
+                          </span>
+
+                          <div className="min-w-0">
+                            <p className="truncate text-[13px] font-semibold text-slate-100">
+                              {e.name || h.replace('@', '')}
+                            </p>
+                            <p className="truncate text-[12px] text-slate-400">{h}</p>
+                          </div>
+
+                          <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
+                        </a>
+                      );
+                    })}
+                    <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </PremiumCard>
+      </section>
+    );
+  };
+
+  return (
+    <XpotPageShell pageTag="home" fullBleedTop={hero}>
+      <Stage />
+
+      <section className="mt-7">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PremiumCard className="p-6 sm:p-7" halo={false}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+                  Always verify the official mint before interacting.
+                </p>
+              </div>
+              <RoyalContractBar mint={XPOT_CA} />
+            </div>
+          </PremiumCard>
+
+          <PremiumCard className="p-6 sm:p-7" halo={false}>
+            <TradeOnJupiterCard mint={XPOT_CA} />
+          </PremiumCard>
         </div>
-      )}
-    </div>
+      </section>
+
+      <section className="mt-7">
+        <PremiumCard className="p-6 sm:p-8" halo sheen>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <Pill tone="amber">
+                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                The Final Draw
+              </Pill>
+
+              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
+                Daily draws with proof. One run ending with a finale.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                XPOT is simple on purpose: holdings-based eligibility, handle-first identity and on-chain payout proof.
+                Daily draws are the heartbeat. The Final Draw is the destination.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Proof first
+              </Pill>
+              <Pill tone="sky">
+                <Users className="h-3.5 w-3.5" />
+                X identity
+              </Pill>
+              <Pill tone="sky">
+                <Timer className="h-3.5 w-3.5" />
+                Daily cadence
+              </Pill>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
+            </div>
+
+            <Link
+              href={ROUTE_HUB}
+              title="Claim your entry"
+              className="
+                xpot-btn-vault
+                group
+                w-full sm:w-auto
+                px-6 py-3
+                text-sm font-semibold
+                rounded-full
+                inline-flex items-center justify-center
+                transition
+                active:scale-[0.99]
+              "
+            >
+              Claim your entry
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </PremiumCard>
+      </section>
+
+      <section className="mt-8">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="amber">
+              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+              Finale (ending)
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">The Final Draw is the ending.</p>
+            <p className="mt-2 text-sm text-slate-300">Daily draws build the arc. The finale builds the legend.</p>
+          </PremiumCard>
+
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="sky">
+              <Users className="h-3.5 w-3.5" />
+              Identity
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">@handle-first.</p>
+            <p className="mt-2 text-sm text-slate-300">Winners and history are shown by handle, not wallet profiles.</p>
+          </PremiumCard>
+
+          <PremiumCard className="p-5 sm:p-6" halo={false}>
+            <Pill tone="emerald">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Proof
+            </Pill>
+            <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
+            <p className="mt-2 text-sm text-slate-300">Anyone can verify outcomes in an explorer.</p>
+          </PremiumCard>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <PremiumCard className="p-6 sm:p-8" halo sheen>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <Pill tone="sky">
+                <Blocks className="h-3.5 w-3.5" />
+                Built to scale
+              </Pill>
+
+              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
+                A daily engine with an ending, not a one-off giveaway.
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and
+                sponsor pools while keeping the same primitive and the same proof.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Fair by design
+              </Pill>
+              <Pill tone="sky">
+                <Globe className="h-3.5 w-3.5" />
+                Global-friendly
+              </Pill>
+              <Pill tone="amber">
+                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
+                Finale-ready
+              </Pill>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-950/30">
+                  <Wand2 className="h-5 w-5 text-emerald-200" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Modules</p>
+                  <p className="text-xs text-slate-400">Plug-in reward logic</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                <li>Streak boosters</li>
+                <li>Sponsor-funded pools</li>
+                <li>Milestone ladders</li>
+              </ul>
+            </div>
+
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-950/25">
+                  <Users className="h-5 w-5 text-sky-200" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Identity</p>
+                  <p className="text-xs text-slate-400">Handle-first, premium UX</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                <li>Winners shown by @handle</li>
+                <li>History can evolve into reputation</li>
+                <li>Still self-custody for claims</li>
+              </ul>
+            </div>
+
+            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
+                >
+                  <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Finale</p>
+                  <p className="text-xs text-slate-400">A run that ends</p>
+                </div>
+              </div>
+              <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                <li>
+                  Final draw: <FinalDrawDate variant="short" />
+                </li>
+                <li>Daily cadence builds the arc</li>
+                <li>Proof stays public</li>
+              </ul>
+            </div>
+          </div>
+        </PremiumCard>
+      </section>
+
+      <section className="mt-8">
+        <PremiumCard className="p-6 sm:p-8" halo={false}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <Pill tone="emerald">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Clarity
+              </Pill>
+              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                Homepage is the story. Hub is the action. The Final Draw is the destination.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <Accordion items={faq} />
+          </div>
+        </PremiumCard>
+      </section>
+
+      <XpotFooter />
+    </XpotPageShell>
+  );
+}
+
+export default function HomePageClient() {
+  return (
+    <NextDrawProvider>
+      <HomeInner />
+    </NextDrawProvider>
   );
 }
