@@ -32,9 +32,7 @@ import FinalDrawDate from '@/components/FinalDrawDate';
 
 import { RUN_DAYS, RUN_END_EU } from '@/lib/xpotRun';
 
-// ✅ FIX: you render <NextDrawProvider>, so you must import it
 import NextDrawProvider, { useNextDraw } from '@/components/home/NextDrawProvider';
-
 import { calcRunProgress, runTitle } from './madrid';
 import { useBonusActive } from './hooks/useBonusActive';
 import { useLatestWinner } from './hooks/useLatestWinner';
@@ -159,6 +157,21 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   const out = Array.from(map.values());
   out.sort((a, b) => safeTimeMs(b.createdAt ?? null) - safeTimeMs(a.createdAt ?? null));
   return out;
+}
+
+/**
+ * ✅ Unified avatar URL logic (fixes: list view had empty placeholders)
+ * - If API provides avatarUrl -> use it
+ * - Otherwise -> fall back to unavatar by handle
+ */
+function entryAvatarUrl(row: EntryRow) {
+  const handle = normalizeHandle(row?.handle);
+  const clean = handle.replace(/^@/, '');
+  const cache = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h buckets
+  return (
+    row?.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${encodeURIComponent(String(cache))}`
+  );
 }
 
 /**
@@ -423,10 +436,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
 function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
-
-  const img =
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+  const img = entryAvatarUrl(row);
 
   return (
     <a
@@ -443,7 +453,13 @@ function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
         style={{ width: size, height: size }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={img} alt={handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+        <img
+          src={img}
+          alt={handle}
+          className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
+          loading="lazy"
+        />
       </span>
     </a>
   );
@@ -569,6 +585,8 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 <div className="space-y-2">
                   {cleanEntries.slice(0, 10).map(e => {
                     const h = normalizeHandle(e.handle);
+                    const img = entryAvatarUrl(e);
+
                     return (
                       <a
                         key={(e.id ?? h).toString()}
@@ -579,12 +597,14 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                         title={h}
                       >
                         <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
-                          {e.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={e.avatarUrl} alt={h} className="h-full w-full object-cover" />
-                          ) : (
-                            <span className="text-sm font-semibold text-slate-200">{h.slice(1, 2).toUpperCase()}</span>
-                          )}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={img}
+                            alt={h}
+                            className="h-full w-full object-cover"
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                          />
                         </span>
 
                         <div className="min-w-0">
@@ -664,7 +684,13 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
                   {winnerAvatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={winnerAvatar} alt={winnerHandle || 'winner'} className="h-full w-full object-cover" />
+                    <img
+                      src={winnerAvatar}
+                      alt={winnerHandle || 'winner'}
+                      className="h-full w-full object-cover"
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                    />
                   ) : (
                     <span className="text-sm font-semibold text-slate-200">
                       {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
@@ -1057,7 +1083,9 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
             </div>
 
             <Link
