@@ -121,21 +121,46 @@ type EntryRow = {
   createdAt?: string | null;
 };
 
+/** ✅ enforce @ + trim */
+function normalizeHandle(h: any) {
+  const s = String(h ?? '').trim();
+  if (!s) return '';
+  return s.startsWith('@') ? s : `@${s.replace(/^@/, '')}`;
+}
+
+/** ✅ safe date parse */
+function safeTimeMs(iso?: string | null) {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? t : 0;
+}
+
+/** ✅ dedupe by normalized @handle, keep latest by createdAt, return sorted newest-first */
 function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   const map = new Map<string, EntryRow>();
 
   for (const r of rows || []) {
-    const h = String(r?.handle || '').trim().toLowerCase();
-    if (!h) continue;
+    const handle = normalizeHandle(r?.handle);
+    if (!handle) continue;
 
-    const cur = map.get(h);
-    const rt = r?.createdAt ? Date.parse(r.createdAt) : 0;
-    const ct = cur?.createdAt ? Date.parse(cur.createdAt) : -1;
+    const key = handle.toLowerCase();
+    const cur = map.get(key);
 
-    if (!cur || rt >= ct) map.set(h, r);
+    const rt = safeTimeMs(r?.createdAt ?? null);
+    const ct = cur ? safeTimeMs(cur.createdAt ?? null) : -1;
+
+    if (!cur || rt >= ct) {
+      map.set(key, {
+        ...r,
+        handle,
+        name: r?.name ? String(r.name).trim() : r?.name ?? null,
+        createdAt: r?.createdAt ?? null,
+      });
+    }
   }
 
-  return Array.from(map.values());
+  const out = Array.from(map.values());
+  out.sort((a, b) => safeTimeMs(b.createdAt ?? null) - safeTimeMs(a.createdAt ?? null));
+  return out;
 }
 
 function useTodayEntries(limit: number) {
@@ -185,9 +210,8 @@ function useTodayEntries(limit: number) {
         const mapped: EntryRow[] = Array.isArray(candidates)
           ? candidates
               .map(r => {
-                const handleRaw = String(r?.handle ?? '').trim();
-                const handle =
-                  handleRaw.startsWith('@') ? handleRaw : handleRaw ? `@${handleRaw.replace(/^@/, '')}` : '';
+                const handle = normalizeHandle(r?.handle);
+                if (!handle) return null;
 
                 return {
                   id: r?.id ?? undefined,
@@ -198,10 +222,12 @@ function useTodayEntries(limit: number) {
                   verified: !!r?.verified,
                 } as EntryRow;
               })
-              .filter(r => r.handle)
+              .filter(Boolean) as EntryRow[]
           : [];
 
-        if (alive) setRows(mapped);
+        const clean = dedupeByHandleKeepLatest(mapped);
+
+        if (alive) setRows(clean);
       } catch (e: any) {
         // Abort is expected when we refresh - don’t nuke state
         if (e?.name === 'AbortError') return;
@@ -391,8 +417,8 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
 }
 
 function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
-  const handle = row.handle.startsWith('@') ? row.handle : `@${row.handle}`;
-  const clean = handle.replace('@', '');
+  const handle = normalizeHandle(row.handle);
+  const clean = handle.replace(/^@/, '');
 
   const img =
     row.avatarUrl ??
@@ -711,16 +737,11 @@ function HomeInner() {
 
   // XPOT stage (latest winner + entries)
   const Stage = () => {
-    const { rows: entries, loading } = useTodayEntries(24);
+    const { rows: cleanEntries, loading } = useTodayEntries(24);
     const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
-    const cleanEntries = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
-
-    const uniqCount = useMemo(() => {
-      const s = new Set(cleanEntries.map(e => (e.handle || '').toLowerCase()));
-      s.delete('');
-      return s.size;
-    }, [cleanEntries]);
+    // ✅ already deduped in hook
+    const uniqCount = cleanEntries.length;
 
     const winnerHandle = (latestWinner as any)?.handle ?? null;
     const winnerName = (latestWinner as any)?.name ?? null;
@@ -861,7 +882,7 @@ function HomeInner() {
                     </span>
                   </p>
                   <p className="mt-2 text-[12px] text-slate-400">
-                    {loading ? 'Updating…' : `${uniqCount || 0} unique entrants`}
+                    {loading ? 'Updating…' : `${uniqCount} unique entrants`}
                   </p>
                 </div>
 
@@ -919,8 +940,8 @@ function HomeInner() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {cleanEntries.slice(0, 10).map((e, idx) => {
-                      const h = e.handle.startsWith('@') ? e.handle : `@${e.handle}`;
+                    {cleanEntries.slice(0, 10).map(e => {
+                      const h = normalizeHandle(e.handle);
                       return (
                         <a
                           key={h.toLowerCase()}
