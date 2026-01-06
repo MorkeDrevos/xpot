@@ -118,7 +118,7 @@ type EntryRow = {
   name?: string | null;
   avatarUrl?: string | null;
   verified?: boolean;
-  createdAt?: string;
+  createdAt?: string | null;
 };
 
 function useTodayEntries(limit: number) {
@@ -164,7 +164,7 @@ function useTodayEntries(limit: number) {
 
         const json: any = await res.json();
 
-        // ✅ your route returns { ok: true, entries: [...] }
+        // Route returns { ok: true, entries: [...] }
         const candidates = (json?.entries || []) as any[];
 
         const mapped: EntryRow[] = Array.isArray(candidates)
@@ -203,51 +203,6 @@ function useTodayEntries(limit: number) {
   }, [limit, disabled]);
 
   return { rows, loading, disabled };
-}
-
-        const json: any = await res.json();
-        const candidates = (json?.entries || json?.rows || json?.data || json?.items || []) as any[];
-
-        const mapped: EntryRow[] = Array.isArray(candidates)
-          ? candidates
-              .map(r => {
-                const handleRaw = String(r?.handle ?? r?.xHandle ?? r?.username ?? '').trim();
-                const handle = handleRaw.startsWith('@') ? handleRaw : handleRaw ? `@${handleRaw}` : '';
-
-                return {
-                  id: r?.id ?? undefined,
-                  createdAt: r?.createdAt ?? r?.created_at ?? null,
-                  handle,
-                  name: r?.name ?? r?.displayName ?? null,
-                  avatarUrl: r?.avatarUrl ?? r?.avatar ?? r?.image ?? null,
-                  verified: !!(r?.verified ?? r?.isVerified ?? false),
-                } as EntryRow;
-              })
-              .filter(r => r.handle)
-          : [];
-
-        if (alive) setRows(mapped);
-      } catch (e: any) {
-        if (e?.name === 'AbortError') return;
-        if (alive) setRows([]);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-
-    run();
-    const t = window.setInterval(run, 25_000);
-
-    return () => {
-      alive = false;
-      try {
-        controller?.abort();
-      } catch {}
-      window.clearInterval(t);
-    };
-  }, [limit, disabled]);
-
-  return { rows, loading };
 }
 
 function RoyalContractBar({ mint }: { mint: string }) {
@@ -324,7 +279,6 @@ function RoyalContractBar({ mint }: { mint: string }) {
 function TradeOnJupiterCard({ mint }: { mint: string }) {
   return (
     <div className="relative overflow-hidden">
-      {/* FIXED: premium “vault glow” - no broken right-side panel */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -345,9 +299,7 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             Primary venue is Jupiter. Always verify the mint and use official links.
           </p>
 
-          {/* CTA block */}
           <div className="mt-3 grid gap-2 sm:flex sm:items-center">
-            {/* PRIMARY */}
             <a
               href={XPOT_JUP_SWAP_URL}
               target="_blank"
@@ -371,7 +323,6 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
               Trade on Jupiter
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 
-              {/* Lightshow (kept but darker + contained) */}
               <span
                 aria-hidden
                 className="pointer-events-none absolute -inset-10 opacity-55 blur-2xl"
@@ -384,7 +335,6 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
               />
             </a>
 
-            {/* SECONDARIES */}
             <div className="grid grid-cols-2 gap-2 sm:flex">
               <a
                 href={XPOT_DEXSCREENER_URL}
@@ -532,7 +482,6 @@ function HomeInner() {
                   lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.52fr)]
                 "
               >
-                {/* LEFT: keep it clean (story + next draw + CTA) */}
                 <div className="flex flex-col justify-between gap-6 lg:pt-8">
                   <div className="space-y-6">
                     <div className="relative p-2 sm:p-3">
@@ -569,7 +518,6 @@ function HomeInner() {
                         <div className="mt-5 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.42),rgba(255,255,255,0.08),transparent)]" />
                       </div>
 
-                      {/* MOBILE: jackpot right after H1 */}
                       <div className="mt-4 grid gap-4 lg:hidden">
                         <PremiumCard className="p-4" halo sheen>
                           <div className="xpot-console-sweep" aria-hidden />
@@ -579,7 +527,6 @@ function HomeInner() {
                         </PremiumCard>
                       </div>
 
-                      {/* Next draw bar */}
                       <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
                         <div
                           className="pointer-events-none absolute -inset-12 opacity-70 blur-2xl"
@@ -614,7 +561,6 @@ function HomeInner() {
                         </div>
                       </div>
 
-                      {/* Bonus vault */}
                       {bonusActive ? (
                         <div className="mt-5">
                           <BonusVault>
@@ -650,39 +596,38 @@ function HomeInner() {
                         </div>
                       ) : null}
 
-                      {/* CTAs */}
                       <div className="mt-6 flex flex-wrap items-center gap-3">
                         <Link
-  href={ROUTE_HUB}
-  title="Enter the hub"
-  className="
-    xpot-btn-vault
-    group
-    relative
-    inline-flex items-center justify-center
-    w-full sm:w-auto
-    rounded-full
-    px-6 py-3.5
-    text-sm font-semibold
-    transition
-    hover:brightness-[1.03]
-    active:brightness-[0.99]
-    active:scale-[0.99]
-  "
->
-  Enter the hub
-  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                          href={ROUTE_HUB}
+                          title="Enter the hub"
+                          className="
+                            xpot-btn-vault
+                            group
+                            relative
+                            inline-flex items-center justify-center
+                            w-full sm:w-auto
+                            rounded-full
+                            px-6 py-3.5
+                            text-sm font-semibold
+                            transition
+                            hover:brightness-[1.03]
+                            active:brightness-[0.99]
+                            active:scale-[0.99]
+                          "
+                        >
+                          Enter the hub
+                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 
-  <span
-    aria-hidden
-    className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
-    style={{
-      background:
-        'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
-        'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
-    }}
-  />
-</Link>
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
+                            style={{
+                              background:
+                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
+                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
+                            }}
+                          />
+                        </Link>
 
                         <a
                           href={XPOT_JUP_SWAP_URL}
@@ -698,7 +643,6 @@ function HomeInner() {
                     </div>
                   </div>
 
-                  {/* mini stats */}
                   <div className="grid gap-3 sm:grid-cols-3">
                     <MiniStat label="Run day" value={`#${run.day}/${RUN_DAYS}`} tone="amber" />
                     <MiniStat label="Next cutoff" value={countdown} tone="emerald" />
@@ -706,7 +650,6 @@ function HomeInner() {
                   </div>
                 </div>
 
-                {/* RIGHT (desktop only) */}
                 <motion.div
                   className="hidden gap-4 lg:grid"
                   style={
@@ -742,7 +685,6 @@ function HomeInner() {
     </section>
   );
 
-  // XPOT stage (latest winner + entries)
   const Stage = () => {
     const { rows: entries, loading } = useTodayEntries(24);
     const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
@@ -759,6 +701,16 @@ function HomeInner() {
     const winnerAmount = (latestWinner as any)?.amountXpot ?? null;
     const winnerTxUrl = (latestWinner as any)?.txUrl ?? null;
     const winnerDate = formatDateShort((latestWinner as any)?.drawDate ?? null);
+
+    const dedupedEntries = useMemo(() => {
+      const map = new Map<string, EntryRow>();
+      for (const e of entries) {
+        const k = (e.handle || '').toLowerCase();
+        if (!k) continue;
+        if (!map.has(k)) map.set(k, e);
+      }
+      return Array.from(map.values());
+    }, [entries]);
 
     return (
       <section className="mt-7">
@@ -780,7 +732,6 @@ function HomeInner() {
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {/* Latest winner */}
             <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="pointer-events-none absolute -inset-20 opacity-80 blur-3xl bg-[radial-gradient(circle_at_18%_30%,rgba(var(--xpot-gold),0.20),transparent_62%),radial-gradient(circle_at_86%_26%,rgba(56,189,248,0.12),transparent_62%)]" />
 
@@ -879,7 +830,6 @@ function HomeInner() {
               </div>
             </div>
 
-            {/* Entries */}
             <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
               <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
@@ -926,7 +876,7 @@ function HomeInner() {
               </div>
 
               <div className="relative mt-6">
-                {entries.length === 0 ? (
+                {dedupedEntries.length === 0 ? (
                   <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
                     <p className="text-[12px] text-slate-400">Claim in the hub to appear here.</p>
                     <Link
@@ -939,8 +889,8 @@ function HomeInner() {
                   </div>
                 ) : mode === 'bubbles' ? (
                   <div className="flex flex-wrap items-center gap-3">
-                    {entries.slice(0, 12).map((e, idx) => (
-                      <AvatarBubble key={e.id || `${e.handle}-${idx}`} row={e} />
+                    {dedupedEntries.slice(0, 12).map(e => (
+                      <AvatarBubble key={e.handle.toLowerCase()} row={e} />
                     ))}
                     <div className="ml-auto text-[12px] text-slate-400">
                       <span className="text-slate-200">{uniqCount}</span> today
@@ -948,11 +898,11 @@ function HomeInner() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {entries.slice(0, 10).map((e, idx) => {
+                    {dedupedEntries.slice(0, 10).map(e => {
                       const h = e.handle.startsWith('@') ? e.handle : `@${e.handle}`;
                       return (
                         <a
-                          key={e.id || `${e.handle}-${idx}`}
+                          key={h.toLowerCase()}
                           href={`https://x.com/${encodeURIComponent(h.replace('@', ''))}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -992,10 +942,8 @@ function HomeInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      {/* XPOT STAGE (important stuff first) */}
       <Stage />
 
-      {/* OFFICIAL LINKS (moved out of hero so left is not messy) */}
       <section className="mt-7">
         <div className="grid gap-4 lg:grid-cols-2">
           <PremiumCard className="p-6 sm:p-7" halo={false}>
@@ -1016,7 +964,6 @@ function HomeInner() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
       <section className="mt-7">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1060,28 +1007,27 @@ function HomeInner() {
             </div>
 
             <Link
-  href={ROUTE_HUB}
-  title="Claim your entry"
-  className="
-    xpot-btn-vault
-    group
-    w-full sm:w-auto
-    px-6 py-3
-    text-sm font-semibold
-    rounded-full
-    inline-flex items-center justify-center
-    transition
-    active:scale-[0.99]
-  "
->
-  Claim your entry
-  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-</Link>
+              href={ROUTE_HUB}
+              title="Claim your entry"
+              className="
+                xpot-btn-vault
+                group
+                w-full sm:w-auto
+                px-6 py-3
+                text-sm font-semibold
+                rounded-full
+                inline-flex items-center justify-center
+                transition
+                active:scale-[0.99]
+              "
+            >
+              Claim your entry
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
         </PremiumCard>
       </section>
 
-      {/* PROTOCOL STRIP */}
       <section className="mt-8">
         <div className="grid gap-4 lg:grid-cols-3">
           <PremiumCard className="p-5 sm:p-6" halo={false}>
@@ -1113,7 +1059,6 @@ function HomeInner() {
         </div>
       </section>
 
-      {/* ECOSYSTEM */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo sheen>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1207,7 +1152,6 @@ function HomeInner() {
         </PremiumCard>
       </section>
 
-      {/* FAQ */}
       <section className="mt-8">
         <PremiumCard className="p-6 sm:p-8" halo={false}>
           <div className="flex flex-wrap items-start justify-between gap-4">
