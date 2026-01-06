@@ -59,10 +59,7 @@ function avatarUrlFor(handle: string, avatarUrl?: string | null) {
   const clean = handle.replace(/^@/, '');
   // cache-buster changes only every 6h, so it won't cause render jitter
   const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
-  return (
-    avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${bucket}`
-  );
+  return avatarUrl ?? `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${bucket}`;
 }
 
 function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
@@ -90,12 +87,7 @@ function AvatarBubble({ e, size }: { e: EntryRow; size: number }) {
         style={{ width: size, height: size }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={img}
-          alt={e.handle}
-          className="h-full w-full object-cover"
-          referrerPolicy="no-referrer"
-        />
+        <img src={img} alt={e.handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
       </span>
     </a>
   );
@@ -113,26 +105,39 @@ function EntryRowLine({ e }: { e: EntryRow }) {
       className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
       title={e.handle}
     >
-      <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+      <span className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={img}
           alt={e.handle}
           className="h-full w-full object-cover"
           referrerPolicy="no-referrer"
+          loading="lazy"
+          decoding="async"
+          onError={(ev) => {
+            const imgEl = ev.currentTarget;
+            // prevent loops
+            imgEl.onerror = null;
+            // fall back to a clean letter tile
+            imgEl.style.display = 'none';
+            const parent = imgEl.parentElement;
+            if (parent && !parent.querySelector('[data-fallback="1"]')) {
+              const span = document.createElement('span');
+              span.setAttribute('data-fallback', '1');
+              span.className = 'text-sm font-semibold text-slate-200';
+              span.textContent = (clean || 'x').slice(0, 1).toUpperCase();
+              parent.appendChild(span);
+            }
+          }}
         />
       </span>
 
       <div className="min-w-0">
-        <div className="truncate text-[13px] font-semibold text-slate-100">
-          {e.name || clean}
-        </div>
+        <div className="truncate text-[13px] font-semibold text-slate-100">{e.name || clean}</div>
         <div className="truncate text-[12px] text-slate-400">{e.handle}</div>
       </div>
 
-      <span className="ml-auto text-[12px] text-slate-500 group-hover:text-slate-300 transition">
-        View
-      </span>
+      <span className="ml-auto text-[12px] text-slate-500 group-hover:text-slate-300 transition">View</span>
     </a>
   );
 }
@@ -174,10 +179,7 @@ export default function LiveActivityModule() {
 
         // If this env somehow doesn't have the route, stop retry spam.
         if (res.status === 404) {
-          if (alive) {
-            setDisabled(true);
-            // keep whatever we already had, but stop polling
-          }
+          if (alive) setDisabled(true);
           return;
         }
 
@@ -202,7 +204,7 @@ export default function LiveActivityModule() {
               verified: r?.verified ?? null,
             } as EntryRow;
           })
-          .filter(Boolean);
+          .filter(Boolean) as EntryRow[];
 
         const deduped = dedupeByHandleKeepLatest(mapped);
 
@@ -263,9 +265,7 @@ export default function LiveActivityModule() {
             onClick={() => setMode('bubbles')}
             className={[
               'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
-              mode === 'bubbles'
-                ? 'bg-white/[0.07] text-slate-100'
-                : 'text-slate-400 hover:text-slate-200',
+              mode === 'bubbles' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
             ].join(' ')}
             title="Bubbles"
           >
@@ -277,9 +277,7 @@ export default function LiveActivityModule() {
             onClick={() => setMode('list')}
             className={[
               'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
-              mode === 'list'
-                ? 'bg-white/[0.07] text-slate-100'
-                : 'text-slate-400 hover:text-slate-200',
+              mode === 'list' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
             ].join(' ')}
             title="List"
           >
@@ -313,9 +311,7 @@ export default function LiveActivityModule() {
           {rows.slice(0, 10).map((e) => (
             <EntryRowLine key={(e.id ?? e.handle).toString()} e={e} />
           ))}
-          <div className="pt-1 text-[12px] text-slate-500">
-            Claim in the hub to join today’s list.
-          </div>
+          <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
         </div>
       )}
     </div>
