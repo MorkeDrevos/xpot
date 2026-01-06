@@ -152,7 +152,7 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   return out;
 }
 
-// ✅ One avatar resolver for bubbles + list (fixes “empty avatar” list mode)
+// One avatar resolver for bubbles + list (fixes "empty avatar" list mode)
 function avatarUrlForRow(row: Pick<EntryRow, 'handle' | 'avatarUrl'>) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
@@ -161,7 +161,7 @@ function avatarUrlForRow(row: Pick<EntryRow, 'handle' | 'avatarUrl'>) {
 }
 
 /**
- * ✅ No more flashing:
+ * No more flashing:
  * - never clears rows on refresh errors
  * - separate initial load vs refreshing
  */
@@ -202,7 +202,7 @@ function useTodayEntries(limit: number) {
         }
 
         if (!res.ok) {
-          // ✅ do NOT clear rows (prevents flicker)
+          // do NOT clear rows (prevents flicker)
           return;
         }
 
@@ -232,7 +232,7 @@ function useTodayEntries(limit: number) {
         }
       } catch (e: any) {
         if (e?.name === 'AbortError') return;
-        // ✅ do NOT clear rows on errors
+        // do NOT clear rows on errors
       } finally {
         if (!alive) return;
         setInitialLoading(false);
@@ -443,7 +443,6 @@ function AvatarBubble({
       className="group relative"
       title={handle}
     >
-      {/* Hover card (desktop) */}
       <div
         className="
           pointer-events-none
@@ -465,7 +464,6 @@ function AvatarBubble({
             backdrop-blur
           "
         >
-          {/* Soft caret */}
           <div
             aria-hidden
             className="
@@ -490,7 +488,6 @@ function AvatarBubble({
                 decoding="async"
               />
 
-              {/* Verified badge */}
               {row.verified ? (
                 <span
                   className="
@@ -513,7 +510,6 @@ function AvatarBubble({
               <div className="flex items-center gap-2">
                 <div className="truncate text-[13px] font-semibold text-slate-100">{row.name || clean || 'Unknown'}</div>
 
-                {/* XPOT badge for winners */}
                 {isWinner ? (
                   <span
                     className="
@@ -535,16 +531,14 @@ function AvatarBubble({
               </div>
 
               <div className="truncate text-[12px] text-slate-400">{handle || '@unknown'}</div>
-              <div className="mt-1 text-[11px] text-slate-500">View on X →</div>
+              <div className="mt-1 text-[11px] text-slate-500">View on X</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Glow */}
       <span className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100 bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_60%_55%,rgba(var(--xpot-gold),0.18),transparent_60%)]" />
 
-      {/* Avatar */}
       <span
         className="relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
         style={{ width: size, height: size }}
@@ -557,7 +551,7 @@ function AvatarBubble({
 }
 
 /* =========================
-   ✅ Stage (TOP-LEVEL)
+   Stage (TOP-LEVEL)
 ========================= */
 function Stage({ latestWinner }: { latestWinner: any }) {
   const { rows: entries, initialLoading, refreshing } = useTodayEntries(24);
@@ -613,7 +607,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   </span>
                 </p>
                 <p className="mt-2 text-[12px] text-slate-400">
-                  {initialLoading ? 'Updating…' : `${uniqCount || 0} unique entrants`}
+                  {initialLoading ? 'Updating...' : `${uniqCount || 0} unique entrants`}
                   {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
                 </p>
               </div>
@@ -650,12 +644,12 @@ function Stage({ latestWinner }: { latestWinner: any }) {
             <div className="relative mt-6">
               {showEmpty ? (
                 <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                  <p className="text-[12px] text-slate-400">Claim in the hub to appear here.</p>
+                  <p className="text-[12px] text-slate-400">Enter via the hub to appear here.</p>
                   <Link
                     href={ROUTE_HUB}
                     className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
                   >
-                    Claim in hub
+                    Enter hub
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -704,7 +698,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                       </a>
                     );
                   })}
-                  <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
+                  <div className="pt-1 text-[12px] text-slate-500">Enter via the hub to join today&apos;s list.</div>
                 </div>
               )}
             </div>
@@ -722,22 +716,21 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                     Latest winner
                   </span>
                 </p>
-                <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                  Winner just took home
-                </p>
+
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-3xl font-semibold text-[rgba(var(--xpot-gold),1)]">
                     {typeof winnerAmount === 'number' ? winnerAmount.toLocaleString() : '1,000,000'}
                   </span>
                   <span className="text-[12px] font-semibold text-slate-400">XPOT</span>
                 </div>
+
                 <p className="mt-2 text-[12px] text-slate-400">
                   {winnerDate ? (
                     <>
-                      Claimed <span className="text-slate-200">{winnerDate}</span>
+                      Draw date: <span className="text-slate-200">{winnerDate}</span>
                     </>
                   ) : (
-                    <>Claimed on-chain</>
+                    <>Draw date: recorded on-chain</>
                   )}
                 </p>
               </div>
@@ -749,9 +742,9 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-white/[0.06] transition"
-                    title="View transaction"
+                    title="View TX"
                   >
-                    Tx
+                    TX
                     <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
                   </a>
                 ) : null}
@@ -772,7 +765,12 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
                   {winnerAvatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={winnerAvatar} alt={winnerHandle || 'winner'} className="h-full w-full object-cover" />
+                    <img
+                      src={winnerAvatar}
+                      alt={winnerHandle || 'winner'}
+                      className="h-full w-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
                   ) : (
                     <span className="text-sm font-semibold text-slate-200">
                       {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
@@ -781,7 +779,9 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 </span>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-semibold text-slate-100">{winnerName || winnerHandle || 'Winner'}</p>
+                  <p className="truncate text-[14px] font-semibold text-slate-100">
+                    {winnerName || winnerHandle || 'Winner'}
+                  </p>
                   <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
                 </div>
 
@@ -840,27 +840,27 @@ function HomeInner() {
     document.title = runTitle(run.day, run.started, run.ended, cutoffLabel);
     setMeta(
       'description',
-      `XPOT is a daily draw protocol with handle-first identity and on-chain proof. Final draw: ${RUN_END_EU}.`,
+      `XPOT is a daily draw protocol with handle-first identity and on-chain verification. Final draw: ${RUN_END_EU}.`,
     );
   }, [run.day, run.started, run.ended, cutoffLabel]);
 
   const faq = useMemo(
     () => [
       {
-        q: 'What is “The Final Draw” exactly?',
+        q: 'What is "The Final Draw" exactly?',
         a: `It’s the finale of a 7000-day global XPOT run. Daily entries happen through the hub and the run ends at ${RUN_END_EU}.`,
       },
       {
         q: 'Do I need tickets to enter?',
-        a: 'No tickets. Eligibility is holdings-based. Hold XPOT, verify eligibility in the hub and claim your entry.',
+        a: 'No tickets. Eligibility is holdings-based. Hold XPOT, verify eligibility in the hub and enter once per day.',
       },
       {
         q: 'Why do winners show as @handle?',
-        a: 'XPOT is handle-first: winners and history are presented by X handle for a clean public layer while claims remain self-custody and wallet-native.',
+        a: 'XPOT is handle-first: winners and history are presented by X handle for a clean public layer while payouts remain self-custody and wallet-native.',
       },
       {
         q: 'How can anyone verify outcomes?',
-        a: 'Outcomes are on-chain. Proof is the product. Anyone can verify distributions in an explorer.',
+        a: 'Outcomes are on-chain. Anyone can verify distributions in an explorer.',
       },
     ],
     [],
@@ -955,7 +955,9 @@ function HomeInner() {
                         />
                         <div className="relative flex flex-wrap items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">Next draw</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                              Next draw
+                            </p>
 
                             <p className="mt-1 flex items-baseline gap-2 text-[12px] text-slate-400">
                               <span className="text-slate-500">In</span>
@@ -999,7 +1001,7 @@ function HomeInner() {
 
                             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                               <p className="text-[12px] text-slate-300">
-                                Bonus window is live - same entry, extra payout, proof on-chain.
+                                Bonus window is live - same entry, extra payout, recorded on-chain.
                               </p>
 
                               <span className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200 ring-1 ring-violet-400/20">
@@ -1110,7 +1112,9 @@ function HomeInner() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
-                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">Always verify the official mint before interacting.</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+                  Always verify the official mint before interacting.
+                </p>
               </div>
               <RoyalContractBar mint={XPOT_CA} />
             </div>
@@ -1132,18 +1136,18 @@ function HomeInner() {
               </Pill>
 
               <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                Daily draws with proof. One run ending with a finale.
+                Daily draws with verification. One run ending with a finale.
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT is simple on purpose: holdings-based eligibility, handle-first identity and on-chain payout proof.
-                Daily draws are the heartbeat. The Final Draw is the destination.
+                XPOT is simple on purpose: holdings-based eligibility, handle-first identity and on-chain payout
+                verification. Daily draws are the heartbeat. The Final Draw is the destination.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <Pill tone="emerald">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Proof first
+                Verifiable
               </Pill>
               <Pill tone="sky">
                 <Users className="h-3.5 w-3.5" />
@@ -1159,12 +1163,14 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
+              <p className="text-sm text-slate-300">
+                Built for serious players: clean rules, public arc and provable outcomes.
+              </p>
             </div>
 
             <Link
               href={ROUTE_HUB}
-              title="Claim your entry"
+              title="Enter the hub"
               className="
                 xpot-btn-vault
                 group
@@ -1177,7 +1183,7 @@ function HomeInner() {
                 active:scale-[0.99]
               "
             >
-              Claim your entry
+              Enter the hub
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
@@ -1207,7 +1213,7 @@ function HomeInner() {
           <PremiumCard className="p-5 sm:p-6" halo={false}>
             <Pill tone="emerald">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Proof
+              Verification
             </Pill>
             <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
             <p className="mt-2 text-sm text-slate-300">Anyone can verify outcomes in an explorer.</p>
@@ -1229,7 +1235,7 @@ function HomeInner() {
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-300">
                 XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and
-                sponsor pools while keeping the same primitive and the same proof.
+                sponsor pools while keeping the same primitive and the same verification.
               </p>
             </div>
 
@@ -1280,7 +1286,7 @@ function HomeInner() {
               <ul className="mt-4 space-y-2 text-sm text-slate-300">
                 <li>Winners shown by @handle</li>
                 <li>History can evolve into reputation</li>
-                <li>Still self-custody for claims</li>
+                <li>Still self-custody for payouts</li>
               </ul>
             </div>
 
@@ -1301,7 +1307,7 @@ function HomeInner() {
                   Final draw: <FinalDrawDate variant="short" />
                 </li>
                 <li>Daily cadence builds the arc</li>
-                <li>Proof stays public</li>
+                <li>Verification stays public</li>
               </ul>
             </div>
           </div>

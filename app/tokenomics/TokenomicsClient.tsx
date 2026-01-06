@@ -1032,7 +1032,7 @@ function DonutAllocation({
                       strokeDashoffset={seg.dashoffset}
                       style={{ cursor: 'pointer', filter: isActive ? 'url(#xpotGlow)' : undefined }}
                       initial={false}
-                      animate={reduceMotion ? {} : { opacity: isActive ? 1 : 0.7 }}
+                      animate={useReducedMotion() ? {} : { opacity: isActive ? 1 : 0.7 }}
                       onClick={() => onSelect(seg.key)}
                       onMouseEnter={() => onSelect(seg.key)}
                     />
@@ -1126,7 +1126,7 @@ function DonutAllocation({
                           className="h-2 rounded-full"
                           initial={false}
                           animate={{ width: pctToBar(a.pct) }}
-                          transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
+                          transition={useReducedMotion() ? { duration: 0 } : { duration: 0.22, ease: 'easeOut' }}
                           style={{
                             background: `linear-gradient(90deg, ${stroke}, rgba(255,255,255,0.08))`,
                             boxShadow: active ? `0 0 16px ${glow}` : undefined,
@@ -1143,10 +1143,10 @@ function DonutAllocation({
                   {active && (
                     <motion.div
                       key="content"
-                      initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                      exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -6 }}
-                      transition={reduceMotion ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
+                      initial={useReducedMotion() ? { opacity: 1 } : { opacity: 0, y: -6 }}
+                      animate={useReducedMotion() ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                      exit={useReducedMotion() ? { opacity: 1 } : { opacity: 0, y: -6 }}
+                      transition={useReducedMotion() ? { duration: 0 } : { duration: 0.16, ease: 'easeOut' }}
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4">
@@ -1191,7 +1191,7 @@ function TransparencyNoteBar({
   onLearn?: () => void;
 }) {
   return (
-    <div className="mt-5 mobile-flat rounded-[26px] border border-white/10 bg-slate-950/45 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur-xl overflow-hidden">
+    <div className="relative mt-5 mobile-flat rounded-[26px] border border-white/10 bg-slate-950/45 shadow-[0_30px_110px_rgba(0,0,0,0.45)] backdrop-blur-xl overflow-hidden">
       {/* subtle frame + glow */}
       <div className="pointer-events-none absolute inset-0 opacity-60 hidden sm:block bg-[radial-gradient(circle_at_12%_30%,rgba(56,189,248,0.10),transparent_60%),radial-gradient(circle_at_86%_40%,rgba(var(--xpot-gold),0.14),transparent_60%)]" />
       <div className="relative z-10 p-4 sm:p-5">
@@ -1567,19 +1567,25 @@ function TokenomicsPageInner() {
           <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6">
             <div className="pt-8 sm:pt-10 pb-8 sm:pb-10">
               <div className="max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Pill tone="emerald">
-                    <Sparkles className="h-3.5 w-3.5" />
+                {/* Royal, calmer trust row (same info, less noise) */}
+                <div className="flex flex-wrap items-center gap-2 opacity-90">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-200" />
                     Daily distribution
-                  </Pill>
-                  <Pill tone="sky">
-                    <ShieldCheck className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                    <ShieldCheck className="h-3.5 w-3.5 text-sky-200" />
                     On-chain proof
-                  </Pill>
-                  <Pill tone="amber">
-                    <Lock className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[rgba(var(--xpot-gold),0.28)] bg-[rgba(var(--xpot-gold),0.06)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[rgb(var(--xpot-gold-2))]">
+                    <Lock className="h-3.5 w-3.5 opacity-90" />
                     Fixed supply
-                  </Pill>
+                  </span>
+
+                  <span className="ml-1 hidden sm:inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    <Crown className="h-3.5 w-3.5 text-[rgb(var(--xpot-gold-2))]" />
+                    Protocol-grade
+                  </span>
                 </div>
 
                 <h1 className="mt-5 text-balance text-3xl font-semibold leading-tight sm:text-4xl">
@@ -1590,29 +1596,35 @@ function TokenomicsPageInner() {
                   XPOT is built around simple rules, public wallets and verifiable outcomes. If it cannot be proven on-chain, it should not exist.
                 </p>
 
+                {/* CTAs - keep all, but hierarchy becomes premium */}
                 <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-5 py-2.5 text-sm`}>
+                  <Link href={ROUTE_HUB} className={`${BTN_PRIMARY} px-6 py-3 text-sm`}>
                     Enter today&apos;s XPOT
                     <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-
-                  <Link href={ROUTE_TERMS} target="_blank" rel="noopener noreferrer" className={`${BTN_UTILITY} px-5 py-2.5 text-sm`}>
-                    Terms
                   </Link>
 
                   <button
                     type="button"
                     onClick={openDistribution}
-                    className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
+                    className="inline-flex items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-500/10 px-6 py-3 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 transition"
                   >
                     View reserve
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </button>
+
+                  {/* Terms stays, but quieter */}
+                  <Link
+                    href={ROUTE_TERMS}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-slate-200 hover:bg-white/[0.06] transition"
+                  >
+                    Terms
+                  </Link>
                 </div>
 
-                {/* Tiny proof links */}
+                {/* Proof nav - keep all links, calmer layout */}
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
-                <TransparencyNoteBar href="/tokenomics#vaults" />
                   <Link
                     href="/tokenomics?tab=rewards&focus=reserve"
                     className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-semibold text-slate-200 hover:bg-white/[0.06] transition"
@@ -1620,7 +1632,7 @@ function TokenomicsPageInner() {
                     Tokenomics & proof <ArrowRight className="h-4 w-4 opacity-70" />
                   </Link>
 
-                  <span className="text-slate-600">Public wallets, vesting, reserves.</span>
+                  <span className="hidden sm:inline text-slate-600">Public wallets, vesting, reserves.</span>
 
                   <Link
                     href={ROUTE_WINNERS}
@@ -1641,11 +1653,16 @@ function TokenomicsPageInner() {
                     <span className="font-mono text-emerald-200">{Number.isFinite(runwayFixedYears) ? runwayFixedYears.toFixed(2) : '—'} years</span>
                   </span>
                 </div>
+
+                {/* Transparency note belongs to hero, but below CTAs (still above fold on desktop) */}
+                <TransparencyNoteBar href="/tokenomics#vaults" />
               </div>
 
+              {/* Proof cards remain unchanged, but now hero breathes */}
               {proofCards}
 
-              <div className="mt-8 h-px w-full bg-white/10" />
+              {/* Royal divider */}
+              <div className="mt-8 h-px w-full bg-[linear-gradient(90deg,transparent,rgba(var(--xpot-gold),0.35),rgba(255,255,255,0.10),rgba(var(--xpot-gold),0.25),transparent)]" />
             </div>
           </div>
         </div>

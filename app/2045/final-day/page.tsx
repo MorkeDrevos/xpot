@@ -871,8 +871,14 @@ export default function FinalDayPage() {
           : 'bg-white/6 text-white/90 ring-white/18';
 
   const dayLabel = `Day ${drawSchedule.currentDayNumber.toLocaleString()} of ${RUN_TOTAL_DAYS.toLocaleString()}`;
-  const drawStatusLabel = `${drawSchedule.completedDraws.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
-  const dayProgress = Math.max(0, Math.min(1, drawSchedule.completedDraws / RUN_TOTAL_DAYS));
+
+  // ✅ FIX: Make this match the homepage's "DAY {day}/{RUN_DAYS}"
+  // drawSchedule.completedDraws is "completed", so it will show 6/7000 on day 7.
+  // We want 7/7000.
+  const drawStatusLabel = `${drawSchedule.currentDayNumber.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
+
+  // ✅ FIX: Progress should track the day number (same feeling as home), not completed draws
+  const dayProgress = Math.max(0, Math.min(1, drawSchedule.currentDayNumber / RUN_TOTAL_DAYS));
 
   const cutoffLabel = formatMadridCutoffLabel();
   const closesAtLabel = formatMadridTimeShort(closesAtMs);
