@@ -1,4 +1,3 @@
-// app/api/entries/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -7,63 +6,44 @@ export const dynamic = 'force-dynamic';
 function intParam(v: string | null, fallback: number) {
   const n = v ? Number(v) : NaN;
   if (!Number.isFinite(n)) return fallback;
-  return Math.max(1, Math.min(80, Math.floor(n)));
+  return Math.max(1, Math.min(50, Math.floor(n)));
 }
 
-function normalizeHandle(raw: any): string | null {
-  const s = String(raw ?? '').trim();
-  if (!s) return null;
-  const clean = s.replace(/^@/, '');
-  if (!clean) return null;
-  return `@${clean}`;
-}
-
-function pickUserHandle(u: any): string | null {
-  // be tolerant - your schema/name has changed before
-  return (
-    normalizeHandle(u?.xHandle) ||
-    normalizeHandle(u?.handle) ||
-    normalizeHandle(u?.xUsername) ||
-    normalizeHandle(u?.username) ||
-    normalizeHandle(u?.twitterHandle) ||
-    null
-  );
-}
+type UserLike = {
+  xHandle?: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+  xVerified?: boolean | null;
+};
 
 export async function GET(req: NextRequest) {
   try {
     const limit = intParam(req.nextUrl.searchParams.get('limit'), 24);
 
-    // "today" in Madrid-ish: use server local day window (good enough for stage)
-    const now = new Date();
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-
     const tickets = await prisma.ticket.findMany({
-      where: { createdAt: { gte: start } },
       orderBy: { createdAt: 'desc' },
       take: limit,
       include: {
         wallet: { include: { user: true } },
-        // if your Ticket also has direct user relation, this keeps it future-proof
-        // @ts-expect-error - only if exists in your schema
-        user: true,
-      } as any,
+      },
     });
 
     const entries = tickets
       .map(t => {
-        const u = (t as any)?.user ?? t.wallet?.user;
-        const handle = pickUserHandle(u);
-        if (!handle) return null;
+        const u = (t as any)?.wallet?.user as UserLike | undefined;
+
+        const raw = u?.xHandle ? String(u.xHandle).replace(/^@/, '').trim() : '';
+        if (!raw) return null;
+
+        const handle = `@${raw}`;
 
         return {
-          id: t.id,
-          createdAt: t.createdAt?.toISOString?.() ?? new Date(t.createdAt as any).toISOString(),
+          id: (t as any)?.id,
+          createdAt: (t as any)?.createdAt?.toISOString?.() ?? null,
           handle,
-          name: (u as any)?.name ?? null,
-          avatarUrl: (u as any)?.avatarUrl ?? null,
-          verified: Boolean((u as any)?.xVerified ?? (u as any)?.verified ?? false),
+          name: u?.name ?? null,
+          avatarUrl: u?.avatarUrl ?? null,
+          verified: Boolean(u?.xVerified ?? false),
         };
       })
       .filter(Boolean);
