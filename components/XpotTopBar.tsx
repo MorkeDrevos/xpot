@@ -629,14 +629,14 @@ function PublicNavCenter({
                 </Link>
 
                 <Link
-  href={WINNERS_HREF}
-  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
->
-  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-    <Trophy className="h-4 w-4 text-amber-300" />
-  </span>
-  Winners
-</Link>
+                  href={WINNERS_HREF}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Trophy className="h-4 w-4 text-amber-300" />
+                  </span>
+                  Winners
+                </Link>
 
                 <Link
                   href={PROTOCOL_HREF}
@@ -695,7 +695,8 @@ function PublicRight() {
 
 function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
-    <nav className="flex items-center gap-7">
+    // ✅ tightened gap so Winners fits cleanly (matches your screenshot layout)
+    <nav className="flex items-center gap-6">
       <NavLink href="/hub">Hub</NavLink>
 
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
@@ -703,9 +704,15 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
+      {/* ✅ ORDER: Tokenomics -> Winners -> Roadmap -> Health -> X */}
       <NavLink href={TOKENOMICS_HREF}>
         <PieChart className="h-4 w-4 text-emerald-300" />
         Tokenomics
+      </NavLink>
+
+      <NavLink href={WINNERS_HREF}>
+        <Trophy className="h-4 w-4 text-amber-300" />
+        Winners
       </NavLink>
 
       <NavLink href={ROADMAP_HREF}>

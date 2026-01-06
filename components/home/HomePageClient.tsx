@@ -157,10 +157,7 @@ function avatarUrlForRow(row: Pick<EntryRow, 'handle' | 'avatarUrl'>) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
   const cache = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
-  return (
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cache}`
-  );
+  return row.avatarUrl ?? `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cache}`;
 }
 
 /**
@@ -422,10 +419,21 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
   );
 }
 
-function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
+function AvatarBubble({
+  row,
+  size = 56,
+  isWinner,
+}: {
+  row: EntryRow;
+  size?: number;
+  isWinner?: boolean;
+}) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
-  const img = avatarUrlForRow(row);
+
+  const img =
+    row.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
 
   return (
     <a
@@ -435,8 +443,108 @@ function AvatarBubble({ row, size = 56 }: { row: EntryRow; size?: number }) {
       className="group relative"
       title={handle}
     >
+      {/* Hover card (desktop) */}
+      <div
+        className="
+          pointer-events-none
+          absolute bottom-full left-1/2 z-[999]
+          block -translate-x-1/2 pb-3
+          opacity-0 translate-y-1 scale-[0.98]
+          transition duration-150 ease-out
+          delay-150
+          group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100
+        "
+      >
+        <div
+          className="
+            relative w-56
+            rounded-2xl border border-white/10
+            bg-slate-950/95
+            px-3.5 py-3
+            shadow-[0_26px_80px_rgba(0,0,0,0.70)]
+            backdrop-blur
+          "
+        >
+          {/* Soft caret */}
+          <div
+            aria-hidden
+            className="
+              absolute left-1/2 top-full
+              -translate-x-1/2
+              h-3 w-3 rotate-45
+              border border-white/10
+              bg-slate-950/95
+              shadow-[0_14px_40px_rgba(0,0,0,0.55)]
+            "
+          />
+
+          <div className="flex items-center gap-3">
+            <span className="relative inline-flex h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img}
+                alt={handle}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
+              />
+
+              {/* Verified badge */}
+              {row.verified ? (
+                <span
+                  className="
+                    absolute -bottom-1 -right-1
+                    inline-flex h-5 w-5 items-center justify-center
+                    rounded-full border border-white/10
+                    bg-sky-500/20
+                    ring-1 ring-sky-400/20
+                    shadow-[0_10px_30px_rgba(0,0,0,0.35)]
+                    backdrop-blur
+                  "
+                  title="Verified"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-sky-200" />
+                </span>
+              ) : null}
+            </span>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <div className="truncate text-[13px] font-semibold text-slate-100">{row.name || clean || 'Unknown'}</div>
+
+                {/* XPOT badge for winners */}
+                {isWinner ? (
+                  <span
+                    className="
+                      inline-flex items-center gap-1
+                      rounded-full
+                      border border-amber-300/20
+                      bg-amber-500/10
+                      px-2 py-0.5
+                      text-[10px] font-semibold
+                      text-amber-200
+                      shadow-[0_0_0_1px_rgba(251,191,36,0.10)]
+                    "
+                    title="Winner"
+                  >
+                    <Crown className="h-3 w-3" />
+                    XPOT
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="truncate text-[12px] text-slate-400">{handle || '@unknown'}</div>
+              <div className="mt-1 text-[11px] text-slate-500">View on X →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Glow */}
       <span className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100 bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_60%_55%,rgba(var(--xpot-gold),0.18),transparent_60%)]" />
 
+      {/* Avatar */}
       <span
         className="relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
         style={{ width: size, height: size }}
@@ -474,7 +582,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
 
   return (
     <section className="mt-7">
-      <PremiumCard className="p-6 sm:p-8" halo sheen>
+      <PremiumCard className="p-6 sm:p-8 overflow-visible" halo sheen>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Live activity</p>
@@ -491,9 +599,9 @@ function Stage({ latestWinner }: { latestWinner: any }) {
           </Link>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="mt-6 grid gap-4 lg:grid-cols-2 overflow-visible">
           {/* Entries */}
-          <div className="relative overflow-hidden rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 lg:order-1">
+          <div className="relative isolate overflow-visible rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 lg:order-1">
             <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
             <div className="relative flex items-start justify-between gap-3">
@@ -552,10 +660,15 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   </Link>
                 </div>
               ) : mode === 'bubbles' ? (
-                <div className="flex flex-wrap items-center justify-center gap-3">
+                <div className="relative z-10 flex flex-wrap items-center justify-center gap-3">
                   {cleanEntries.slice(0, 18).map((e, idx) => {
                     const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
-                    return <AvatarBubble key={(e.id ?? e.handle).toString()} row={e} size={size} />;
+
+                    const isWinner =
+                      !!winnerHandle &&
+                      normalizeHandle(e.handle).toLowerCase() === normalizeHandle(winnerHandle).toLowerCase();
+
+                    return <AvatarBubble key={(e.id ?? e.handle).toString()} row={e} size={size} isWinner={isWinner} />;
                   })}
 
                   <div className="w-full pt-2 text-center text-[12px] text-slate-400">
@@ -668,9 +781,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 </span>
 
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-semibold text-slate-100">
-                    {winnerName || winnerHandle || 'Winner'}
-                  </p>
+                  <p className="truncate text-[14px] font-semibold text-slate-100">{winnerName || winnerHandle || 'Winner'}</p>
                   <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
                 </div>
 
@@ -999,9 +1110,7 @@ function HomeInner() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
-                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-                  Always verify the official mint before interacting.
-                </p>
+                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">Always verify the official mint before interacting.</p>
               </div>
               <RoyalContractBar mint={XPOT_CA} />
             </div>
@@ -1050,9 +1159,7 @@ function HomeInner() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
+              <p className="text-sm text-slate-300">Built for serious players: clean rules, public arc and provable outcomes.</p>
             </div>
 
             <Link
