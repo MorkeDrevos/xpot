@@ -1,3 +1,4 @@
+// app/api/entries/today/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -9,17 +10,11 @@ function intParam(v: string | null, fallback: number) {
   return Math.max(1, Math.min(50, Math.floor(n)));
 }
 
-type UserLike = {
-  xHandle?: string | null;
-  name?: string | null;
-  avatarUrl?: string | null;
-  xVerified?: boolean | null;
-};
-
 export async function GET(req: NextRequest) {
   try {
     const limit = intParam(req.nextUrl.searchParams.get('limit'), 24);
 
+    // latest tickets (your "today" UI is actually "latest entrants", not calendar-day filtered)
     const tickets = await prisma.ticket.findMany({
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -30,27 +25,25 @@ export async function GET(req: NextRequest) {
 
     const entries = tickets
       .map(t => {
-        const u = (t as any)?.wallet?.user as UserLike | undefined;
-
-        const raw = u?.xHandle ? String(u.xHandle).replace(/^@/, '').trim() : '';
-        if (!raw) return null;
-
-        const handle = `@${raw}`;
+        const u = t.wallet?.user as any;
+        const raw = u?.xHandle ?? u?.handle ?? u?.username ?? null;
+        const handle = raw ? `@${String(raw).replace(/^@/, '')}` : null;
+        if (!handle) return null;
 
         return {
-          id: (t as any)?.id,
-          createdAt: (t as any)?.createdAt?.toISOString?.() ?? null,
+          id: t.id,
+          createdAt: t.createdAt.toISOString(),
           handle,
           name: u?.name ?? null,
           avatarUrl: u?.avatarUrl ?? null,
-          verified: Boolean(u?.xVerified ?? false),
+          verified: Boolean(u?.xVerified ?? u?.verified ?? false),
         };
       })
       .filter(Boolean);
 
     return NextResponse.json({ ok: true, entries }, { status: 200 });
-  } catch (err) {
+  } catch (err: any) {
     console.error('GET /api/entries/today error', err);
-    return NextResponse.json({ ok: true, entries: [] }, { status: 200 });
+    return NextResponse.json({ ok: false, entries: [] }, { status: 200 });
   }
 }
