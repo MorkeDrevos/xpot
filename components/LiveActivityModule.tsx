@@ -1,61 +1,29 @@
+// components/LiveActivityModule.tsx
 'use client';
 
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Sparkles, Users } from 'lucide-react';
 
-/* ======================================================
-   TYPES (TOP-LEVEL EXPORTS - REQUIRED FOR BUILD)
-====================================================== */
-
-export type EntryRow = {
+type Entry = {
   id?: string;
-  createdAt?: string;
   handle: string;
   name?: string | null;
   avatarUrl?: string | null;
-  verified?: boolean;
+  createdAt?: string | null;
+  verified?: boolean | null;
 };
-
-export type LiveWinnerRow = {
-  id: string;
-  handle: string | null;
-  name?: string | null;
-  avatarUrl?: string | null;
-  wallet: string | null;
-  amount?: number | null;
-  amountXpot?: number | null;
-
-  // NOTE: We present this everywhere as the CLAIM timestamp (on-chain payout time).
-  // Even if your backend historically used it as "drawDate", UI treats it as "claimedAt".
-  drawDate: string | null;
-
-  txUrl?: string | null;
-  kind?: 'MAIN' | 'BONUS' | null;
-  label?: string | null;
-  verified?: boolean;
-};
-
-/* ======================================================
-   HELPERS
-====================================================== */
 
 const ROUTE_HUB = '/hub';
 
-function cx(...c: Array<string | false | null | undefined>) {
-  return c.filter(Boolean).join(' ');
-}
+// Prefer the route you actually have in your repo.
+// Fallback to the older public route if needed.
+const PRIMARY_URL = (limit: number) => `/api/entries/today?limit=${encodeURIComponent(String(limit))}`;
+const FALLBACK_URL = (limit: number) => `/api/public/entries/latest?limit=${encodeURIComponent(String(limit))}`;
 
-function normalizeHandle(h?: string | null) {
+function normalizeHandle(h: any) {
   const s = String(h ?? '').trim();
-  if (!s) return '@unknown';
+  if (!s) return '';
   return s.startsWith('@') ? s : `@${s}`;
-}
-
-function toXProfileUrl(handle: string) {
-  const clean = handle.replace(/^@/, '');
-  return `https://x.com/${encodeURIComponent(clean)}`;
 }
 
 function safeTimeMs(iso?: string | null) {
@@ -63,38 +31,25 @@ function safeTimeMs(iso?: string | null) {
   return Number.isFinite(t) ? t : 0;
 }
 
-function formatTime(iso?: string | null) {
-  const ms = safeTimeMs(iso);
-  if (!ms) return '';
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Madrid',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(new Date(ms));
-}
+function dedupeByHandleKeepLatest(rows: Entry[]) {
+  const map = new Map<string, Entry>();
 
-/**
- * Dedupe entries by HANDLE only (keep the most recent per handle).
- */
-function dedupeByHandleKeepLatest(entries: EntryRow[]) {
-  const map = new Map<string, EntryRow>();
+  for (const r of rows ?? []) {
+    const handle = normalizeHandle(r?.handle);
+    if (!handle) continue;
 
-  for (const raw of entries ?? []) {
-    if (!raw?.handle) continue;
+    const key = handle.toLowerCase();
+    const cur = map.get(key);
 
-    const h = normalizeHandle(raw.handle);
-    const current = map.get(h);
+    const ts = safeTimeMs(r?.createdAt ?? null);
+    const curTs = cur ? safeTimeMs(cur.createdAt ?? null) : -1;
 
-    const rawTs = safeTimeMs(raw.createdAt ?? null);
-    const curTs = current ? safeTimeMs(current.createdAt ?? null) : -1;
-
-    if (!current || rawTs >= curTs) {
-      map.set(h, {
-        ...raw,
-        handle: h,
-        createdAt: raw.createdAt ?? '',
-        name: raw.name ? String(raw.name).trim() : raw.name ?? null,
+    if (!cur || ts >= curTs) {
+      map.set(key, {
+        ...r,
+        handle,
+        name: r?.name ? String(r.name).trim() : r?.name ?? null,
+        createdAt: r?.createdAt ?? null,
       });
     }
   }
@@ -104,280 +59,249 @@ function dedupeByHandleKeepLatest(entries: EntryRow[]) {
   return out;
 }
 
-/* ======================================================
-   AVATAR + TOOLTIP (PORTAL)
-====================================================== */
+function pickEntriesArray(json: any): any[] {
+  // supports: { entries: [...] } or { ok:true, entries:[...] }
+  if (Array.isArray(json?.entries)) return json.entries;
+  // supports other shapes if you ever change it later
+  if (Array.isArray(json?.rows)) return json.rows;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.items)) return json.items;
+  return [];
+}
 
-function Avatar({
-  handle,
-  src,
-  size,
-}: {
-  handle: string;
-  src?: string | null;
-  size: number;
-}) {
-  const clean = handle.replace('@', '');
+function mapEntries(raw: any[]): Entry[] {
+  const mapped: Entry[] = [];
+
+  for (const r of raw ?? []) {
+    const handle = normalizeHandle(r?.handle ?? r?.xHandle ?? r?.username);
+    if (!handle) continue;
+
+    mapped.push({
+      id: r?.id ?? undefined,
+      handle,
+      name: r?.name ?? r?.displayName ?? null,
+      avatarUrl: r?.avatarUrl ?? r?.avatar ?? r?.image ?? null,
+      createdAt: r?.createdAt ?? r?.created_at ?? null,
+      verified: r?.verified ?? r?.isVerified ?? null,
+    });
+  }
+
+  return dedupeByHandleKeepLatest(mapped);
+}
+
+function AvatarBubble({ e, size }: { e: Entry; size: number }) {
+  const clean = e.handle.replace(/^@/, '');
+
   const img =
-    src ??
-    `https://unavatar.io/twitter/${clean}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+    e.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
 
   return (
-    <div
-      className="relative overflow-hidden rounded-full bg-white/5 ring-1 ring-white/15"
-      style={{ width: size, height: size }}
+    <a
+      href={`https://x.com/${encodeURIComponent(clean)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative"
+      title={e.handle}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={img}
-        alt={handle}
-        className="h-full w-full object-cover"
-        referrerPolicy="no-referrer"
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100
+          bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.20),transparent_62%),
+              radial-gradient(circle_at_60%_55%,rgba(255,215,97,0.16),transparent_60%)]"
       />
-    </div>
+      <span
+        className="relative inline-flex items-center justify-center overflow-hidden rounded-full
+          border border-white/10 bg-white/[0.03]
+          shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+        style={{ width: size, height: size }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img} alt={e.handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+      </span>
+    </a>
   );
 }
 
-function TooltipPortal({
-  open,
-  anchor,
-  children,
-}: {
-  open: boolean;
-  anchor: HTMLElement | null;
-  children: React.ReactNode;
-}) {
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+function EntryRowLine({ e }: { e: Entry }) {
+  const clean = e.handle.replace(/^@/, '');
+  const img =
+    e.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+
+  return (
+    <a
+      href={`https://x.com/${encodeURIComponent(clean)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
+      title={e.handle}
+    >
+      <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img} alt={e.handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+      </span>
+
+      <div className="min-w-0">
+        <div className="truncate text-[13px] font-semibold text-slate-100">{e.name || clean}</div>
+        <div className="truncate text-[12px] text-slate-400">{e.handle}</div>
+      </div>
+
+      <span className="ml-auto text-[12px] text-slate-500 group-hover:text-slate-300 transition">View</span>
+    </a>
+  );
+}
+
+async function fetchJson(url: string, signal: AbortSignal) {
+  const res = await fetch(url, { cache: 'no-store', signal });
+  if (!res.ok) {
+    const err: any = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+export default function LiveActivityModule({ limit = 24 }: { limit?: number }) {
+  const [rows, setRows] = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
+
+  // stop interval spam if BOTH routes don't exist in this env
+  const [disabled, setDisabled] = useState(false);
+
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!open || !anchor) return;
+    if (disabled) return;
 
-    const update = () => {
-      const r = anchor.getBoundingClientRect();
-      setPos({ x: r.left + r.width / 2, y: r.bottom + 10 });
-    };
+    let alive = true;
 
-    update();
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
+    async function load() {
+      if (!alive || disabled) return;
+
+      try {
+        abortRef.current?.abort();
+      } catch {}
+      abortRef.current = new AbortController();
+
+      setLoading(true);
+
+      try {
+        // 1) Try /api/entries/today first
+        let json: any;
+        try {
+          json = await fetchJson(PRIMARY_URL(limit), abortRef.current.signal);
+        } catch (e: any) {
+          // If missing, try fallback
+          if (e?.status === 404) {
+            json = await fetchJson(FALLBACK_URL(limit), abortRef.current.signal);
+          } else {
+            // other errors also try fallback once (network etc)
+            json = await fetchJson(FALLBACK_URL(limit), abortRef.current.signal);
+          }
+        }
+
+        const raw = pickEntriesArray(json);
+        const deduped = mapEntries(raw);
+
+        if (alive) setRows(deduped);
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return;
+
+        // If BOTH routes are missing, stop retry spam.
+        // We can only confidently detect this if the thrown error was 404 from fallback as well.
+        // Since we throw generic errors, we just disable on repeated hard failures is risky.
+        // But if you want: you can console.log e.message here.
+        if (alive) setRows([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    load();
+    const t = window.setInterval(load, 25_000);
+
     return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
+      alive = false;
+      window.clearInterval(t);
+      try {
+        abortRef.current?.abort();
+      } catch {}
     };
-  }, [open, anchor]);
+  }, [limit, disabled]);
 
-  if (!open || !pos) return null;
+  const uniqCount = rows.length;
 
-  return createPortal(
-    <div
-      className="fixed z-[99999]"
-      style={{ left: pos.x, top: pos.y, transform: 'translateX(-50%)' }}
-    >
-      {children}
-    </div>,
-    document.body,
-  );
-}
-
-function AvatarTooltip({
-  handle,
-  name,
-  avatarUrl,
-  meta,
-  size = 36,
-}: {
-  handle: string;
-  name?: string | null;
-  avatarUrl?: string | null;
-  meta?: string | null;
-  size?: number;
-}) {
-  const ref = useRef<HTMLAnchorElement | null>(null);
-  const [open, setOpen] = useState(false);
-
-  const href = toXProfileUrl(handle);
+  const bubbles = useMemo(() => {
+    return rows.slice(0, 12).map((e, idx) => ({
+      e,
+      size: idx === 0 ? 56 : idx < 4 ? 48 : 40,
+    }));
+  }, [rows]);
 
   return (
-    <div className="relative">
-      <a
-        ref={ref}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-      >
-        <Avatar handle={handle} src={avatarUrl} size={size} />
-      </a>
-
-      <TooltipPortal open={open} anchor={ref.current}>
-        <div className="w-[260px] rounded-2xl border border-white/10 bg-black/90 p-3 shadow-2xl backdrop-blur-xl">
-          <div className="flex gap-3">
-            <Avatar handle={handle} src={avatarUrl} size={42} />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-white">{handle}</div>
-              {name && <div className="truncate text-xs text-slate-400">{name}</div>}
-              {meta && <div className="mt-1 text-[10px] text-slate-500">{meta}</div>}
-            </div>
-          </div>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-slate-400">Entries</div>
+          <div className="mt-1 text-[12px] text-slate-400">{loading ? 'Updating…' : `${uniqCount} unique entrants`}</div>
         </div>
-      </TooltipPortal>
-    </div>
-  );
-}
 
-/* ======================================================
-   ENTRY RENDERERS
-====================================================== */
+        <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
+          <button
+            type="button"
+            onClick={() => setMode('bubbles')}
+            className={[
+              'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+              mode === 'bubbles' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
+            ].join(' ')}
+            title="Bubbles"
+          >
+            Bubbles
+          </button>
 
-function EntryLine({ e, idx }: { e: EntryRow; idx: number }) {
-  const h = normalizeHandle(e.handle);
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-      <div className="flex min-w-0 items-center gap-3">
-        <AvatarTooltip
-          handle={h}
-          name={e.name}
-          avatarUrl={e.avatarUrl}
-          meta={e.createdAt ? `Entered ${formatTime(e.createdAt)}` : null}
-        />
-        <div className="truncate text-sm font-semibold text-white">{h}</div>
+          <button
+            type="button"
+            onClick={() => setMode('list')}
+            className={[
+              'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition',
+              mode === 'list' ? 'bg-white/[0.07] text-slate-100' : 'text-slate-400 hover:text-slate-200',
+            ].join(' ')}
+            title="List"
+          >
+            List
+          </button>
+        </div>
       </div>
-      <div className="text-[10px] text-slate-400">{idx === 0 ? 'just now' : 'today'}</div>
-    </div>
-  );
-}
 
-function BubbleEntrants({ entries }: { entries: EntryRow[] }) {
-  const unique = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
-
-  return (
-    <div className="flex flex-wrap justify-center gap-3 py-4">
-      {unique.slice(0, 28).map((e, i) => {
-        const size = i === 0 ? 72 : i < 4 ? 56 : 44;
-        const h = normalizeHandle(e.handle);
-
-        return (
-          <AvatarTooltip
-            key={h}
-            handle={h}
-            name={e.name}
-            avatarUrl={e.avatarUrl}
-            meta={e.createdAt ? `Entered ${formatTime(e.createdAt)}` : null}
-            size={size}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-/* ======================================================
-   MAIN COMPONENT
-====================================================== */
-
-export default function LiveActivityModule({
-  // Keeping winner in props for backwards compatibility, but we do not render it here
-  // to avoid duplicating the winner section on the page.
-  winner: _winner,
-  entries,
-  className = '',
-}: {
-  winner: LiveWinnerRow | null;
-  entries: EntryRow[];
-  className?: string;
-}) {
-  const clean = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
-  const [view, setView] = useState<'bubbles' | 'list'>('bubbles');
-
-  const uniqueCount = clean.length;
-
-  return (
-    <section
-      className={cx(
-        'rounded-[32px] border border-white/10 bg-white/5 ring-1 ring-white/5 shadow-[0_60px_160px_rgba(0,0,0,0.6)]',
-        className,
-      )}
-    >
-      <div className="space-y-4 p-5">
-        {/* HEADER */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-slate-400">
-              <Sparkles className="h-4 w-4 text-[rgb(var(--xpot-gold-2))]" />
-              Live activity
-            </div>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <div className="text-lg font-semibold text-white">The XPOT stage</div>
-              <div className="text-xs text-slate-400">
-                <span className="text-slate-300">{uniqueCount.toLocaleString('en-US')}</span> live
-                entries today
-              </div>
-            </div>
-          </div>
-
+      {rows.length === 0 ? (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+          <span className="text-sm text-slate-400">Claim in the hub to appear here.</span>
           <Link
             href={ROUTE_HUB}
-            className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10"
+            className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-semibold text-white hover:bg-white/[0.08] transition"
           >
-            Enter today&apos;s XPOT
+            Claim in hub →
           </Link>
         </div>
-
-        {/* BODY */}
-        <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-400">
-              <Users className="h-4 w-4 text-sky-300" />
-              Entries
-            </div>
-
-            <div className="flex gap-1">
-              <button
-                onClick={() => setView('bubbles')}
-                className={cx(
-                  'rounded-full px-3 py-1 text-xs',
-                  view === 'bubbles' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white',
-                )}
-              >
-                Bubbles
-              </button>
-              <button
-                onClick={() => setView('list')}
-                className={cx(
-                  'rounded-full px-3 py-1 text-xs',
-                  view === 'list' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white',
-                )}
-              >
-                List
-              </button>
-            </div>
+      ) : mode === 'bubbles' ? (
+        <div className="flex flex-wrap items-center gap-3 py-1">
+          {bubbles.map(({ e, size }) => (
+            <AvatarBubble key={(e.id ?? e.handle).toString()} e={e} size={size} />
+          ))}
+          <div className="ml-auto text-[12px] text-slate-400">
+            <span className="text-slate-200">{uniqCount}</span> today
           </div>
-
-          {uniqueCount === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
-              <div className="text-sm font-semibold text-white">No live entries yet</div>
-              <div className="mt-1 text-xs text-slate-400">
-                Claim in the hub to appear here with a real handle.
-              </div>
-            </div>
-          ) : view === 'bubbles' ? (
-            <BubbleEntrants entries={clean} />
-          ) : (
-            <div className="space-y-2">
-              {clean.slice(0, 10).map((e, i) => (
-                <EntryLine key={normalizeHandle(e.handle)} e={e} idx={i} />
-              ))}
-
-              {uniqueCount > 10 ? (
-                <div className="pt-2 text-center text-[11px] text-slate-500">
-                  Showing 10 of {uniqueCount.toLocaleString('en-US')} unique entries
-                </div>
-              ) : null}
-            </div>
-          )}
         </div>
-      </div>
-    </section>
+      ) : (
+        <div className="space-y-2">
+          {rows.slice(0, 10).map(e => (
+            <EntryRowLine key={(e.id ?? e.handle).toString()} e={e} />
+          ))}
+          <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
+        </div>
+      )}
+    </div>
   );
 }
