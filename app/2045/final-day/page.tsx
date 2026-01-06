@@ -686,7 +686,9 @@ export default function FinalDayPage() {
     completed = Math.min(RUN_TOTAL_DAYS, completed);
 
     const currentDayNumber = Math.min(RUN_TOTAL_DAYS, Math.max(1, completed + 1));
-    const daysRemaining = Math.max(0, RUN_TOTAL_DAYS - completed);
+
+    // ✅ FIX: days remaining should be "days after today", so subtract currentDayNumber (not completed draws)
+    const daysRemaining = Math.max(0, RUN_TOTAL_DAYS - currentDayNumber);
 
     return {
       runStartUtcMs,
@@ -872,12 +874,10 @@ export default function FinalDayPage() {
 
   const dayLabel = `Day ${drawSchedule.currentDayNumber.toLocaleString()} of ${RUN_TOTAL_DAYS.toLocaleString()}`;
 
-  // ✅ FIX: Make this match the homepage's "DAY {day}/{RUN_DAYS}"
-  // drawSchedule.completedDraws is "completed", so it will show 6/7000 on day 7.
-  // We want 7/7000.
+  // ✅ Day label should read 7/7000 (not 6/7000)
   const drawStatusLabel = `${drawSchedule.currentDayNumber.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
 
-  // ✅ FIX: Progress should track the day number (same feeling as home), not completed draws
+  // ✅ Progress tracks current day position
   const dayProgress = Math.max(0, Math.min(1, drawSchedule.currentDayNumber / RUN_TOTAL_DAYS));
 
   const cutoffLabel = formatMadridCutoffLabel();
@@ -913,7 +913,11 @@ export default function FinalDayPage() {
           <span>Back</span>
         </Link>
 
-        <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03]" role="tablist" aria-label="Edition selector">
+        <div
+          className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03]"
+          role="tablist"
+          aria-label="Edition selector"
+        >
           <button
             type="button"
             className={[
