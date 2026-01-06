@@ -451,8 +451,7 @@ function AvatarBubble({
         className="
           pointer-events-none
           absolute bottom-full left-1/2 z-30
-          hidden -translate-x-1/2 pb-3
-          lg:block
+          block -translate-x-1/2 pb-3
           opacity-0 translate-y-1 scale-[0.98]
           transition duration-150 ease-out
           delay-150
@@ -607,7 +606,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           {/* Entries */}
-          <div className="relative overflow-visible rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 lg:order-1">
+          <div className="relative isolate overflow-visible rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5 lg:order-1">
             <div className="pointer-events-none absolute -inset-20 opacity-85 blur-3xl bg-[radial-gradient(circle_at_20%_25%,rgba(56,189,248,0.14),transparent_62%),radial-gradient(circle_at_82%_25%,rgba(var(--xpot-gold),0.14),transparent_62%)]" />
 
             <div className="relative flex items-start justify-between gap-3">
@@ -666,10 +665,21 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   </Link>
                 </div>
               ) : mode === 'bubbles' ? (
-                <div className="flex flex-wrap items-center justify-center gap-3">
+                <div className="relative z-10 flex flex-wrap items-center justify-center gap-3"><div className="flex flex-wrap items-center justify-center gap-3">
                   {cleanEntries.slice(0, 18).map((e, idx) => {
                     const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
-                    return <AvatarBubble key={(e.id ?? e.handle).toString()} row={e} size={size} />;
+                    const isWinner =
+  !!winnerHandle &&
+  normalizeHandle(e.handle).toLowerCase() === normalizeHandle(winnerHandle).toLowerCase();
+
+return (
+  <AvatarBubble
+    key={(e.id ?? e.handle).toString()}
+    row={e}
+    size={size}
+    isWinner={isWinner}
+  />
+);
                   })}
 
                   <div className="w-full pt-2 text-center text-[12px] text-slate-400">
