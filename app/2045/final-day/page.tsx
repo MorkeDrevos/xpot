@@ -517,6 +517,7 @@ function NowPanel({
         </div>
       </header>
 
+      {/* rest unchanged */}
       <section className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-5 shadow-[0_40px_120px_rgba(0,0,0,0.40)]">
           <div className="flex items-center justify-between gap-3">
@@ -662,7 +663,15 @@ export default function FinalDayPage() {
 
     const runStartYmd = { year: RUN_START.y, month: RUN_START.m, day: RUN_START.d };
 
-    const runStartUtcMs = zonedTimeToUtcMs(MADRID_TZ, RUN_START.y, RUN_START.m, RUN_START.d, RUN_START.hh, RUN_START.mm, 0);
+    const runStartUtcMs = zonedTimeToUtcMs(
+      MADRID_TZ,
+      RUN_START.y,
+      RUN_START.m,
+      RUN_START.d,
+      RUN_START.hh,
+      RUN_START.mm,
+      0,
+    );
     const runEndUtcMs = zonedTimeToUtcMs(MADRID_TZ, RUN_END.y, RUN_END.m, RUN_END.d, RUN_END.hh, RUN_END.mm, 0);
 
     const endDateDMY = getFinalDrawEUShort();
@@ -674,7 +683,8 @@ export default function FinalDayPage() {
       const dayDiff = daysBetweenYmd(runStartYmd, nowYmd);
 
       const afterCutoff =
-        nowMadrid.hour > DRAW_HOUR_MADRID || (nowMadrid.hour === DRAW_HOUR_MADRID && nowMadrid.minute >= DRAW_MINUTE_MADRID);
+        nowMadrid.hour > DRAW_HOUR_MADRID ||
+        (nowMadrid.hour === DRAW_HOUR_MADRID && nowMadrid.minute >= DRAW_MINUTE_MADRID);
 
       if (dayDiff <= 0) {
         completed = 0;
@@ -871,8 +881,15 @@ export default function FinalDayPage() {
           : 'bg-white/6 text-white/90 ring-white/18';
 
   const dayLabel = `Day ${drawSchedule.currentDayNumber.toLocaleString()} of ${RUN_TOTAL_DAYS.toLocaleString()}`;
-  const drawStatusLabel = `${drawSchedule.completedDraws.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
-  const dayProgress = Math.max(0, Math.min(1, drawSchedule.completedDraws / RUN_TOTAL_DAYS));
+
+  // ✅ Draw status matches "today" day index (6/7000)
+  const drawStatusLabel = `${drawSchedule.currentDayNumber.toLocaleString()}/${RUN_TOTAL_DAYS.toLocaleString()}`;
+
+  // ✅ Progress bar also matches "today" day index (6/7000)
+  const dayProgress = Math.max(
+    0,
+    Math.min(1, drawSchedule.currentDayNumber / RUN_TOTAL_DAYS),
+  );
 
   const cutoffLabel = formatMadridCutoffLabel();
   const closesAtLabel = formatMadridTimeShort(closesAtMs);
@@ -907,7 +924,11 @@ export default function FinalDayPage() {
           <span>Back</span>
         </Link>
 
-        <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03]" role="tablist" aria-label="Edition selector">
+        <div
+          className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/[0.03]"
+          role="tablist"
+          aria-label="Edition selector"
+        >
           <button
             type="button"
             className={[
