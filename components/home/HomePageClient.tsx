@@ -250,24 +250,14 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
   return (
     <div className="relative overflow-hidden">
       {/* FIXED: premium “vault glow” - no broken right-side panel */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-  /* Base sink (neutral, kills brown completely) */
-  'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.00), rgba(0,0,0,0.72) 74%),' +
-
-  /* Gold anchor (clean, premium, no mud) */
-  'radial-gradient(circle at 22% 48%, rgba(var(--xpot-gold),0.18), transparent 56%),' +
-
-  /* Violet shadow depth (this replaces brown) */
-  'radial-gradient(circle at 70% 46%, rgba(139,92,246,0.16), transparent 62%),' +
-
-  /* Very subtle protocol cool (kept quiet) */
-  'radial-gradient(circle at 58% 60%, rgba(56,189,248,0.05), transparent 65%)',,
-          opacity: 1,
-        }}
+      style={{
+  background:
+    'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.00), rgba(0,0,0,0.72) 74%),' +
+    'radial-gradient(circle at 22% 48%, rgba(var(--xpot-gold),0.18), transparent 56%),' +
+    'radial-gradient(circle at 70% 46%, rgba(139,92,246,0.16), transparent 62%),' +
+    'radial-gradient(circle at 58% 60%, rgba(56,189,248,0.05), transparent 65%)',
+  opacity: 1,
+}}
       />
 
       <div className="relative flex flex-wrap items-start justify-between gap-4">
