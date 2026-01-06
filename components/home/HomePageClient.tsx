@@ -378,22 +378,25 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
 
 function AvatarBubble({ row }: { row: EntryRow }) {
   const handle = row.handle.startsWith('@') ? row.handle : `@${row.handle}`;
+  const clean = handle.replace('@', '');
+
+  const img =
+    row.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+
   return (
     <a
-      href={`https://x.com/${encodeURIComponent(handle.replace('@', ''))}`}
+      href={`https://x.com/${encodeURIComponent(clean)}`}
       target="_blank"
       rel="noopener noreferrer"
       className="group relative"
       title={handle}
     >
       <span className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100 bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_60%_55%,rgba(var(--xpot-gold),0.18),transparent_60%)]" />
+
       <span className="relative inline-flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
-        {row.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.avatarUrl} alt={handle} className="h-full w-full object-cover" />
-        ) : (
-          <span className="text-sm font-semibold text-slate-200">{handle.slice(1, 2).toUpperCase()}</span>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img} alt={handle} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
       </span>
     </a>
   );
