@@ -99,10 +99,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <ClerkProvider>
           <Providers>{children}</Providers>
-
-          {/* Vercel Web Analytics (shows live counts, pages, referrers, etc) */}
-          <Analytics />
         </ClerkProvider>
+
+        {/* Vercel Web Analytics (independent of Clerk mounting) */}
+        <Analytics />
       </body>
     </html>
   );
