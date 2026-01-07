@@ -209,7 +209,7 @@ function useTodayEntries(limit: number) {
         const json: any = await res.json();
         const candidates = Array.isArray(json?.entries) ? json.entries : [];
 
-        const mapped: EntryRow[] = candidates
+        const mapped = candidates
   .map((r: any) => {
     // ✅ DB/API uses xHandle + xName (but keep fallbacks for older payloads)
     const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
@@ -239,15 +239,15 @@ function useTodayEntries(limit: number) {
       null;
 
     return {
-  id: r?.id ?? undefined,
-  createdAt: r?.createdAt ?? r?.created_at ?? null,
-  handle,
-  name,
-  avatarUrl: avatarRaw ? String(avatarRaw) : null,
-  verified: !!verifiedRaw,
-} as EntryRow;
-
-        const clean = dedupeByHandleKeepLatest(mapped);
+      id: r?.id ?? undefined,
+      createdAt: r?.createdAt ?? r?.created_at ?? null,
+      handle,
+      name,
+      avatarUrl: avatarRaw ? String(avatarRaw) : null,
+      verified: !!verifiedRaw,
+    } as EntryRow;
+  })
+  .filter(Boolean) as EntryRow[];
 
         if (alive) {
           setRows(clean);
