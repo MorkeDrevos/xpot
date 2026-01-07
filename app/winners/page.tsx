@@ -47,6 +47,14 @@ function shortWallet(addr: string) {
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
+// ✅ start-only (what you asked for: show beginning of wallet)
+function walletStart(addr?: string | null, take = 8) {
+  const a = String(addr ?? '').trim();
+  if (!a) return '—';
+  if (a.length <= take) return a;
+  return `${a.slice(0, take)}…`;
+}
+
 function safeTimeMs(iso?: string | null) {
   const t = iso ? Date.parse(iso) : NaN;
   return Number.isFinite(t) ? t : 0;
@@ -610,110 +618,125 @@ export default function WinnersPage() {
                 <div className="xpot-card px-4 py-4 text-sm text-slate-500">No winners yet.</div>
               ) : (
                 <div className="space-y-6">
-                  {grouped.map(g => (
-                    <section key={g.key} className="space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
-                        <span className="text-xs text-slate-500">{g.items.length} entries</span>
-                      </div>
+                  {grouped.map(g => {
+                    const firstWallet = g.items?.[0]?.walletAddress ?? null;
+                    const firstWalletStart = walletStart(firstWallet, 8);
 
-                      <div className="space-y-2">
-                        {g.items.map(w => {
-                          const kind = String(w.kind || '').toUpperCase();
-                          const isMain = kind === 'MAIN';
-                          const isBonus = kind === 'BONUS';
+                    return (
+                      <section key={g.key} className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
 
-                          const hasTx = isValidHttpUrl(w.txUrl);
-                          const verified = hasTx || w.isPaidOut === true;
+                          {/* ✅ removed "1 entries"; show wallet-start instead (clean, premium) */}
+                          <span className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/55 px-3 py-1.5 text-[11px] text-slate-300">
+                            <span className="text-slate-500">Wallet</span>
+                            <span className="font-mono text-slate-100">{firstWalletStart}</span>
+                            {g.items.length > 1 ? (
+                              <span className="text-slate-500">+{g.items.length - 1}</span>
+                            ) : null}
+                          </span>
+                        </div>
 
-                          const amountVal =
-                            typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot) ? w.amountXpot : null;
+                        <div className="space-y-2">
+                          {g.items.map(w => {
+                            const kind = String(w.kind || '').toUpperCase();
+                            const isMain = kind === 'MAIN';
+                            const isBonus = kind === 'BONUS';
 
-                          const amountText = amountVal === null ? '—' : fmtInt(Math.round(amountVal));
+                            const hasTx = isValidHttpUrl(w.txUrl);
+                            const verified = hasTx || w.isPaidOut === true;
 
-                          return (
-                            <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className={[
-                                    'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
-                                    isMain
-                                      ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
-                                      : isBonus
-                                      ? 'xpot-pill-gold border bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
-                                      : 'border-slate-700/70 bg-slate-900/60 text-slate-200',
-                                  ].join(' ')}
-                                >
-                                  {isMain ? (
-                                    <>
-                                      <Crown className="h-3.5 w-3.5" />
-                                      Main XPOT
-                                    </>
-                                  ) : isBonus ? (
-                                    <>
-                                      <Trophy className="h-3.5 w-3.5" />
-                                      Bonus XPOT
-                                    </>
+                            const amountVal =
+                              typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot) ? w.amountXpot : null;
+
+                            const amountText = amountVal === null ? '—' : fmtInt(Math.round(amountVal));
+
+                            return (
+                              <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={[
+                                      'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+                                      isMain
+                                        ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+                                        : isBonus
+                                        ? 'xpot-pill-gold border bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
+                                        : 'border-slate-700/70 bg-slate-900/60 text-slate-200',
+                                    ].join(' ')}
+                                  >
+                                    {isMain ? (
+                                      <>
+                                        <Crown className="h-3.5 w-3.5" />
+                                        Main XPOT
+                                      </>
+                                    ) : isBonus ? (
+                                      <>
+                                        <Trophy className="h-3.5 w-3.5" />
+                                        Bonus XPOT
+                                      </>
+                                    ) : (
+                                      <>Winner</>
+                                    )}
+                                  </span>
+
+                                  {w.ticketCode ? (
+                                    <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span>
+                                  ) : null}
+
+                                  <span className="text-slate-700">•</span>
+
+                                  {verified ? (
+                                    <Badge tone="emerald">
+                                      <BadgeCheck className="h-3.5 w-3.5" />
+                                      Verified
+                                    </Badge>
                                   ) : (
-                                    <>Winner</>
+                                    <Badge tone="danger">
+                                      <Info className="h-3.5 w-3.5" />
+                                      Pending TX
+                                    </Badge>
                                   )}
-                                </span>
+                                </div>
 
-                                {w.ticketCode ? <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span> : null}
+                                <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+                                  <WinnerIdentity
+                                    avatarUrl={w.avatarUrl}
+                                    name={w.name}
+                                    handle={w.handle}
+                                    walletAddress={w.walletAddress}
+                                  />
 
-                                <span className="text-slate-700">•</span>
+                                  <div className="flex justify-start sm:justify-center">
+                                    <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
+                                      <GoldAmount value={amountText} suffix="XPOT" size="md" />
+                                    </div>
+                                  </div>
 
-                                {verified ? (
-                                  <Badge tone="emerald">
-                                    <BadgeCheck className="h-3.5 w-3.5" />
-                                    Verified
-                                  </Badge>
-                                ) : (
-                                  <Badge tone="danger">
-                                    <Info className="h-3.5 w-3.5" />
-                                    Pending TX
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
-                                <WinnerIdentity
-                                  avatarUrl={w.avatarUrl}
-                                  name={w.name}
-                                  handle={w.handle}
-                                  walletAddress={w.walletAddress}
-                                />
-
-                                <div className="flex justify-start sm:justify-center">
-                                  <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
-                                    <GoldAmount value={amountText} suffix="XPOT" size="md" />
+                                  <div className="flex justify-start sm:justify-end">
+                                    {hasTx && w.txUrl ? (
+                                      <Link
+                                        href={w.txUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="xpot-btn h-10 px-5 text-[12px]"
+                                      >
+                                        <ExternalLink className="h-4 w-4" />
+                                        Tx
+                                      </Link>
+                                    ) : (
+                                      <span className="rounded-full border border-slate-800/70 bg-slate-950/50 px-4 py-2 text-[11px] text-slate-500">
+                                        No TX
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
-
-                                <div className="flex justify-start sm:justify-end">
-                                  {hasTx && w.txUrl ? (
-                                    <Link
-                                      href={w.txUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="xpot-btn h-10 px-5 text-[12px]"
-                                    >
-                                      <ExternalLink className="h-4 w-4" />
-                                      Tx
-                                    </Link>
-                                  ) : (
-                                    <span className="rounded-full border border-slate-800/70 bg-slate-950/50 px-4 py-2 text-[11px] text-slate-500">
-                                      No TX
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
                 </div>
               )}
             </div>
