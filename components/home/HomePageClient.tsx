@@ -551,29 +551,15 @@ function AvatarBubble({
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="truncate text-[13px] font-semibold text-slate-100">{row.name || clean || 'Unknown'}</div>
-
-                {isWinner ? (
-                  <span
-                    className="
-                      inline-flex items-center gap-1
-                      rounded-full
-                      border border-amber-300/20
-                      bg-amber-500/10
-                      px-2 py-0.5
-                      text-[10px] font-semibold
-                      text-amber-200
-                      shadow-[0_0_0_1px_rgba(251,191,36,0.10)]
-                    "
-                    title="Winner"
-                  >
-                    <Crown className="h-3 w-3" />
-                    XPOT
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="truncate text-[12px] text-slate-400">{handle || '@unknown'}</div>
+                {(() => {
+  const { title, subtitle } = displayTitleSubtitle(row);
+  return (
+    <>
+      <div className="truncate text-[13px] font-semibold text-slate-100">{title}</div>
+      <div className="truncate text-[12px] text-slate-400">{subtitle}</div>
+    </>
+  );
+})()}
               <div className="mt-1 text-[11px] text-slate-500">View on X</div>
             </div>
           </div>
@@ -733,8 +719,15 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                         </span>
 
                         <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-slate-100">{e.name || h.slice(1)}</p>
-                          <p className="truncate text-[12px] text-slate-400">{h}</p>
+                          {(() => {
+  const { title, subtitle } = displayTitleSubtitle(e);
+  return (
+    <>
+      <p className="truncate text-[13px] font-semibold text-slate-100">{title}</p>
+      <p className="truncate text-[12px] text-slate-400">{subtitle}</p>
+    </>
+  );
+})()}
                         </div>
 
                         <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
