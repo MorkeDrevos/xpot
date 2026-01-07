@@ -24,43 +24,32 @@ export function displayName(name: any, handle: any) {
   return raw;
 }
 
+function isClerkProxyUrl(u: string) {
+  const s = String(u || '').trim();
+  if (!s) return false;
+  return (
+    s.includes('img.clerk.com/') ||
+    s.includes('images.clerk.dev/oauth_x/') ||
+    s.includes('clerk.dev/oauth_x/')
+  );
+}
+
 // Upgrade common X/Twitter avatar URLs to higher-res when possible.
-// Also upgrade Clerk proxy avatars to request larger variants.
 export function upgradeXAvatar(url: string) {
   try {
     const u = String(url || '').trim();
     if (!u) return u;
 
-    // 1) Upgrade X/Twitter patterns (_normal, _bigger, _mini)
-    const tw = u
+    // If it's a Clerk proxy, do NOT try to "resize" it here.
+    // In practice it often remains a small thumbnail even with params.
+    if (isClerkProxyUrl(u)) return u;
+
+    // Upgrade X/Twitter patterns (_normal, _bigger, _mini)
+    // Example: ..._normal.jpg -> ..._400x400.jpg
+    return u
       .replace(/_normal(\.(jpg|jpeg|png|webp))/i, '_400x400$1')
       .replace(/_bigger(\.(jpg|jpeg|png|webp))/i, '_400x400$1')
       .replace(/_mini(\.(jpg|jpeg|png|webp))/i, '_400x400$1');
-
-    // 2) Clerk image proxy URLs
-    // - img.clerk.com (proxy)
-    // - images.clerk.dev (source)
-    if (tw.includes('img.clerk.com') || tw.includes('images.clerk.dev')) {
-      const parts = new URL(tw);
-
-      // request a larger image (safe to set multiple common param names)
-      const size = '256';
-      parts.searchParams.set('img_width', size);
-      parts.searchParams.set('img_height', size);
-
-      // sometimes supported by CDNs / proxies
-      parts.searchParams.set('width', size);
-      parts.searchParams.set('height', size);
-      parts.searchParams.set('w', size);
-      parts.searchParams.set('h', size);
-
-      // if supported, nicer output
-      parts.searchParams.set('img_format', 'webp');
-
-      return parts.toString();
-    }
-
-    return tw;
   } catch {
     return url;
   }
@@ -68,13 +57,21 @@ export function upgradeXAvatar(url: string) {
 
 export function avatarUrlFor(handle: string, avatarUrl?: string | null) {
   const clean = normalizeHandle(handle).replace(/^@/, '');
-  const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
+  const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket cache buster
 
+  // If the provided avatar is a Clerk proxy thumbnail, bypass it completely
+  // and use a true high-res resolver based on handle.
   if (avatarUrl) {
-    return upgradeXAvatar(String(avatarUrl));
+    const raw = String(avatarUrl).trim();
+    if (raw) {
+      if (isClerkProxyUrl(raw)) {
+        return `https://unavatar.io/twitter/${encodeURIComponent(clean)}?size=512&cache=${bucket}`;
+      }
+      return upgradeXAvatar(raw);
+    }
   }
 
-  // Force high-res fallback
+  // High-res fallback
   return `https://unavatar.io/twitter/${encodeURIComponent(clean)}?size=512&cache=${bucket}`;
 }
 
