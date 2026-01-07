@@ -265,12 +265,16 @@ export default function XpotTopBar({
                       <Wallet className="h-6 w-6 text-slate-200" />
                     </button>
                   ) : (
+                    // ✅ MOBILE ONLY CHANGE:
+                    // Replace the topbar "Final Draw" pill with "Hub" for faster navigation and clearer intent.
                     <Link
-                      href={FINAL_DAY_HREF}
+                      href="/hub"
                       className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
+                      aria-label="Hub"
+                      title="Hub"
                     >
-                      <Hourglass className="h-4 w-4 text-amber-200" />
-                      {FINAL_DAY_LABEL}
+                      <LayoutGrid className="h-4 w-4 text-slate-200" />
+                      Hub
                     </Link>
                   )}
 
