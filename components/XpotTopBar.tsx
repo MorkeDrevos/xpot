@@ -31,8 +31,8 @@ import {
   Loader2,
   ChevronRight,
   Hourglass,
-  Home,
   BadgeCheck,
+  LayoutGrid,
 } from 'lucide-react';
 
 type HubWalletTone = 'slate' | 'emerald' | 'amber' | 'sky';
@@ -578,7 +578,10 @@ function PublicNavCenter({
 
   return (
     <nav className="flex items-center gap-7">
-      <NavLink href="/hub">Hub</NavLink>
+      <NavLink href="/hub">
+        <LayoutGrid className="h-4 w-4 text-slate-300" />
+        Hub
+      </NavLink>
 
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
         <Hourglass className="h-4 w-4 !text-white !stroke-white" />
@@ -698,7 +701,10 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
     // ✅ tightened gap so Winners fits cleanly (matches your screenshot layout)
     <nav className="flex items-center gap-6">
-      <NavLink href="/hub">Hub</NavLink>
+      <NavLink href="/hub">
+        <LayoutGrid className="h-4 w-4 text-slate-300" />
+        Hub
+      </NavLink>
 
       <NavPill href={FINAL_DAY_HREF} title={FINAL_DAY_LABEL}>
         <Hourglass className="h-4 w-4 stroke-white text-white" />
@@ -1252,13 +1258,18 @@ function MobileMenu({
                 <Link
                   className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                   href="/hub"
+                  onClick={() => onClose()}
                 >
-                  Hub
+                  <span className="inline-flex items-center gap-2">
+                    <LayoutGrid className="h-4 w-4 text-slate-300" />
+                    Hub
+                  </span>
                 </Link>
 
                 <Link
                   className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                   href={FINAL_DAY_HREF}
+                  onClick={() => onClose()}
                 >
                   <span className="inline-flex items-center gap-2">
                     <Hourglass className="h-4 w-4 text-amber-200" />
@@ -1270,6 +1281,7 @@ function MobileMenu({
                 <Link
                   className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                   href={WINNERS_HREF}
+                  onClick={() => onClose()}
                 >
                   <span className="inline-flex items-center gap-2">
                     <Trophy className="h-4 w-4 text-amber-300" />
@@ -1280,6 +1292,7 @@ function MobileMenu({
                 <Link
                   className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                   href={TOKENOMICS_HREF}
+                  onClick={() => onClose()}
                 >
                   <span className="inline-flex items-center gap-2">
                     <PieChart className="h-4 w-4 text-emerald-300" />
@@ -1290,6 +1303,7 @@ function MobileMenu({
                 <Link
                   className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                   href={ROADMAP_HREF}
+                  onClick={() => onClose()}
                 >
                   <span className="inline-flex items-center gap-2">
                     <Map className="h-4 w-4 text-sky-300" />
@@ -1300,6 +1314,7 @@ function MobileMenu({
                 <Link
                   className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                   href={PROTOCOL_HREF}
+                  onClick={() => onClose()}
                 >
                   <span className="inline-flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-emerald-300" />
