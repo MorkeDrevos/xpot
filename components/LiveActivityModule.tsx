@@ -1,8 +1,11 @@
+// components/LiveActivityModule.tsx
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Crown, LayoutGrid, List as ListIcon, Users } from 'lucide-react';
+
+import { avatarUrlFor, displayName, isSameHandle, normalizeHandle, initialsFor } from '@/lib/xIdentity';
 
 export type EntryRow = {
   id?: string;
@@ -18,31 +21,6 @@ type LiveActivityModuleProps = {
   pollMs?: number;
   limit?: number;
 };
-
-function normalizeHandle(h: any) {
-  const s = String(h ?? '').trim();
-  if (!s) return '';
-  const core = s.replace(/^@+/, '');
-  return core ? `@${core}` : '';
-}
-
-function handleCore(h: any) {
-  return normalizeHandle(h).replace(/^@/, '').trim().toLowerCase();
-}
-
-// ✅ Winners-page style display rule:
-// If name is empty OR same as handle (with/without @, case-insensitive), hide name.
-function displayName(name: any, handle: any) {
-  const raw = String(name ?? '').trim();
-  if (!raw) return null;
-
-  const nCore = raw.replace(/^@+/, '').trim().toLowerCase();
-  const hCore = handleCore(handle);
-
-  if (!nCore) return null;
-  if (hCore && nCore === hCore) return null; // prevents handle twice
-  return raw;
-}
 
 function safeTimeMs(iso?: string | null) {
   const t = iso ? Date.parse(iso) : NaN;
@@ -77,24 +55,6 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   const out = Array.from(map.values());
   out.sort((a, b) => safeTimeMs(b.createdAt ?? null) - safeTimeMs(a.createdAt ?? null));
   return out;
-}
-
-function avatarUrlFor(handle: string, avatarUrl?: string | null) {
-  const clean = normalizeHandle(handle).replace(/^@/, '');
-  const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
-  return avatarUrl ?? `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${bucket}`;
-}
-
-function initialsFor(handle: string) {
-  const clean = normalizeHandle(handle).replace(/^@/, '').trim();
-  return (clean || 'x').slice(0, 1).toUpperCase();
-}
-
-function isSameHandle(a?: string | null, b?: string | null) {
-  const aa = normalizeHandle(a).toLowerCase();
-  const bb = normalizeHandle(b).toLowerCase();
-  if (!aa || !bb) return false;
-  return aa === bb;
 }
 
 function AvatarTile({

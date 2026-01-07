@@ -6,18 +6,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import {
   ArrowRight,
-  Blocks,
   CheckCircle2,
   Crown,
   ExternalLink,
-  Globe,
   Radio,
   ShieldCheck,
   Sparkles,
-  Timer,
   TrendingUp,
   Users,
-  Wand2,
   Zap,
   Trophy,
   LayoutGrid,
@@ -42,6 +38,9 @@ import CosmicHeroBackdrop from './hero/CosmicHeroBackdrop';
 import BonusVault from './hero/BonusVault';
 import LiveControlRoom from './hero/LiveControlRoom';
 
+// ✅ single shared identity + avatar resolver (fixes name=handle + small avatar issues)
+import { avatarUrlFor, displayName, normalizeHandle, isSameHandle } from '@/lib/xIdentity';
+
 import {
   Accordion,
   GOLD_BG_WASH,
@@ -49,7 +48,6 @@ import {
   GOLD_TEXT,
   GOLD_TEXT_DIM,
   MiniStat,
-  Pill,
   PremiumCard,
   shortenAddress,
 } from './ui';
@@ -70,8 +68,7 @@ const XPOT_JUP_SWAP_URL =
 const XPOT_DEXSCREENER_URL =
   process.env.NEXT_PUBLIC_XPOT_DEXSCREENER_URL || `https://dexscreener.com/solana/${XPOT_CA}`;
 
-const XPOT_SOLSCAN_URL =
-  process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
+const XPOT_SOLSCAN_URL = process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
 const BTN_ROYAL_SECONDARY =
   'inline-flex items-center justify-center rounded-full px-5 py-3 text-[13px] font-semibold ' +
@@ -109,31 +106,16 @@ type EntryRow = {
   handle: string;
   name?: string | null;
   avatarUrl?: string | null;
-  verified?: boolean;
+  verified?: boolean | null;
   createdAt?: string | null;
 };
 
-function normalizeHandle(h: any) {
-  const s = String(h ?? '').trim();
-  if (!s) return '';
-  const core = s.replace(/^@+/, '').trim();
-  return core ? `@${core}` : '';
-}
-
+// ✅ Winners-page style display rule (shared via displayName)
+// Here we want a title + subtitle pair for tooltips/list.
 function displayTitleSubtitle(row: Pick<EntryRow, 'handle' | 'name'>) {
   const h = normalizeHandle(row.handle) || '@unknown';
-
-  const rawName = String(row.name ?? '').trim();
-  const handleCore = h.replace(/^@/, '').toLowerCase();
-
-  // If name is empty OR equals handle (with or without @), treat as missing
-  const nameCore = rawName.replace(/^@+/, '').trim().toLowerCase();
-  const hasRealName = !!rawName && nameCore && nameCore !== handleCore;
-
-  if (hasRealName) {
-    return { title: rawName, subtitle: h };
-  }
-
+  const dn = displayName(row.name, h); // null if empty or same as handle
+  if (dn) return { title: dn, subtitle: h };
   return { title: h, subtitle: 'Founding account' };
 }
 
@@ -161,6 +143,9 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
         handle,
         name: r?.name ? String(r.name).trim() : r?.name ?? null,
         createdAt: r?.createdAt ?? null,
+        avatarUrl: r?.avatarUrl ?? null,
+        verified:
+          typeof r?.verified === 'boolean' ? r.verified : r?.verified === null ? null : !!r?.verified,
       });
     }
   }
@@ -168,14 +153,6 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   const out = Array.from(map.values());
   out.sort((a, b) => safeTimeMs(b.createdAt ?? null) - safeTimeMs(a.createdAt ?? null));
   return out;
-}
-
-// One avatar resolver for bubbles + list (fixes "empty avatar" list mode)
-function avatarUrlForRow(row: Pick<EntryRow, 'handle' | 'avatarUrl'>) {
-  const handle = normalizeHandle(row.handle);
-  const clean = handle.replace(/^@/, '');
-  const cache = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
-  return row.avatarUrl ?? `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cache}`;
 }
 
 /**
@@ -229,14 +206,12 @@ function useTodayEntries(limit: number) {
 
         const mapped = candidates
           .map((r: any) => {
-            // ✅ DB/API uses xHandle + xName (keep fallbacks)
             const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
             if (!handle) return null;
 
             const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
             const name = nameRaw ? String(nameRaw).trim() : null;
 
-            // ✅ include xAvatarUrl first (new payload), then fallbacks
             const avatarRaw =
               r?.xAvatarUrl ??
               r?.avatarUrl ??
@@ -252,9 +227,11 @@ function useTodayEntries(limit: number) {
 
             const verifiedRaw =
               r?.verified ??
+              r?.xVerified ??
               r?.isVerified ??
               r?.is_verified ??
               r?.user?.verified ??
+              r?.user?.xVerified ??
               r?.user?.isVerified ??
               r?.user?.is_verified ??
               null;
@@ -265,7 +242,7 @@ function useTodayEntries(limit: number) {
               handle,
               name,
               avatarUrl: avatarRaw ? String(avatarRaw) : null,
-              verified: !!verifiedRaw,
+              verified: verifiedRaw === true ? true : verifiedRaw === false ? false : null,
             } as EntryRow;
           })
           .filter(Boolean) as EntryRow[];
@@ -278,7 +255,6 @@ function useTodayEntries(limit: number) {
         }
       } catch (e: any) {
         if (e?.name === 'AbortError') return;
-        // do NOT clear rows on errors
       } finally {
         if (!alive) return;
         setInitialLoading(false);
@@ -477,9 +453,8 @@ function AvatarBubble({
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
 
-  const img =
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+  // ✅ shared resolver (upgrades X URLs + Clerk proxy sizing + high-res unavatar fallback)
+  const img = useMemo(() => avatarUrlFor(handle, row.avatarUrl), [handle, row.avatarUrl]);
 
   const { title, subtitle } = displayTitleSubtitle(row);
 
@@ -608,8 +583,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
   const cleanEntries = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
 
   const uniqCount = useMemo(() => {
-    const s = new Set(cleanEntries.map(e => (e.handle || '').toLowerCase()));
-    s.delete('');
+    const s = new Set(cleanEntries.map(e => normalizeHandle(e.handle).toLowerCase()).filter(Boolean));
     return s.size;
   }, [cleanEntries]);
 
@@ -705,12 +679,14 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 <div className="relative z-10 flex flex-wrap items-center justify-center gap-3">
                   {cleanEntries.slice(0, 18).map((e, idx) => {
                     const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
-
-                    const isWinner =
-                      !!winnerHandle &&
-                      normalizeHandle(e.handle).toLowerCase() === normalizeHandle(winnerHandle).toLowerCase();
-
-                    return <AvatarBubble key={(e.id ?? e.handle).toString()} row={e} size={size} isWinner={isWinner} />;
+                    return (
+                      <AvatarBubble
+                        key={(e.id ?? e.handle).toString()}
+                        row={e}
+                        size={size}
+                        isWinner={isSameHandle(e.handle, winnerHandle)}
+                      />
+                    );
                   })}
 
                   <div className="w-full pt-2 text-center text-[12px] text-slate-400">
@@ -721,13 +697,14 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 <div className="space-y-2">
                   {cleanEntries.slice(0, 10).map(e => {
                     const h = normalizeHandle(e.handle);
-                    const img = avatarUrlForRow(e);
+                    const clean = h.replace(/^@/, '');
+                    const img = avatarUrlFor(h, e.avatarUrl); // ✅ shared (hi-res + upgrades)
                     const { title, subtitle } = displayTitleSubtitle(e);
 
                     return (
                       <a
                         key={(e.id ?? h).toString()}
-                        href={`https://x.com/${encodeURIComponent(h.replace('@', ''))}`}
+                        href={`https://x.com/${encodeURIComponent(clean)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
@@ -812,10 +789,10 @@ function Stage({ latestWinner }: { latestWinner: any }) {
             <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-4">
               <div className="flex items-center gap-3">
                 <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-                  {winnerAvatar ? (
+                  {winnerHandle ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={winnerAvatar}
+                      src={avatarUrlFor(winnerHandle, winnerAvatar)}
                       alt={winnerHandle || 'winner'}
                       className="h-full w-full object-cover"
                       referrerPolicy="no-referrer"
@@ -829,9 +806,9 @@ function Stage({ latestWinner }: { latestWinner: any }) {
 
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold text-slate-100">
-                    {winnerName || winnerHandle || 'Winner'}
+                    {displayName(winnerName, winnerHandle) ?? normalizeHandle(winnerHandle) ?? 'Winner'}
                   </p>
-                  <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
+                  <p className="truncate text-[12px] text-slate-400">{normalizeHandle(winnerHandle) || '@unknown'}</p>
                 </div>
 
                 <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-100">
@@ -1155,7 +1132,7 @@ function HomeInner() {
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
       <Stage latestWinner={latestWinner} />
 
-            <section className="mt-10">
+      <section className="mt-10">
         <div className="grid gap-4 lg:grid-cols-2">
           <PremiumCard className="p-6 sm:p-7" halo>
             <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Official</p>
@@ -1183,6 +1160,7 @@ function HomeInner() {
           </PremiumCard>
         </div>
       </section>
+
       <XpotFooter />
     </XpotPageShell>
   );
