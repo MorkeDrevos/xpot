@@ -275,8 +275,17 @@ export default function JackpotPanel({
   const isOpen = manualOpen;
 
   return (
-    <section className={['relative', panelChrome, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
+    <section className={['relative xpot-jackpot-fullbleed', panelChrome, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
       <style jsx>{`
+        /* ✅ Full-bleed breakout on mobile only (fixes parent max-width constraints) */
+        @media (max-width: 639px) {
+          .xpot-jackpot-fullbleed {
+            width: 100vw;
+            margin-left: calc(50% - 50vw);
+            margin-right: calc(50% - 50vw);
+          }
+        }
+
         @keyframes xpotSweep {
           0% { transform: translateX(-30%) skewX(-12deg); opacity: 0.0; }
           18% { opacity: 0.58; }
