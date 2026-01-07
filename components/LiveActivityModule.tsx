@@ -15,22 +15,8 @@ export type EntryRow = {
 };
 
 type LiveActivityModuleProps = {
-  /**
-   * Optional: if you want to mark a specific handle as "winner" in the bubbles hover card
-   * (for example: pass latestWinner.handle from Stage).
-   *
-   * If you do NOT pass this, XPOT badge won't show (still shows verified if present).
-   */
   winnerHandle?: string | null;
-
-  /**
-   * Optional: override polling interval (ms)
-   */
   pollMs?: number;
-
-  /**
-   * Optional: override limit
-   */
   limit?: number;
 };
 
@@ -50,16 +36,17 @@ function cleanFromHandle(handle: string) {
   return normalizeHandle(handle).replace(/^@/, '');
 }
 
+/**
+ * IMPORTANT:
+ * Some users set display-name == username (minus @). That is still a valid name.
+ * Only drop the "name" if the backend accidentally sent "@handle" as the name.
+ */
 function normalizeDisplayName(name: any, handle: string) {
   const raw = String(name ?? '').trim();
   if (!raw) return null;
 
-  const clean = cleanFromHandle(handle).toLowerCase();
-  const rawLower = raw.toLowerCase();
-
-  // If backend accidentally sends username as "name", do not show it as a display name
-  if (rawLower === clean) return null;
-  if (rawLower === `@${clean}`) return null;
+  const h = normalizeHandle(handle);
+  if (raw.startsWith('@') && normalizeHandle(raw).toLowerCase() === h.toLowerCase()) return null;
 
   return raw;
 }
@@ -277,7 +264,6 @@ function AvatarBubble({
                   {row.name || clean || 'Unknown'}
                 </div>
 
-                {/* XPOT badge for winners */}
                 {isWinner ? (
                   <span
                     className="
@@ -326,7 +312,8 @@ function EntryRowLine({ e }: { e: EntryRow }) {
 
   return (
     <a
-      href={`https://x.com/${encodeURIComponent(clean)}`}
+      href={`https://x.com/${encodeURIComponent(clean)}`
+      }
       target="_blank"
       rel="noopener noreferrer"
       className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
@@ -360,7 +347,6 @@ export default function LiveActivityModule({
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
-  // separate "first load" from "refreshing" to stop UI flashing
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [disabled, setDisabled] = useState(false);
@@ -396,7 +382,6 @@ export default function LiveActivityModule({
         }
 
         if (!res.ok) {
-          // never clear rows (prevents flicker)
           return;
         }
 
@@ -405,7 +390,6 @@ export default function LiveActivityModule({
 
         const mapped: EntryRow[] = raw
           .map((r: any) => {
-            // Handles can be named differently depending on endpoint version
             const handle = normalizeHandle(
               pickFirstString(
                 r?.handle,
@@ -421,7 +405,6 @@ export default function LiveActivityModule({
             );
             if (!handle) return null;
 
-            // Display name also varies a lot across payloads
             const nameCandidate = pickFirstNullableString(
               r?.name,
               r?.displayName,
