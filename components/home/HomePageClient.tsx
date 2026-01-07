@@ -120,36 +120,20 @@ function normalizeHandle(h: any) {
   return core ? `@${core}` : '';
 }
 
-function handleCore(h: any) {
-  return normalizeHandle(h).replace(/^@/, '').trim().toLowerCase();
-}
-
-/**
- * ✅ Winners-page style name logic:
- * - if name is empty OR basically the same as handle, treat it as missing
- * - prevents "handle twice" everywhere
- */
-function displayName(name: any, handle: any) {
-  const raw = String(name ?? '').trim();
-  if (!raw) return null;
-
-  const nCore = raw.replace(/^@+/, '').trim().toLowerCase();
-  const hCore = handleCore(handle);
-
-  if (!nCore) return null;
-  if (hCore && nCore === hCore) return null;
-
-  return raw;
-}
-
 function displayTitleSubtitle(row: Pick<EntryRow, 'handle' | 'name'>) {
   const h = normalizeHandle(row.handle) || '@unknown';
-  const dn = displayName(row.name, h);
 
-  // if we have a real name, show it and keep handle as subtitle
-  if (dn) return { title: dn, subtitle: h };
+  const rawName = String(row.name ?? '').trim();
+  const handleCore = h.replace(/^@/, '').toLowerCase();
 
-  // otherwise use handle as title and a small vibe subtitle
+  // If name is empty OR equals handle (with or without @), treat as missing
+  const nameCore = rawName.replace(/^@+/, '').trim().toLowerCase();
+  const hasRealName = !!rawName && nameCore && nameCore !== handleCore;
+
+  if (hasRealName) {
+    return { title: rawName, subtitle: h };
+  }
+
   return { title: h, subtitle: 'Founding account' };
 }
 
@@ -177,8 +161,6 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
         handle,
         name: r?.name ? String(r.name).trim() : r?.name ?? null,
         createdAt: r?.createdAt ?? null,
-        avatarUrl: r?.avatarUrl ?? null,
-        verified: r?.verified ?? false,
       });
     }
   }
@@ -247,13 +229,14 @@ function useTodayEntries(limit: number) {
 
         const mapped = candidates
           .map((r: any) => {
-            // ✅ DB/API uses xHandle + xName (but keep fallbacks for older payloads)
+            // ✅ DB/API uses xHandle + xName (keep fallbacks)
             const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
             if (!handle) return null;
 
             const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
             const name = nameRaw ? String(nameRaw).trim() : null;
 
+            // ✅ include xAvatarUrl first (new payload), then fallbacks
             const avatarRaw =
               r?.xAvatarUrl ??
               r?.avatarUrl ??
@@ -280,8 +263,7 @@ function useTodayEntries(limit: number) {
               id: r?.id ?? undefined,
               createdAt: r?.createdAt ?? r?.created_at ?? null,
               handle,
-              // ✅ normalize “name same as handle” at source so bubbles/list never double-show
-              name: displayName(name, handle),
+              name,
               avatarUrl: avatarRaw ? String(avatarRaw) : null,
               verified: !!verifiedRaw,
             } as EntryRow;
@@ -495,7 +477,10 @@ function AvatarBubble({
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
 
-  const img = avatarUrlForRow(row);
+  const img =
+    row.avatarUrl ??
+    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+
   const { title, subtitle } = displayTitleSubtitle(row);
 
   return (
@@ -629,8 +614,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
   }, [cleanEntries]);
 
   const winnerHandle = (latestWinner as any)?.handle ?? null;
-  const winnerNameRaw = (latestWinner as any)?.name ?? null;
-  const winnerName = displayName(winnerNameRaw, winnerHandle);
+  const winnerName = (latestWinner as any)?.name ?? null;
   const winnerAvatar = (latestWinner as any)?.avatarUrl ?? null;
   const winnerAmount = (latestWinner as any)?.amountXpot ?? null;
   const winnerTxUrl = (latestWinner as any)?.txUrl ?? null;
@@ -832,22 +816,22 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={winnerAvatar}
-                      alt={normalizeHandle(winnerHandle) || 'winner'}
+                      alt={winnerHandle || 'winner'}
                       className="h-full w-full object-cover"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
                     <span className="text-sm font-semibold text-slate-200">
-                      {(normalizeHandle(winnerHandle) || '@w').replace('@', '').slice(0, 1).toUpperCase()}
+                      {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
                     </span>
                   )}
                 </span>
 
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold text-slate-100">
-                    {winnerName || normalizeHandle(winnerHandle) || 'Winner'}
+                    {winnerName || winnerHandle || 'Winner'}
                   </p>
-                  <p className="truncate text-[12px] text-slate-400">{normalizeHandle(winnerHandle) || '@unknown'}</p>
+                  <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
                 </div>
 
                 <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-100">
@@ -1046,7 +1030,34 @@ function HomeInner() {
                       {bonusActive ? (
                         <div className="mt-5">
                           <BonusVault>
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                              <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)]">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="absolute inset-0 rounded-full bg-violet-400/60 animate-ping" />
+                                  <span className="relative h-2 w-2 rounded-full bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.9)]" />
+                                </span>
+                                Bonus XPOT active
+                              </span>
+
+                              <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-100 ring-1 ring-violet-400/20">
+                                Same entry
+                                <span className="h-1 w-1 rounded-full bg-white/20" />
+                                Paid on-chain
+                              </span>
+                            </div>
+
                             <BonusStrip variant="home" />
+
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                              <p className="text-[12px] text-slate-300">
+                                Bonus window is live - same entry, extra payout, recorded on-chain.
+                              </p>
+
+                              <span className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200 ring-1 ring-violet-400/20">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Vault reveal
+                              </span>
+                            </div>
                           </BonusVault>
                         </div>
                       ) : null}
@@ -1072,6 +1083,16 @@ function HomeInner() {
                         >
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
+                            style={{
+                              background:
+                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
+                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
+                            }}
+                          />
                         </Link>
 
                         <a
