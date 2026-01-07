@@ -237,15 +237,17 @@ function useTodayEntries(limit: number) {
     const name = nameRaw ? String(nameRaw).trim() : null;
 
     const avatarRaw =
-      r?.avatarUrl ??
-      r?.avatar_url ??
-      r?.profileImageUrl ??
-      r?.profile_image_url ??
-      r?.user?.avatarUrl ??
-      r?.user?.avatar_url ??
-      r?.user?.profileImageUrl ??
-      r?.user?.profile_image_url ??
-      null;
+  r?.xAvatarUrl ??
+  r?.avatarUrl ??
+  r?.avatar_url ??
+  r?.profileImageUrl ??
+  r?.profile_image_url ??
+  r?.user?.xAvatarUrl ??
+  r?.user?.avatarUrl ??
+  r?.user?.avatar_url ??
+  r?.user?.profileImageUrl ??
+  r?.user?.profile_image_url ??
+  null;
 
     const verifiedRaw =
       r?.verified ??
