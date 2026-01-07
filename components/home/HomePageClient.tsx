@@ -42,7 +42,6 @@ import { avatarUrlFor, displayName, isSameHandle, normalizeHandle } from '@/lib/
 
 import {
   Accordion,
-  GOLD_BG_WASH,
   GOLD_BORDER_SOFT,
   GOLD_TEXT,
   GOLD_TEXT_DIM,
@@ -113,6 +112,32 @@ type EntryRow = {
 function safeTimeMs(iso?: string | null) {
   const t = iso ? Date.parse(iso) : NaN;
   return Number.isFinite(t) ? t : 0;
+}
+
+// ✅ Force Clerk proxy avatars to request larger size + bust cache.
+// Your current Clerk proxy URL is valid, but it’s serving a tiny default.
+// This makes the URL DIFFERENT (so the browser won’t reuse the tiny cached one).
+function forceHiResAvatar(url: string, size = 512) {
+  try {
+    const u = new URL(String(url || '').trim());
+    if (!u.hostname.includes('img.clerk.com')) return u.toString();
+
+    // 6h bucket to refresh periodically without hammering
+    const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
+
+    // Clerk respects these on the proxy in practice more reliably than img_width/img_height
+    u.searchParams.set('width', String(size));
+    u.searchParams.set('height', String(size));
+    u.searchParams.set('quality', '100');
+    u.searchParams.set('fit', 'cover');
+
+    // cache-bust (also makes URL change so you stop seeing the same tiny image)
+    u.searchParams.set('cache', String(bucket));
+
+    return u.toString();
+  } catch {
+    return url;
+  }
 }
 
 // Title + subtitle for tooltips/list.
@@ -438,7 +463,11 @@ function AvatarBubble({
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
 
-  const img = useMemo(() => avatarUrlFor(handle, row.avatarUrl), [handle, row.avatarUrl]);
+  const img = useMemo(() => {
+    const u = avatarUrlFor(handle, row.avatarUrl);
+    return forceHiResAvatar(u, 512);
+  }, [handle, row.avatarUrl]);
+
   const { title, subtitle } = displayTitleSubtitle(row);
 
   return (
@@ -560,13 +589,11 @@ function AvatarBubble({
    Stage (TOP-LEVEL)
 ========================= */
 function Stage({ latestWinner }: { latestWinner: any }) {
-  // Pull more so the stage looks alive
   const { rows: entries, initialLoading, refreshing } = useEntriesLatest(80);
   const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
   const cleanEntries = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
 
-  // Counts (rolling/latest, not “today”)
   const shownCount = cleanEntries.length;
 
   const winnerHandle = (latestWinner as any)?.handle ?? null;
@@ -577,6 +604,12 @@ function Stage({ latestWinner }: { latestWinner: any }) {
   const winnerDate = formatDateShort((latestWinner as any)?.drawDate ?? null);
 
   const showEmpty = !initialLoading && cleanEntries.length === 0;
+
+  const winnerImg = useMemo(() => {
+    if (!winnerHandle) return null;
+    const u = avatarUrlFor(winnerHandle, winnerAvatar);
+    return forceHiResAvatar(u, 512);
+  }, [winnerHandle, winnerAvatar]);
 
   return (
     <section className="mt-7">
@@ -680,7 +713,8 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   {cleanEntries.slice(0, 20).map(e => {
                     const h = normalizeHandle(e.handle);
                     const clean = h.replace(/^@/, '');
-                    const img = avatarUrlFor(h, e.avatarUrl);
+                    const baseImg = avatarUrlFor(h, e.avatarUrl);
+                    const img = forceHiResAvatar(baseImg, 512);
                     const { title, subtitle } = displayTitleSubtitle(e);
 
                     return (
@@ -774,15 +808,13 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   {winnerHandle ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={avatarUrlFor(winnerHandle, winnerAvatar)}
+                      src={winnerImg || avatarUrlFor(winnerHandle, winnerAvatar)}
                       alt={winnerHandle || 'winner'}
                       className="h-full w-full object-cover"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <span className="text-sm font-semibold text-slate-200">
-                      (w)
-                    </span>
+                    <span className="text-sm font-semibold text-slate-200">(w)</span>
                   )}
                 </span>
 
