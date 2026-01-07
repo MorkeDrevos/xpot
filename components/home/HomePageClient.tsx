@@ -120,20 +120,36 @@ function normalizeHandle(h: any) {
   return core ? `@${core}` : '';
 }
 
+function handleCore(h: any) {
+  return normalizeHandle(h).replace(/^@/, '').trim().toLowerCase();
+}
+
+/**
+ * ✅ Winners-page style name logic:
+ * - if name is empty OR basically the same as handle, treat it as missing
+ * - prevents "handle twice" everywhere
+ */
+function displayName(name: any, handle: any) {
+  const raw = String(name ?? '').trim();
+  if (!raw) return null;
+
+  const nCore = raw.replace(/^@+/, '').trim().toLowerCase();
+  const hCore = handleCore(handle);
+
+  if (!nCore) return null;
+  if (hCore && nCore === hCore) return null;
+
+  return raw;
+}
+
 function displayTitleSubtitle(row: Pick<EntryRow, 'handle' | 'name'>) {
   const h = normalizeHandle(row.handle) || '@unknown';
+  const dn = displayName(row.name, h);
 
-  const rawName = String(row.name ?? '').trim();
-  const handleCore = h.replace(/^@/, '').toLowerCase();
+  // if we have a real name, show it and keep handle as subtitle
+  if (dn) return { title: dn, subtitle: h };
 
-  // If name is empty OR equals handle (with or without @), treat as missing
-  const nameCore = rawName.replace(/^@+/, '').trim().toLowerCase();
-  const hasRealName = !!rawName && nameCore && nameCore !== handleCore;
-
-  if (hasRealName) {
-    return { title: rawName, subtitle: h };
-  }
-
+  // otherwise use handle as title and a small vibe subtitle
   return { title: h, subtitle: 'Founding account' };
 }
 
@@ -161,6 +177,8 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
         handle,
         name: r?.name ? String(r.name).trim() : r?.name ?? null,
         createdAt: r?.createdAt ?? null,
+        avatarUrl: r?.avatarUrl ?? null,
+        verified: r?.verified ?? false,
       });
     }
   }
@@ -262,7 +280,8 @@ function useTodayEntries(limit: number) {
               id: r?.id ?? undefined,
               createdAt: r?.createdAt ?? r?.created_at ?? null,
               handle,
-              name,
+              // ✅ normalize “name same as handle” at source so bubbles/list never double-show
+              name: displayName(name, handle),
               avatarUrl: avatarRaw ? String(avatarRaw) : null,
               verified: !!verifiedRaw,
             } as EntryRow;
@@ -476,9 +495,8 @@ function AvatarBubble({
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
 
-  const img =
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+  const img = avatarUrlForRow(row);
+  const { title, subtitle } = displayTitleSubtitle(row);
 
   return (
     <a
@@ -553,18 +571,29 @@ function AvatarBubble({
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                {(() => {
-                  const { title, subtitle } = displayTitleSubtitle(row);
-                  return (
-                    <>
-                      <div className="truncate text-[13px] font-semibold text-slate-100">{title}</div>
-                      <div className="truncate text-[12px] text-slate-400">{subtitle}</div>
-                    </>
-                  );
-                })()}
+                <div className="truncate text-[13px] font-semibold text-slate-100">{title}</div>
+
+                {isWinner ? (
+                  <span
+                    className="
+                      inline-flex items-center gap-1
+                      rounded-full
+                      border border-amber-300/20
+                      bg-amber-500/10
+                      px-2 py-0.5
+                      text-[10px] font-semibold
+                      text-amber-200
+                      shadow-[0_0_0_1px_rgba(251,191,36,0.10)]
+                    "
+                    title="Winner"
+                  >
+                    <Crown className="h-3 w-3" />
+                    XPOT
+                  </span>
+                ) : null}
               </div>
 
-              {/* ✅ THIS was missing and caused the compile error cascade */}
+              <div className="truncate text-[12px] text-slate-400">{subtitle}</div>
               <div className="mt-1 text-[11px] text-slate-500">View on X</div>
             </div>
           </div>
@@ -600,7 +629,8 @@ function Stage({ latestWinner }: { latestWinner: any }) {
   }, [cleanEntries]);
 
   const winnerHandle = (latestWinner as any)?.handle ?? null;
-  const winnerName = (latestWinner as any)?.name ?? null;
+  const winnerNameRaw = (latestWinner as any)?.name ?? null;
+  const winnerName = displayName(winnerNameRaw, winnerHandle);
   const winnerAvatar = (latestWinner as any)?.avatarUrl ?? null;
   const winnerAmount = (latestWinner as any)?.amountXpot ?? null;
   const winnerTxUrl = (latestWinner as any)?.txUrl ?? null;
@@ -708,6 +738,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   {cleanEntries.slice(0, 10).map(e => {
                     const h = normalizeHandle(e.handle);
                     const img = avatarUrlForRow(e);
+                    const { title, subtitle } = displayTitleSubtitle(e);
 
                     return (
                       <a
@@ -724,15 +755,8 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                         </span>
 
                         <div className="min-w-0">
-                          {(() => {
-                            const { title, subtitle } = displayTitleSubtitle(e);
-                            return (
-                              <>
-                                <p className="truncate text-[13px] font-semibold text-slate-100">{title}</p>
-                                <p className="truncate text-[12px] text-slate-400">{subtitle}</p>
-                              </>
-                            );
-                          })()}
+                          <p className="truncate text-[13px] font-semibold text-slate-100">{title}</p>
+                          <p className="truncate text-[12px] text-slate-400">{subtitle}</p>
                         </div>
 
                         <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
@@ -808,22 +832,22 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={winnerAvatar}
-                      alt={winnerHandle || 'winner'}
+                      alt={normalizeHandle(winnerHandle) || 'winner'}
                       className="h-full w-full object-cover"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
                     <span className="text-sm font-semibold text-slate-200">
-                      {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
+                      {(normalizeHandle(winnerHandle) || '@w').replace('@', '').slice(0, 1).toUpperCase()}
                     </span>
                   )}
                 </span>
 
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold text-slate-100">
-                    {winnerName || winnerHandle || 'Winner'}
+                    {winnerName || normalizeHandle(winnerHandle) || 'Winner'}
                   </p>
-                  <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
+                  <p className="truncate text-[12px] text-slate-400">{normalizeHandle(winnerHandle) || '@unknown'}</p>
                 </div>
 
                 <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-100">
@@ -1021,9 +1045,9 @@ function HomeInner() {
 
                       {bonusActive ? (
                         <div className="mt-5">
-                         <BonusVault>
-  <BonusStrip variant="home" />
-</BonusVault>
+                          <BonusVault>
+                            <BonusStrip variant="home" />
+                          </BonusVault>
                         </div>
                       ) : null}
 
@@ -1109,6 +1133,7 @@ function HomeInner() {
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
       <Stage latestWinner={latestWinner} />
+
       {/* rest unchanged */}
       <XpotFooter />
     </XpotPageShell>
