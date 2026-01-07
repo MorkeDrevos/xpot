@@ -175,7 +175,10 @@ function avatarUrlForRow(row: Pick<EntryRow, 'handle' | 'avatarUrl'>) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
   const cache = Math.floor(Date.now() / (6 * 60 * 60 * 1000)); // 6h bucket
-  return row.avatarUrl ?? `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${cache}`;
+  return (
+  row.avatarUrl ??
+  `https://unavatar.io/twitter/${encodeURIComponent(clean)}?size=256&cache=${cache}`
+);
 }
 
 /**
@@ -478,8 +481,10 @@ function AvatarBubble({
   const clean = handle.replace(/^@/, '');
 
   const img =
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+  row.avatarUrl ??
+  `https://unavatar.io/twitter/${encodeURIComponent(clean)}?size=256&cache=${Math.floor(
+    Date.now() / (6 * 60 * 60 * 1000),
+  )}`;
 
   const { title, subtitle } = displayTitleSubtitle(row);
 
