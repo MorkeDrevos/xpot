@@ -1021,8 +1021,8 @@ function HomeInner() {
 
                       {bonusActive ? (
                         <div className="mt-5">
-                        <BonusVault spotlight>
-  <div />
+                         <BonusVault>
+  <BonusStrip variant="home" />
 </BonusVault>
                         </div>
                       ) : null}
