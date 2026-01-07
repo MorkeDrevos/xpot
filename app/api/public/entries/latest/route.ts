@@ -9,6 +9,14 @@ function intParam(v: string | null, fallback: number) {
   return Math.max(1, Math.min(50, Math.floor(n)));
 }
 
+function normalizeHandle(h: any) {
+  const s = String(h ?? '').trim();
+  if (!s) return null;
+  const clean = s.replace(/^@+/, '').trim();
+  if (!clean) return null;
+  return `@${clean}`;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const limit = intParam(req.nextUrl.searchParams.get('limit'), 24);
@@ -23,17 +31,31 @@ export async function GET(req: NextRequest) {
 
     const entries = tickets
       .map(t => {
-        const u = t.wallet?.user;
-        const handle = u?.xHandle ? `@${String(u.xHandle).replace(/^@/, '')}` : null;
+        const u: any = t.wallet?.user;
+        const handle = normalizeHandle(u?.xHandle);
         if (!handle) return null;
+
+        // ✅ Use REAL X identity fields first (these are what your app uses elsewhere)
+        const xName = u?.xName ?? u?.name ?? null;
+        const xAvatarUrl = u?.xAvatarUrl ?? u?.avatarUrl ?? null;
+        const xVerified = u?.xVerified ?? u?.verified ?? null;
 
         return {
           id: t.id,
           createdAt: t.createdAt.toISOString(),
+
+          // keep "handle" for backward compat with your client mapping
           handle,
-          name: (u as any)?.name ?? null,
-          avatarUrl: (u as any)?.avatarUrl ?? null,
-          verified: Boolean((u as any)?.xVerified ?? false),
+
+          // also expose x* keys so any newer client can consume it directly
+          xHandle: handle.replace(/^@/, ''),
+          xName: xName ? String(xName).trim() : null,
+          xAvatarUrl: xAvatarUrl ? String(xAvatarUrl).trim() : null,
+
+          name: xName ? String(xName).trim() : null,
+          avatarUrl: xAvatarUrl ? String(xAvatarUrl).trim() : null,
+
+          verified: xVerified === true,
         };
       })
       .filter(Boolean);
