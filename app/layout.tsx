@@ -1,6 +1,7 @@
 // app/layout.tsx
 import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
+import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 
 import Providers from './providers';
@@ -99,6 +100,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClerkProvider>
           <Providers>{children}</Providers>
         </ClerkProvider>
+
+        {/* Vercel Web Analytics (independent of Clerk mounting) */}
+        <Analytics />
       </body>
     </html>
   );
