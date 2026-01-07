@@ -1,4 +1,3 @@
-// components/LiveActivityModule.tsx
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -41,8 +40,7 @@ function displayName(name: any, handle: any) {
   const hCore = handleCore(handle);
 
   if (!nCore) return null;
-  if (hCore && nCore === hCore) return null; // <- prevents handle twice
-
+  if (hCore && nCore === hCore) return null; // prevents handle twice
   return raw;
 }
 
@@ -170,7 +168,6 @@ function AvatarBubble({
       className="group relative"
       title={handle}
     >
-      {/* Hover card (desktop) */}
       <div
         className="
           pointer-events-none
@@ -193,7 +190,6 @@ function AvatarBubble({
             backdrop-blur
           "
         >
-          {/* Soft caret */}
           <div
             aria-hidden
             className="
@@ -218,7 +214,6 @@ function AvatarBubble({
                 decoding="async"
               />
 
-              {/* Verified badge */}
               {row.verified ? (
                 <span
                   className="
@@ -241,7 +236,6 @@ function AvatarBubble({
               <div className="flex items-center gap-2">
                 <div className="truncate text-[13px] font-semibold text-slate-100">{title}</div>
 
-                {/* XPOT badge for winners */}
                 {isWinner ? (
                   <span
                     className="
@@ -269,10 +263,8 @@ function AvatarBubble({
         </div>
       </div>
 
-      {/* Glow */}
       <span className="pointer-events-none absolute -inset-2 rounded-full opacity-0 blur-xl transition group-hover:opacity-100 bg-[radial-gradient(circle_at_40%_40%,rgba(56,189,248,0.22),transparent_62%),radial-gradient(circle_at_60%_55%,rgba(var(--xpot-gold),0.18),transparent_60%)]" />
 
-      {/* Avatar */}
       <span
         className="relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.03] shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
         style={{ width: size, height: size }}
@@ -359,9 +351,7 @@ export default function LiveActivityModule({
           return;
         }
 
-        if (!res.ok) {
-          return; // never clear (prevents flicker)
-        }
+        if (!res.ok) return;
 
         const json: any = await res.json();
         const raw = Array.isArray(json?.entries) ? json.entries : [];
@@ -371,10 +361,8 @@ export default function LiveActivityModule({
             const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
             if (!handle) return null;
 
-            const name = displayName(
-              r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null,
-              handle,
-            );
+            const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
+            const name = displayName(nameRaw, handle);
 
             const avatar =
               r?.xAvatarUrl ??
@@ -385,8 +373,15 @@ export default function LiveActivityModule({
               r?.user?.avatar_url ??
               null;
 
-            const verified =
-              r?.verified ?? r?.user?.verified ?? r?.isVerified ?? r?.user?.isVerified ?? r?.is_verified ?? null;
+            const verifiedRaw =
+              r?.verified ??
+              r?.xVerified ??
+              r?.user?.verified ??
+              r?.user?.xVerified ??
+              r?.isVerified ??
+              r?.user?.isVerified ??
+              r?.is_verified ??
+              null;
 
             return {
               id: r?.id ?? undefined,
@@ -394,7 +389,7 @@ export default function LiveActivityModule({
               name,
               avatarUrl: avatar ? String(avatar) : null,
               createdAt: r?.createdAt ?? r?.created_at ?? null,
-              verified: verified ?? null,
+              verified: verifiedRaw === true ? true : verifiedRaw === false ? false : null,
             } as EntryRow;
           })
           .filter(Boolean) as EntryRow[];
