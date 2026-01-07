@@ -46,6 +46,47 @@ function safeTimeMs(iso?: string | null) {
   return Number.isFinite(t) ? t : 0;
 }
 
+function cleanFromHandle(handle: string) {
+  return normalizeHandle(handle).replace(/^@/, '');
+}
+
+function normalizeDisplayName(name: any, handle: string) {
+  const raw = String(name ?? '').trim();
+  if (!raw) return null;
+
+  const clean = cleanFromHandle(handle).toLowerCase();
+  const rawLower = raw.toLowerCase();
+
+  // If backend accidentally sends username as "name", do not show it as a display name
+  if (rawLower === clean) return null;
+  if (rawLower === `@${clean}`) return null;
+
+  return raw;
+}
+
+function pickFirstString(...vals: any[]) {
+  for (const v of vals) {
+    const s = String(v ?? '').trim();
+    if (s) return s;
+  }
+  return '';
+}
+
+function pickFirstNullableString(...vals: any[]) {
+  for (const v of vals) {
+    const s = String(v ?? '').trim();
+    if (s) return s;
+  }
+  return null;
+}
+
+function pickFirstBool(...vals: any[]) {
+  for (const v of vals) {
+    if (typeof v === 'boolean') return v;
+  }
+  return null;
+}
+
 function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   const map = new Map<string, EntryRow>();
 
@@ -364,16 +405,69 @@ export default function LiveActivityModule({
 
         const mapped: EntryRow[] = raw
           .map((r: any) => {
-            const handle = normalizeHandle(r?.handle);
+            // Handles can be named differently depending on endpoint version
+            const handle = normalizeHandle(
+              pickFirstString(
+                r?.handle,
+                r?.xHandle,
+                r?.x_handle,
+                r?.username,
+                r?.screenName,
+                r?.screen_name,
+                r?.user?.handle,
+                r?.user?.xHandle,
+                r?.user?.username
+              )
+            );
             if (!handle) return null;
+
+            // Display name also varies a lot across payloads
+            const nameCandidate = pickFirstNullableString(
+              r?.name,
+              r?.displayName,
+              r?.display_name,
+              r?.fullName,
+              r?.full_name,
+              r?.xName,
+              r?.x_name,
+              r?.profileName,
+              r?.profile_name,
+              r?.user?.name,
+              r?.user?.displayName,
+              r?.user?.display_name,
+              r?.user?.fullName,
+              r?.user?.xName
+            );
+
+            const avatarCandidate = pickFirstNullableString(
+              r?.avatarUrl,
+              r?.avatar_url,
+              r?.profileImageUrl,
+              r?.profile_image_url,
+              r?.imageUrl,
+              r?.image_url,
+              r?.user?.avatarUrl,
+              r?.user?.avatar_url,
+              r?.user?.profileImageUrl,
+              r?.user?.profile_image_url
+            );
+
+            const verifiedCandidate = pickFirstBool(
+              r?.verified,
+              r?.isVerified,
+              r?.is_verified,
+              r?.user?.verified,
+              r?.user?.isVerified,
+              r?.user?.is_verified
+            );
 
             return {
               id: r?.id ?? undefined,
               handle,
-              name: r?.name ?? null,
-              avatarUrl: r?.avatarUrl ?? null,
-              createdAt: r?.createdAt ?? null,
-              verified: r?.verified ?? null,
+              name: normalizeDisplayName(nameCandidate, handle),
+              avatarUrl: avatarCandidate,
+              createdAt: r?.createdAt ?? r?.created_at ?? r?.ts ?? r?.time ?? null,
+              verified: verifiedCandidate,
             } as EntryRow;
           })
           .filter(Boolean) as EntryRow[];
