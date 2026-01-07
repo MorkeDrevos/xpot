@@ -1174,8 +1174,10 @@ function MobileMenu({
         aria-label="Close menu"
       />
 
-      <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+      {/* ✅ FIX: make drawer scrollable so logout is reachable on all phones */}
+      <div className="fixed right-0 top-0 z-[81] h-full w-[92%] max-w-sm border-l border-white/10 bg-black/85 backdrop-blur-xl overflow-hidden flex flex-col">
+        {/* Header (fixed within drawer) */}
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
               <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/35">
@@ -1203,147 +1205,155 @@ function MobileMenu({
           </button>
         </div>
 
-        <div className="space-y-4 px-5 py-5">
-          <div>
-            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">VERIFY</p>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="space-y-4 px-5 py-5">
+            <div>
+              <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">VERIFY</p>
 
-            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">OFFICIAL CONTRACT</p>
-              <p className="mt-2 font-mono text-[13px] text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
+              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/80">OFFICIAL CONTRACT</p>
+                <p className="mt-2 font-mono text-[13px] text-slate-100 break-all">{XPOT_OFFICIAL_CA}</p>
 
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={copyCA}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={copyCA}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 text-emerald-200" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+
+                  <Link
+                    href={PROTOCOL_HREF}
+                    className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                  >
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                    Health
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
+
+              <div className="mt-3 space-y-2">
+                <Link
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                  href="/hub"
                 >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 text-emerald-200" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copy
-                    </>
-                  )}
-                </button>
+                  Hub
+                </Link>
 
                 <Link
-                  href={PROTOCOL_HREF}
-                  className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-white/[0.07]"
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                  href={FINAL_DAY_HREF}
                 >
-                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                  Health
+                  <span className="inline-flex items-center gap-2">
+                    <Hourglass className="h-4 w-4 text-amber-200" />
+                    {FINAL_DAY_LABEL}
+                  </span>
+                </Link>
+
+                {/* ✅ Winners first in mobile nav too */}
+                <Link
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                  href={WINNERS_HREF}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-amber-300" />
+                    Winners
+                  </span>
+                </Link>
+
+                <Link
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                  href={TOKENOMICS_HREF}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <PieChart className="h-4 w-4 text-emerald-300" />
+                    Tokenomics
+                  </span>
+                </Link>
+
+                <Link
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                  href={ROADMAP_HREF}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Map className="h-4 w-4 text-sky-300" />
+                    Roadmap
+                  </span>
+                </Link>
+
+                <Link
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                  href={PROTOCOL_HREF}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                    Health
+                  </span>
+                </Link>
+
+                <Link
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
+                  href={XPOT_X_POST}
+                  target="_blank"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Official X
+                  </span>
                 </Link>
               </div>
             </div>
-          </div>
 
-          <div>
-            <p className="text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">NAVIGATION</p>
+            {isHub && (
+              <div className="pt-1">
+                <p className="mb-2 text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">WALLET</p>
+                <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
+              </div>
+            )}
 
-            <div className="mt-3 space-y-2">
+            {/* ✅ Logout stays in scroll area so it’s reachable, and we close the drawer on tap */}
+            {isHub && clerkEnabled && (
+              <div className="pt-2">
+                <SignOutButton redirectUrl="/">
+                  <button
+                    onClick={() => onClose()}
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <LogOut className="h-5 w-5" />
+                      Log out
+                    </span>
+                  </button>
+                </SignOutButton>
+              </div>
+            )}
+
+            <div className="pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
               <Link
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                 href="/hub"
+                className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
+                onClick={() => onClose()}
               >
-                Hub
+                Enter today&apos;s XPOT →
               </Link>
-
-              <Link
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-                href={FINAL_DAY_HREF}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Hourglass className="h-4 w-4 text-amber-200" />
-                  {FINAL_DAY_LABEL}
-                </span>
-              </Link>
-
-              {/* ✅ Winners first in mobile nav too */}
-              <Link
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-                href={WINNERS_HREF}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-amber-300" />
-                  Winners
-                </span>
-              </Link>
-
-              <Link
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-                href={TOKENOMICS_HREF}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <PieChart className="h-4 w-4 text-emerald-300" />
-                  Tokenomics
-                </span>
-              </Link>
-
-              <Link
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-                href={ROADMAP_HREF}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Map className="h-4 w-4 text-sky-300" />
-                  Roadmap
-                </span>
-              </Link>
-
-              <Link
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-                href={PROTOCOL_HREF}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                  Health
-                </span>
-              </Link>
-
-              <Link
-                className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
-                href={XPOT_X_POST}
-                target="_blank"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Official X
-                </span>
-              </Link>
+              <p className="mt-2 text-center text-[11px] text-slate-400/80">{String(liveIsOpen).length ? '' : ''}</p>
             </div>
-          </div>
-
-          {isHub && (
-            <div className="pt-1">
-              <p className="mb-2 text-[11px] font-semibold tracking-[0.30em] text-slate-300/70">WALLET</p>
-              <HubWalletMenuInline hubWalletStatus={hubWalletStatus} onOpenWalletModal={onOpenWalletModal} />
-            </div>
-          )}
-
-          {isHub && clerkEnabled && (
-            <div className="pt-2">
-              <SignOutButton redirectUrl="/">
-                <button className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]">
-                  <span className="inline-flex items-center gap-2">
-                    <LogOut className="h-5 w-5" />
-                    Log out
-                  </span>
-                </button>
-              </SignOutButton>
-            </div>
-          )}
-
-          <div className="pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
-            <Link
-              href="/hub"
-              className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-slate-200"
-            >
-              Enter today&apos;s XPOT →
-            </Link>
-            <p className="mt-2 text-center text-[11px] text-slate-400/80">{String(liveIsOpen).length ? '' : ''}</p>
           </div>
         </div>
       </div>

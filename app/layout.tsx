@@ -8,6 +8,16 @@ import Providers from './providers';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://xpot.bet';
 
+// IMPORTANT:
+// Make sure this file exists in /public/img/ and is accessible at:
+// https://xpot.bet/img/og.jpg
+//
+// Specs:
+// - 1200x630
+// - JPG or PNG
+// - < 5MB
+const OG_IMAGE_PATH = '/img/og.jpg';
+
 function safeMetadataBase(url: string) {
   try {
     return new URL(url);
@@ -31,18 +41,32 @@ export const metadata: Metadata = {
     icon: [{ url: '/img/favicon.png', type: 'image/png' }],
   },
 
+  // Optional but nice: canonical
+  alternates: {
+    canonical: '/',
+  },
+
   openGraph: {
     type: 'website',
     siteName: 'XPOT',
     title: 'XPOT',
     description: 'Daily reward protocol on Solana.',
     url: '/',
+    images: [
+      {
+        url: OG_IMAGE_PATH,
+        width: 1200,
+        height: 630,
+        alt: 'XPOT',
+      },
+    ],
   },
 
   twitter: {
     card: 'summary_large_image',
     title: 'XPOT',
     description: 'Daily reward protocol on Solana.',
+    images: [OG_IMAGE_PATH],
   },
 
   themeColor: [

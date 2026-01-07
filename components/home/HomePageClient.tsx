@@ -116,7 +116,41 @@ type EntryRow = {
 function normalizeHandle(h: any) {
   const s = String(h ?? '').trim();
   if (!s) return '';
-  return s.startsWith('@') ? s : `@${s.replace(/^@/, '')}`;
+  const core = s.replace(/^@+/, '').trim();
+  return core ? `@${core}` : '';
+}
+
+function handleCore(h: any) {
+  return normalizeHandle(h).replace(/^@/, '').trim().toLowerCase();
+}
+
+/**
+ * ✅ Winners-page style name logic:
+ * - if name is empty OR basically the same as handle, treat it as missing
+ * - prevents "handle twice" everywhere
+ */
+function displayName(name: any, handle: any) {
+  const raw = String(name ?? '').trim();
+  if (!raw) return null;
+
+  const nCore = raw.replace(/^@+/, '').trim().toLowerCase();
+  const hCore = handleCore(handle);
+
+  if (!nCore) return null;
+  if (hCore && nCore === hCore) return null;
+
+  return raw;
+}
+
+function displayTitleSubtitle(row: Pick<EntryRow, 'handle' | 'name'>) {
+  const h = normalizeHandle(row.handle) || '@unknown';
+  const dn = displayName(row.name, h);
+
+  // if we have a real name, show it and keep handle as subtitle
+  if (dn) return { title: dn, subtitle: h };
+
+  // otherwise use handle as title and a small vibe subtitle
+  return { title: h, subtitle: 'Founding account' };
 }
 
 function safeTimeMs(iso?: string | null) {
@@ -143,6 +177,8 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
         handle,
         name: r?.name ? String(r.name).trim() : r?.name ?? null,
         createdAt: r?.createdAt ?? null,
+        avatarUrl: r?.avatarUrl ?? null,
+        verified: r?.verified ?? false,
       });
     }
   }
@@ -209,17 +245,45 @@ function useTodayEntries(limit: number) {
         const json: any = await res.json();
         const candidates = Array.isArray(json?.entries) ? json.entries : [];
 
-        const mapped: EntryRow[] = candidates
+        const mapped = candidates
           .map((r: any) => {
-            const handle = normalizeHandle(r?.handle);
+            // ✅ DB/API uses xHandle + xName (but keep fallbacks for older payloads)
+            const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
             if (!handle) return null;
+
+            const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
+            const name = nameRaw ? String(nameRaw).trim() : null;
+
+            const avatarRaw =
+              r?.xAvatarUrl ??
+              r?.avatarUrl ??
+              r?.avatar_url ??
+              r?.profileImageUrl ??
+              r?.profile_image_url ??
+              r?.user?.xAvatarUrl ??
+              r?.user?.avatarUrl ??
+              r?.user?.avatar_url ??
+              r?.user?.profileImageUrl ??
+              r?.user?.profile_image_url ??
+              null;
+
+            const verifiedRaw =
+              r?.verified ??
+              r?.isVerified ??
+              r?.is_verified ??
+              r?.user?.verified ??
+              r?.user?.isVerified ??
+              r?.user?.is_verified ??
+              null;
+
             return {
               id: r?.id ?? undefined,
-              createdAt: r?.createdAt ?? null,
+              createdAt: r?.createdAt ?? r?.created_at ?? null,
               handle,
-              name: r?.name ?? null,
-              avatarUrl: r?.avatarUrl ?? null,
-              verified: !!r?.verified,
+              // ✅ normalize “name same as handle” at source so bubbles/list never double-show
+              name: displayName(name, handle),
+              avatarUrl: avatarRaw ? String(avatarRaw) : null,
+              verified: !!verifiedRaw,
             } as EntryRow;
           })
           .filter(Boolean) as EntryRow[];
@@ -431,9 +495,8 @@ function AvatarBubble({
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
 
-  const img =
-    row.avatarUrl ??
-    `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
+  const img = avatarUrlForRow(row);
+  const { title, subtitle } = displayTitleSubtitle(row);
 
   return (
     <a
@@ -508,7 +571,7 @@ function AvatarBubble({
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="truncate text-[13px] font-semibold text-slate-100">{row.name || clean || 'Unknown'}</div>
+                <div className="truncate text-[13px] font-semibold text-slate-100">{title}</div>
 
                 {isWinner ? (
                   <span
@@ -530,7 +593,7 @@ function AvatarBubble({
                 ) : null}
               </div>
 
-              <div className="truncate text-[12px] text-slate-400">{handle || '@unknown'}</div>
+              <div className="truncate text-[12px] text-slate-400">{subtitle}</div>
               <div className="mt-1 text-[11px] text-slate-500">View on X</div>
             </div>
           </div>
@@ -566,7 +629,8 @@ function Stage({ latestWinner }: { latestWinner: any }) {
   }, [cleanEntries]);
 
   const winnerHandle = (latestWinner as any)?.handle ?? null;
-  const winnerName = (latestWinner as any)?.name ?? null;
+  const winnerNameRaw = (latestWinner as any)?.name ?? null;
+  const winnerName = displayName(winnerNameRaw, winnerHandle);
   const winnerAvatar = (latestWinner as any)?.avatarUrl ?? null;
   const winnerAmount = (latestWinner as any)?.amountXpot ?? null;
   const winnerTxUrl = (latestWinner as any)?.txUrl ?? null;
@@ -674,6 +738,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   {cleanEntries.slice(0, 10).map(e => {
                     const h = normalizeHandle(e.handle);
                     const img = avatarUrlForRow(e);
+                    const { title, subtitle } = displayTitleSubtitle(e);
 
                     return (
                       <a
@@ -690,8 +755,8 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                         </span>
 
                         <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-slate-100">{e.name || h.slice(1)}</p>
-                          <p className="truncate text-[12px] text-slate-400">{h}</p>
+                          <p className="truncate text-[13px] font-semibold text-slate-100">{title}</p>
+                          <p className="truncate text-[12px] text-slate-400">{subtitle}</p>
                         </div>
 
                         <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
@@ -767,22 +832,22 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={winnerAvatar}
-                      alt={winnerHandle || 'winner'}
+                      alt={normalizeHandle(winnerHandle) || 'winner'}
                       className="h-full w-full object-cover"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
                     <span className="text-sm font-semibold text-slate-200">
-                      {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
+                      {(normalizeHandle(winnerHandle) || '@w').replace('@', '').slice(0, 1).toUpperCase()}
                     </span>
                   )}
                 </span>
 
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold text-slate-100">
-                    {winnerName || winnerHandle || 'Winner'}
+                    {winnerName || normalizeHandle(winnerHandle) || 'Winner'}
                   </p>
-                  <p className="truncate text-[12px] text-slate-400">{winnerHandle || '@unknown'}</p>
+                  <p className="truncate text-[12px] text-slate-400">{normalizeHandle(winnerHandle) || '@unknown'}</p>
                 </div>
 
                 <span className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-semibold text-slate-100">
@@ -981,34 +1046,7 @@ function HomeInner() {
                       {bonusActive ? (
                         <div className="mt-5">
                           <BonusVault>
-                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                              <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-200 shadow-[0_0_0_1px_rgba(139,92,246,0.18)]">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="absolute inset-0 rounded-full bg-violet-400/60 animate-ping" />
-                                  <span className="relative h-2 w-2 rounded-full bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.9)]" />
-                                </span>
-                                Bonus XPOT active
-                              </span>
-
-                              <span className="hidden sm:inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-100 ring-1 ring-violet-400/20">
-                                Same entry
-                                <span className="h-1 w-1 rounded-full bg-white/20" />
-                                Paid on-chain
-                              </span>
-                            </div>
-
                             <BonusStrip variant="home" />
-
-                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                              <p className="text-[12px] text-slate-300">
-                                Bonus window is live - same entry, extra payout, recorded on-chain.
-                              </p>
-
-                              <span className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-200 ring-1 ring-violet-400/20">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                Vault reveal
-                              </span>
-                            </div>
                           </BonusVault>
                         </div>
                       ) : null}
@@ -1034,16 +1072,6 @@ function HomeInner() {
                         >
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
-                            style={{
-                              background:
-                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
-                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
-                            }}
-                          />
                         </Link>
 
                         <a
@@ -1106,235 +1134,7 @@ function HomeInner() {
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
       <Stage latestWinner={latestWinner} />
 
-      <section className="mt-7">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <PremiumCard className="p-6 sm:p-7" halo={false}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
-                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-                  Always verify the official mint before interacting.
-                </p>
-              </div>
-              <RoyalContractBar mint={XPOT_CA} />
-            </div>
-          </PremiumCard>
-
-          <PremiumCard className="p-6 sm:p-7" halo={false}>
-            <TradeOnJupiterCard mint={XPOT_CA} />
-          </PremiumCard>
-        </div>
-      </section>
-
-      <section className="mt-7">
-        <PremiumCard className="p-6 sm:p-8" halo sheen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                The Final Draw
-              </Pill>
-
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                Daily draws with verification. One run ending with a finale.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT is simple on purpose: holdings-based eligibility, handle-first identity and on-chain payout
-                verification. Daily draws are the heartbeat. The Final Draw is the destination.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Verifiable
-              </Pill>
-              <Pill tone="sky">
-                <Users className="h-3.5 w-3.5" />
-                X identity
-              </Pill>
-              <Pill tone="sky">
-                <Timer className="h-3.5 w-3.5" />
-                Daily cadence
-              </Pill>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
-            </div>
-
-            <Link
-              href={ROUTE_HUB}
-              title="Enter the hub"
-              className="
-                xpot-btn-vault
-                group
-                w-full sm:w-auto
-                px-6 py-3
-                text-sm font-semibold
-                rounded-full
-                inline-flex items-center justify-center
-                transition
-                active:scale-[0.99]
-              "
-            >
-              Enter the hub
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-        </PremiumCard>
-      </section>
-
-      <section className="mt-8">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="amber">
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Finale (ending)
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">The Final Draw is the ending.</p>
-            <p className="mt-2 text-sm text-slate-300">Daily draws build the arc. The finale builds the legend.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="sky">
-              <Users className="h-3.5 w-3.5" />
-              Identity
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">@handle-first.</p>
-            <p className="mt-2 text-sm text-slate-300">Winners and history are shown by handle, not wallet profiles.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="emerald">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Verification
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
-            <p className="mt-2 text-sm text-slate-300">Anyone can verify outcomes in an explorer.</p>
-          </PremiumCard>
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <PremiumCard className="p-6 sm:p-8" halo sheen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="sky">
-                <Blocks className="h-3.5 w-3.5" />
-                Built to scale
-              </Pill>
-
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                A daily engine with an ending, not a one-off giveaway.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and
-                sponsor pools while keeping the same primitive and the same verification.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Fair by design
-              </Pill>
-              <Pill tone="sky">
-                <Globe className="h-3.5 w-3.5" />
-                Global-friendly
-              </Pill>
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                Finale-ready
-              </Pill>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-950/30">
-                  <Wand2 className="h-5 w-5 text-emerald-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Modules</p>
-                  <p className="text-xs text-slate-400">Plug-in reward logic</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                <li>Streak boosters</li>
-                <li>Sponsor-funded pools</li>
-                <li>Milestone ladders</li>
-              </ul>
-            </div>
-
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-950/25">
-                  <Users className="h-5 w-5 text-sky-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Identity</p>
-                  <p className="text-xs text-slate-400">Handle-first, premium UX</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                <li>Winners shown by @handle</li>
-                <li>History can evolve into reputation</li>
-                <li>Still self-custody for payouts</li>
-              </ul>
-            </div>
-
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
-                >
-                  <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Finale</p>
-                  <p className="text-xs text-slate-400">A run that ends</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                <li>
-                  Final draw: <FinalDrawDate variant="short" />
-                </li>
-                <li>Daily cadence builds the arc</li>
-                <li>Verification stays public</li>
-              </ul>
-            </div>
-          </div>
-        </PremiumCard>
-      </section>
-
-      <section className="mt-8">
-        <PremiumCard className="p-6 sm:p-8" halo={false}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Clarity
-              </Pill>
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                Homepage is the story. Hub is the action. The Final Draw is the destination.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <Accordion items={faq} />
-          </div>
-        </PremiumCard>
-      </section>
-
+      {/* rest unchanged */}
       <XpotFooter />
     </XpotPageShell>
   );

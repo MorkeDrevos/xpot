@@ -19,6 +19,7 @@ import {
   Sparkles,
   Trophy,
   X as XIcon,
+  Users,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -42,9 +43,27 @@ type WinnerRow = {
   label?: string | null;
 };
 
+type KnownAccount = {
+  handle: string;
+  name: string | null;
+  avatarUrl: string | null;
+  verified: boolean | null;
+  followers: number | null;
+  lastSeenAt: string | null;
+  sources: string[];
+};
+
 function shortWallet(addr: string) {
   if (!addr || addr.length < 10) return addr || '—';
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+}
+
+// ✅ start-only (show beginning of wallet)
+function walletStart(addr?: string | null, take = 8) {
+  const a = String(addr ?? '').trim();
+  if (!a) return '—';
+  if (a.length <= take) return a;
+  return `${a.slice(0, take)}…`;
 }
 
 function safeTimeMs(iso?: string | null) {
@@ -261,8 +280,18 @@ function WinnerIdentity({
   const h = normalizeHandle(handle);
   const xUrl = toXProfileUrl(h);
 
-  const title = name && name.trim() ? name.trim() : h ?? shortWallet(walletAddress || '—');
-  const subtitle = h ?? shortWallet(walletAddress || '—');
+  // ✅ Fix: never show handle twice.
+  // Title: name -> handle -> walletStart
+  // Subtitle:
+  // - If title is name: show handle (or wallet)
+  // - If title is handle: show walletStart
+  // - Else: show walletStart
+  const cleanName = String(name ?? '').trim();
+  const wShort = walletStart(walletAddress, 8);
+
+  const title = cleanName || h || wShort;
+
+  const subtitle = cleanName ? h || wShort : h ? wShort : wShort;
 
   const content = (
     <div className="flex items-center gap-3">
@@ -325,6 +354,8 @@ function makeDedupeKey(w: WinnerRow) {
 
 export default function WinnersPage() {
   const [rows, setRows] = useState<WinnerRow[]>([]);
+  const [known, setKnown] = useState<KnownAccount[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -342,6 +373,7 @@ export default function WinnersPage() {
         setError(null);
         setLoading(true);
 
+        // Load winners
         const all: any[] = [];
         let cursor: string | null = null;
 
@@ -403,10 +435,21 @@ export default function WinnersPage() {
         }
 
         setRows(deduped);
+
+        // Load ALL accounts from DB (User + DrawEntry)
+        const ares = await fetch('/api/accounts/all', { cache: 'no-store' });
+        if (ares.ok) {
+          const adata = await ares.json();
+          const list = Array.isArray(adata?.accounts) ? (adata.accounts as KnownAccount[]) : [];
+          setKnown(list);
+        } else {
+          setKnown([]);
+        }
       } catch (e) {
         if (!alive) return;
         setError((e as Error)?.message || 'Failed to load winners.');
         setRows([]);
+        setKnown([]);
       } finally {
         if (alive) setLoading(false);
       }
@@ -516,6 +559,66 @@ export default function WinnersPage() {
                 form.
               </p>
 
+              {/* ✅ True DB-wide accounts list */}
+              {!loading && !error && known.length > 0 ? (
+                <div className="mt-4 xpot-card px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Known accounts</p>
+                    <span className="inline-flex items-center gap-2 text-xs text-slate-300">
+                      <Users className="h-4 w-4 text-slate-400" />
+                      {known.length}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {known.map(a => {
+                      const handle = normalizeHandle(a.handle) || a.handle;
+                      const xUrl = toXProfileUrl(handle);
+
+                      const title = (a.name ?? '').trim() || handle;
+                      const subtitle = (a.name ?? '').trim() ? handle : 'Founding account';
+
+                      const chip = (
+                        <div className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/55 px-3 py-2">
+                          <div className="relative h-6 w-6 overflow-hidden rounded-full border border-white/10 bg-slate-900/60">
+                            {a.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={a.avatarUrl} alt={subtitle} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
+                                <XIcon className="h-3.5 w-3.5" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="max-w-[180px] truncate text-xs font-semibold text-slate-100">{title}</div>
+                            <div className="max-w-[180px] truncate font-mono text-[11px] text-slate-400">
+                              {subtitle}
+                            </div>
+                          </div>
+                        </div>
+                      );
+
+                      return xUrl ? (
+                        <a
+                          key={a.handle}
+                          href={xUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="outline-none transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-[rgba(var(--xpot-gold),0.35)] rounded-full"
+                          title="Open X profile"
+                        >
+                          {chip}
+                        </a>
+                      ) : (
+                        <div key={a.handle}>{chip}</div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div className="xpot-card px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Search</p>
@@ -610,110 +713,122 @@ export default function WinnersPage() {
                 <div className="xpot-card px-4 py-4 text-sm text-slate-500">No winners yet.</div>
               ) : (
                 <div className="space-y-6">
-                  {grouped.map(g => (
-                    <section key={g.key} className="space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
-                        <span className="text-xs text-slate-500">{g.items.length} entries</span>
-                      </div>
+                  {grouped.map(g => {
+                    const firstWallet = g.items?.[0]?.walletAddress ?? null;
+                    const firstWalletStart = walletStart(firstWallet, 8);
 
-                      <div className="space-y-2">
-                        {g.items.map(w => {
-                          const kind = String(w.kind || '').toUpperCase();
-                          const isMain = kind === 'MAIN';
-                          const isBonus = kind === 'BONUS';
+                    return (
+                      <section key={g.key} className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{g.key}</p>
 
-                          const hasTx = isValidHttpUrl(w.txUrl);
-                          const verified = hasTx || w.isPaidOut === true;
+                          <span className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/55 px-3 py-1.5 text-[11px] text-slate-300">
+                            <span className="text-slate-500">Wallet</span>
+                            <span className="font-mono text-slate-100">{firstWalletStart}</span>
+                            {g.items.length > 1 ? <span className="text-slate-500">+{g.items.length - 1}</span> : null}
+                          </span>
+                        </div>
 
-                          const amountVal =
-                            typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot) ? w.amountXpot : null;
+                        <div className="space-y-2">
+                          {g.items.map(w => {
+                            const kind = String(w.kind || '').toUpperCase();
+                            const isMain = kind === 'MAIN';
+                            const isBonus = kind === 'BONUS';
 
-                          const amountText = amountVal === null ? '—' : fmtInt(Math.round(amountVal));
+                            const hasTx = isValidHttpUrl(w.txUrl);
+                            const verified = hasTx || w.isPaidOut === true;
 
-                          return (
-                            <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className={[
-                                    'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
-                                    isMain
-                                      ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
-                                      : isBonus
-                                      ? 'xpot-pill-gold border bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
-                                      : 'border-slate-700/70 bg-slate-900/60 text-slate-200',
-                                  ].join(' ')}
-                                >
-                                  {isMain ? (
-                                    <>
-                                      <Crown className="h-3.5 w-3.5" />
-                                      Main XPOT
-                                    </>
-                                  ) : isBonus ? (
-                                    <>
-                                      <Trophy className="h-3.5 w-3.5" />
-                                      Bonus XPOT
-                                    </>
+                            const amountVal =
+                              typeof w.amountXpot === 'number' && Number.isFinite(w.amountXpot) ? w.amountXpot : null;
+
+                            const amountText = amountVal === null ? '—' : fmtInt(Math.round(amountVal));
+
+                            return (
+                              <article key={makeDedupeKey(w)} className="xpot-card px-4 py-4">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={[
+                                      'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
+                                      isMain
+                                        ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+                                        : isBonus
+                                        ? 'xpot-pill-gold border bg-[rgba(var(--xpot-gold),0.10)] text-[rgb(var(--xpot-gold-2))]'
+                                        : 'border-slate-700/70 bg-slate-900/60 text-slate-200',
+                                    ].join(' ')}
+                                  >
+                                    {isMain ? (
+                                      <>
+                                        <Crown className="h-3.5 w-3.5" />
+                                        Main XPOT
+                                      </>
+                                    ) : isBonus ? (
+                                      <>
+                                        <Trophy className="h-3.5 w-3.5" />
+                                        Bonus XPOT
+                                      </>
+                                    ) : (
+                                      <>Winner</>
+                                    )}
+                                  </span>
+
+                                  {w.ticketCode ? (
+                                    <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span>
+                                  ) : null}
+
+                                  <span className="text-slate-700">•</span>
+
+                                  {verified ? (
+                                    <Badge tone="emerald">
+                                      <BadgeCheck className="h-3.5 w-3.5" />
+                                      Verified
+                                    </Badge>
                                   ) : (
-                                    <>Winner</>
+                                    <Badge tone="danger">
+                                      <Info className="h-3.5 w-3.5" />
+                                      Pending TX
+                                    </Badge>
                                   )}
-                                </span>
+                                </div>
 
-                                {w.ticketCode ? <span className="font-mono text-xs text-slate-200">{w.ticketCode}</span> : null}
+                                <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+                                  <WinnerIdentity
+                                    avatarUrl={w.avatarUrl}
+                                    name={w.name}
+                                    handle={w.handle}
+                                    walletAddress={w.walletAddress}
+                                  />
 
-                                <span className="text-slate-700">•</span>
+                                  <div className="flex justify-start sm:justify-center">
+                                    <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
+                                      <GoldAmount value={amountText} suffix="XPOT" size="md" />
+                                    </div>
+                                  </div>
 
-                                {verified ? (
-                                  <Badge tone="emerald">
-                                    <BadgeCheck className="h-3.5 w-3.5" />
-                                    Verified
-                                  </Badge>
-                                ) : (
-                                  <Badge tone="danger">
-                                    <Info className="h-3.5 w-3.5" />
-                                    Pending TX
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
-                                <WinnerIdentity
-                                  avatarUrl={w.avatarUrl}
-                                  name={w.name}
-                                  handle={w.handle}
-                                  walletAddress={w.walletAddress}
-                                />
-
-                                <div className="flex justify-start sm:justify-center">
-                                  <div className="origin-left sm:origin-center scale-[0.54] sm:scale-[0.62]">
-                                    <GoldAmount value={amountText} suffix="XPOT" size="md" />
+                                  <div className="flex justify-start sm:justify-end">
+                                    {hasTx && w.txUrl ? (
+                                      <Link
+                                        href={w.txUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="xpot-btn h-10 px-5 text-[12px]"
+                                      >
+                                        <ExternalLink className="h-4 w-4" />
+                                        Tx
+                                      </Link>
+                                    ) : (
+                                      <span className="rounded-full border border-slate-800/70 bg-slate-950/50 px-4 py-2 text-[11px] text-slate-500">
+                                        No TX
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
-
-                                <div className="flex justify-start sm:justify-end">
-                                  {hasTx && w.txUrl ? (
-                                    <Link
-                                      href={w.txUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="xpot-btn h-10 px-5 text-[12px]"
-                                    >
-                                      <ExternalLink className="h-4 w-4" />
-                                      Tx
-                                    </Link>
-                                  ) : (
-                                    <span className="rounded-full border border-slate-800/70 bg-slate-950/50 px-4 py-2 text-[11px] text-slate-500">
-                                      No TX
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
                 </div>
               )}
             </div>
