@@ -6,18 +6,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import {
   ArrowRight,
-  Blocks,
   CheckCircle2,
   Crown,
   ExternalLink,
-  Globe,
   Radio,
   ShieldCheck,
   Sparkles,
-  Timer,
   TrendingUp,
   Users,
-  Wand2,
   Zap,
   Trophy,
   LayoutGrid,
@@ -42,6 +38,9 @@ import CosmicHeroBackdrop from './hero/CosmicHeroBackdrop';
 import BonusVault from './hero/BonusVault';
 import LiveControlRoom from './hero/LiveControlRoom';
 
+// ✅ single shared identity + avatar resolver (fixes name=handle + small avatar issues)
+import { avatarUrlFor, displayName, normalizeHandle, isSameHandle } from '@/lib/xIdentity';
+
 import {
   Accordion,
   GOLD_BG_WASH,
@@ -49,13 +48,9 @@ import {
   GOLD_TEXT,
   GOLD_TEXT_DIM,
   MiniStat,
-  Pill,
   PremiumCard,
   shortenAddress,
 } from './ui';
-
-// ✅ shared X identity + avatar logic (same as winners + LiveActivityModule)
-import { normalizeHandle, displayName, avatarUrlFor, initialsFor, isSameHandle } from '@/lib/xIdentity';
 
 const ROUTE_HUB = '/hub';
 const ROUTE_WINNERS = '/winners';
@@ -73,8 +68,7 @@ const XPOT_JUP_SWAP_URL =
 const XPOT_DEXSCREENER_URL =
   process.env.NEXT_PUBLIC_XPOT_DEXSCREENER_URL || `https://dexscreener.com/solana/${XPOT_CA}`;
 
-const XPOT_SOLSCAN_URL =
-  process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
+const XPOT_SOLSCAN_URL = process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
 const BTN_ROYAL_SECONDARY =
   'inline-flex items-center justify-center rounded-full px-5 py-3 text-[13px] font-semibold ' +
@@ -112,7 +106,7 @@ type EntryRow = {
   handle: string;
   name?: string | null;
   avatarUrl?: string | null;
-  verified?: boolean;
+  verified?: boolean | null;
   createdAt?: string | null;
 };
 
@@ -121,7 +115,6 @@ type EntryRow = {
 function displayTitleSubtitle(row: Pick<EntryRow, 'handle' | 'name'>) {
   const h = normalizeHandle(row.handle) || '@unknown';
   const dn = displayName(row.name, h); // null if empty or same as handle
-
   if (dn) return { title: dn, subtitle: h };
   return { title: h, subtitle: 'Founding account' };
 }
@@ -151,7 +144,8 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
         name: r?.name ? String(r.name).trim() : r?.name ?? null,
         createdAt: r?.createdAt ?? null,
         avatarUrl: r?.avatarUrl ?? null,
-        verified: typeof r?.verified === 'boolean' ? r.verified : !!r?.verified,
+        verified:
+          typeof r?.verified === 'boolean' ? r.verified : r?.verified === null ? null : !!r?.verified,
       });
     }
   }
@@ -212,14 +206,12 @@ function useTodayEntries(limit: number) {
 
         const mapped = candidates
           .map((r: any) => {
-            // ✅ DB/API uses xHandle + xName (keep fallbacks)
             const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
             if (!handle) return null;
 
             const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
             const name = nameRaw ? String(nameRaw).trim() : null;
 
-            // ✅ include xAvatarUrl first (new payload), then fallbacks
             const avatarRaw =
               r?.xAvatarUrl ??
               r?.avatarUrl ??
@@ -250,7 +242,7 @@ function useTodayEntries(limit: number) {
               handle,
               name,
               avatarUrl: avatarRaw ? String(avatarRaw) : null,
-              verified: verifiedRaw === true ? true : verifiedRaw === false ? false : !!verifiedRaw,
+              verified: verifiedRaw === true ? true : verifiedRaw === false ? false : null,
             } as EntryRow;
           })
           .filter(Boolean) as EntryRow[];
@@ -263,7 +255,6 @@ function useTodayEntries(limit: number) {
         }
       } catch (e: any) {
         if (e?.name === 'AbortError') return;
-        // do NOT clear rows on errors
       } finally {
         if (!alive) return;
         setInitialLoading(false);
@@ -462,7 +453,7 @@ function AvatarBubble({
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
 
-  // ✅ shared resolver (upgrades X URLs + high-res unavatar fallback)
+  // ✅ shared resolver (upgrades X URLs + Clerk proxy sizing + high-res unavatar fallback)
   const img = useMemo(() => avatarUrlFor(handle, row.avatarUrl), [handle, row.avatarUrl]);
 
   const { title, subtitle } = displayTitleSubtitle(row);
@@ -707,7 +698,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   {cleanEntries.slice(0, 10).map(e => {
                     const h = normalizeHandle(e.handle);
                     const clean = h.replace(/^@/, '');
-                    const img = avatarUrlFor(h, e.avatarUrl); // ✅ shared
+                    const img = avatarUrlFor(h, e.avatarUrl); // ✅ shared (hi-res + upgrades)
                     const { title, subtitle } = displayTitleSubtitle(e);
 
                     return (
@@ -815,7 +806,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
 
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold text-slate-100">
-                    {displayName(winnerName, winnerHandle) ?? winnerHandle ?? 'Winner'}
+                    {displayName(winnerName, winnerHandle) ?? normalizeHandle(winnerHandle) ?? 'Winner'}
                   </p>
                   <p className="truncate text-[12px] text-slate-400">{normalizeHandle(winnerHandle) || '@unknown'}</p>
                 </div>
