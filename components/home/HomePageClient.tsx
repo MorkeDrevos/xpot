@@ -1,4 +1,3 @@
-
 // components/home/HomePageClient.tsx
 'use client';
 
@@ -229,51 +228,54 @@ function useTodayEntries(limit: number) {
         const candidates = Array.isArray(json?.entries) ? json.entries : [];
 
         const mapped = candidates
-  .map((r: any) => {
-    // ✅ DB/API uses xHandle + xName (but keep fallbacks for older payloads)
-    const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
-    if (!handle) return null;
+          .map((r: any) => {
+            // ✅ DB/API uses xHandle + xName (keep fallbacks)
+            const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
+            if (!handle) return null;
 
-    const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
-    const name = nameRaw ? String(nameRaw).trim() : null;
+            const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
+            const name = nameRaw ? String(nameRaw).trim() : null;
 
-    const avatarRaw =
-      r?.avatarUrl ??
-      r?.avatar_url ??
-      r?.profileImageUrl ??
-      r?.profile_image_url ??
-      r?.user?.avatarUrl ??
-      r?.user?.avatar_url ??
-      r?.user?.profileImageUrl ??
-      r?.user?.profile_image_url ??
-      null;
+            // ✅ include xAvatarUrl first (new payload), then fallbacks
+            const avatarRaw =
+              r?.xAvatarUrl ??
+              r?.avatarUrl ??
+              r?.avatar_url ??
+              r?.profileImageUrl ??
+              r?.profile_image_url ??
+              r?.user?.xAvatarUrl ??
+              r?.user?.avatarUrl ??
+              r?.user?.avatar_url ??
+              r?.user?.profileImageUrl ??
+              r?.user?.profile_image_url ??
+              null;
 
-    const verifiedRaw =
-      r?.verified ??
-      r?.isVerified ??
-      r?.is_verified ??
-      r?.user?.verified ??
-      r?.user?.isVerified ??
-      r?.user?.is_verified ??
-      null;
+            const verifiedRaw =
+              r?.verified ??
+              r?.isVerified ??
+              r?.is_verified ??
+              r?.user?.verified ??
+              r?.user?.isVerified ??
+              r?.user?.is_verified ??
+              null;
 
-    return {
-      id: r?.id ?? undefined,
-      createdAt: r?.createdAt ?? r?.created_at ?? null,
-      handle,
-      name,
-      avatarUrl: avatarRaw ? String(avatarRaw) : null,
-      verified: !!verifiedRaw,
-    } as EntryRow;
-  })
-  .filter(Boolean) as EntryRow[];
+            return {
+              id: r?.id ?? undefined,
+              createdAt: r?.createdAt ?? r?.created_at ?? null,
+              handle,
+              name,
+              avatarUrl: avatarRaw ? String(avatarRaw) : null,
+              verified: !!verifiedRaw,
+            } as EntryRow;
+          })
+          .filter(Boolean) as EntryRow[];
 
         const clean = dedupeByHandleKeepLatest(mapped);
 
-if (alive) {
-  setRows(clean);
-  hasLoadedOnceRef.current = true;
-}
+        if (alive) {
+          setRows(clean);
+          hasLoadedOnceRef.current = true;
+        }
       } catch (e: any) {
         if (e?.name === 'AbortError') return;
         // do NOT clear rows on errors
@@ -479,6 +481,8 @@ function AvatarBubble({
     row.avatarUrl ??
     `https://unavatar.io/twitter/${encodeURIComponent(clean)}?cache=${Math.floor(Date.now() / (6 * 60 * 60 * 1000))}`;
 
+  const { title, subtitle } = displayTitleSubtitle(row);
+
   return (
     <a
       href={`https://x.com/${encodeURIComponent(clean)}`}
@@ -552,7 +556,7 @@ function AvatarBubble({
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <div className="truncate text-[13px] font-semibold text-slate-100">{row.name || clean || 'Unknown'}</div>
+                <div className="truncate text-[13px] font-semibold text-slate-100">{title}</div>
 
                 {isWinner ? (
                   <span
@@ -574,7 +578,7 @@ function AvatarBubble({
                 ) : null}
               </div>
 
-              <div className="truncate text-[12px] text-slate-400">{handle || '@unknown'}</div>
+              <div className="truncate text-[12px] text-slate-400">{subtitle}</div>
               <div className="mt-1 text-[11px] text-slate-500">View on X</div>
             </div>
           </div>
@@ -718,6 +722,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   {cleanEntries.slice(0, 10).map(e => {
                     const h = normalizeHandle(e.handle);
                     const img = avatarUrlForRow(e);
+                    const { title, subtitle } = displayTitleSubtitle(e);
 
                     return (
                       <a
@@ -734,8 +739,8 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                         </span>
 
                         <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-slate-100">{e.name || h.slice(1)}</p>
-                          <p className="truncate text-[12px] text-slate-400">{h}</p>
+                          <p className="truncate text-[13px] font-semibold text-slate-100">{title}</p>
+                          <p className="truncate text-[12px] text-slate-400">{subtitle}</p>
                         </div>
 
                         <ExternalLink className="ml-auto h-4 w-4 text-slate-600 group-hover:text-slate-400 transition" />
