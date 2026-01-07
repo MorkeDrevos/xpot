@@ -37,10 +37,9 @@ const SOL_MINT = 'So11111111111111111111111111111111111111112';
 const JUP_SWAP_URL = `https://jup.ag/?sell=${SOL_MINT}&buy=${encodeURIComponent(TOKEN_MINT)}`;
 
 const MILESTONES = [
-  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000,
-  3_000, 4_000, 5_000, 7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000,
-  100_000, 150_000, 200_000, 300_000, 400_000, 500_000, 750_000, 1_000_000, 1_500_000,
-  2_000_000, 3_000_000, 5_000_000, 10_000_000,
+  5, 10, 15, 20, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1_000, 1_500, 2_000, 3_000, 4_000, 5_000,
+  7_500, 10_000, 15_000, 20_000, 30_000, 40_000, 50_000, 75_000, 100_000, 150_000, 200_000, 300_000, 400_000,
+  500_000, 750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000,
 ] as const;
 
 const RANGE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -115,21 +114,12 @@ export default function JackpotPanel({
 }: JackpotPanelProps) {
   const isHero = mode === 'hero';
 
-  const { priceUsd, momentumGlobalH1, isLoading, hadError, justUpdated } = useDexScreenerPrice(
-    TOKEN_MINT,
-    PRICE_POLL_MS,
-  );
+  const { priceUsd, momentumGlobalH1, isLoading, hadError, justUpdated } = useDexScreenerPrice(TOKEN_MINT, PRICE_POLL_MS);
 
   const { mounted, countdownMs, countPulse } = useMadridCountdown(22);
 
-  const {
-    range24h,
-    coverageMs,
-    spark,
-    sparkCoverageMs,
-    maxJackpotToday,
-    registerJackpotUsdForSessionPeak,
-  } = usePriceSamples(priceUsd);
+  const { range24h, coverageMs, spark, sparkCoverageMs, maxJackpotToday, registerJackpotUsdForSessionPeak } =
+    usePriceSamples(priceUsd);
 
   // auto-wide slab
   const slabRef = useRef<HTMLDivElement | null>(null);
@@ -188,12 +178,10 @@ export default function JackpotPanel({
 
   const showUnavailable = !isLoading && (jackpotUsd == null || hadError || priceUsd == null);
 
-  const displayUsdText =
-    smoothJackpotUsd == null || !Number.isFinite(smoothJackpotUsd) ? '-' : formatUsd(smoothJackpotUsd);
+  const displayUsdText = smoothJackpotUsd == null || !Number.isFinite(smoothJackpotUsd) ? '-' : formatUsd(smoothJackpotUsd);
 
   const observedLabel = coverageMs >= RANGE_WINDOW_MS ? 'Observed: 24h' : `Observed: ${formatCoverage(coverageMs)}`;
-  const localSparkLabel =
-    sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
+  const localSparkLabel = sparkCoverageMs >= SPARK_WINDOW_MS ? 'Local ticks: 1h' : `Local ticks: ${formatCoverage(sparkCoverageMs)}`;
 
   const globalMomentumText =
     momentumGlobalH1 == null || !Number.isFinite(momentumGlobalH1) ? '-' : `${momentumGlobalH1.toFixed(2)}%`;
@@ -227,11 +215,10 @@ export default function JackpotPanel({
       ? ['md:-mr-2 md:pr-2', 'lg:-mr-4 lg:pr-4', 'xl:-mr-6 xl:pr-6', '2xl:-mr-8 2xl:pr-8'].join(' ')
       : '';
 
-  // ✅ FIX: add a little more TOP padding on mobile (pt-6) while keeping sm+ the same
   const panelChrome =
     variant === 'embedded'
       ? 'w-full max-w-none rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
-      : 'w-full max-w-none rounded-2xl bg-black/35 px-4 pt-6 pb-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
+      : 'w-full max-w-none rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
   // CTA styling (always visible, never "invisible")
   const CTA_PRIMARY =
@@ -276,7 +263,15 @@ export default function JackpotPanel({
   const isOpen = manualOpen;
 
   return (
-    <section className={['relative', panelChrome, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
+    <section
+      className={[
+        'relative',
+        panelChrome,
+        heroSpill,
+        // FIX: don’t pull the panel upward on mobile (keeps clean top padding)
+        isHero ? 'sm:-mt-5' : '',
+      ].join(' ')}
+    >
       <style jsx>{`
         @keyframes xpotSweep {
           0% { transform: translateX(-30%) skewX(-12deg); opacity: 0.0; }
@@ -420,7 +415,7 @@ export default function JackpotPanel({
 
           <div className="relative flex flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex w-full justify-center sm:w-auto sm:justify-start">
-              <div className={capsuleWrap}>
+              <div className="group relative inline-flex w-full max-w-full items-center sm:w-auto">
                 <div className={capsuleInner}>
                   <span className={capsuleTag}>
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
@@ -429,9 +424,7 @@ export default function JackpotPanel({
 
                   <div className="min-w-0 overflow-hidden px-1 text-center">
                     <span className={capsuleValue} style={{ textShadow: '0 0 22px rgba(124,200,255,0.10)' }}>
-                      <span className="xpot-pool-num inline-block min-w-0 max-w-full truncate">
-                        {JACKPOT_XPOT.toLocaleString()}
-                      </span>
+                      <span className="xpot-pool-num inline-block min-w-0 max-w-full truncate">{JACKPOT_XPOT.toLocaleString()}</span>
                       <span className="xpot-pool-unit shrink-0">XPOT</span>
                     </span>
                   </div>
@@ -476,9 +469,7 @@ export default function JackpotPanel({
                         ].join(' ')}
                         style={{
                           transform: 'translateY(1px)',
-                          textShadow: justUpdated
-                            ? '0 0 44px rgba(124,200,255,0.18)'
-                            : '0 0 34px rgba(124,200,255,0.12)',
+                          textShadow: justUpdated ? '0 0 44px rgba(124,200,255,0.18)' : '0 0 34px rgba(124,200,255,0.12)',
                         }}
                       >
                         {displayUsdText}
@@ -531,20 +522,13 @@ export default function JackpotPanel({
                   <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
                 )}
 
-                {/* ✅ ALWAYS-VISIBLE ACTIONS */}
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <Link href={ROUTE_HUB} className={CTA_PRIMARY} title="Enter today’s XPOT draw">
                     Enter today&apos;s XPOT
                     <ArrowRight className="h-4 w-4" />
                   </Link>
 
-                  <a
-                    href={JUP_SWAP_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={CTA_SECONDARY}
-                    title="Buy XPOT on Jupiter"
-                  >
+                  <a href={JUP_SWAP_URL} target="_blank" rel="noopener noreferrer" className={CTA_SECONDARY} title="Buy XPOT on Jupiter">
                     Buy XPOT
                     <ExternalLink className="h-4 w-4 text-slate-500" />
                   </a>
@@ -561,17 +545,13 @@ export default function JackpotPanel({
                 onClick={() => setManualOpen(v => !v)}
               >
                 <span className="inline-flex items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                    More details
-                  </span>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">More details</span>
 
-                  {/* ✅ FIX: hide this on mobile only */}
+                  {/* FIX: hide the "Token info, range, milestones" text on mobile only */}
                   <span className="hidden text-xs text-slate-400 sm:inline">Token info, range, milestones</span>
                 </span>
 
-                <ChevronDown
-                  className={['h-4 w-4 text-slate-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')}
-                />
+                <ChevronDown className={['h-4 w-4 text-slate-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')} />
               </button>
 
               <div id="xpot-more-details" className={['xpot-details-body', isHero ? 'xpot-spill-band' : ''].join(' ')}>
@@ -609,10 +589,7 @@ export default function JackpotPanel({
                       <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
 
                       <p className="mt-1 text-sm text-slate-300">
-                        1 XPOT ≈{' '}
-                        <span className="font-mono text-slate-100">
-                          {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
-                        </span>
+                        1 XPOT ≈ <span className="font-mono text-slate-100">{priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}</span>
                       </p>
 
                       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
@@ -666,8 +643,7 @@ export default function JackpotPanel({
                           <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
                           {range24h ? (
                             <p className="mt-1 text-sm text-slate-100">
-                              <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
-                              <span className="text-slate-600">-</span>{' '}
+                              <span className="font-mono">{formatUsd(range24h.lowUsd)}</span> <span className="text-slate-600">-</span>{' '}
                               <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
                             </p>
                           ) : (
@@ -725,9 +701,7 @@ export default function JackpotPanel({
                           <span className="font-mono text-slate-200">{rightMilestoneLabel}</span>
                         </div>
 
-                        <p className="mt-2 text-[11px] text-slate-600">
-                          Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT.
-                        </p>
+                        <p className="mt-2 text-[11px] text-slate-600">Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT.</p>
                       </div>
                     </div>
                   </div>
@@ -759,15 +733,12 @@ export default function JackpotPanel({
                         </div>
 
                         <p className="text-[11px] text-slate-500">
-                          Hold XPOT to qualify. Claim your daily entry in the hub. Winners are published handle-first and
-                          paid on-chain with TX.
+                          Hold XPOT to qualify. Claim your daily entry in the hub. Winners are published handle-first and paid on-chain with TX.
                         </p>
                       </div>
                     </div>
 
-                    <p className="mt-3 text-[11px] text-slate-500">
-                      Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s
-                    </p>
+                    <p className="mt-3 text-[11px] text-slate-500">Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s</p>
                   </div>
                 </div>
               </div>
