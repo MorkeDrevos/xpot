@@ -211,7 +211,7 @@ function useTodayEntries(limit: number) {
 
         const mapped: EntryRow[] = candidates
   .map((r: any) => {
-    // ✅ DB/API uses xHandle + xName
+    // ✅ DB/API uses xHandle + xName (but keep fallbacks for older payloads)
     const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
     if (!handle) return null;
 
@@ -239,17 +239,13 @@ function useTodayEntries(limit: number) {
       null;
 
     return {
-      id: r?.id ?? undefined,
-      createdAt: r?.createdAt ?? r?.created_at ?? null,
-      handle,
-      name,
-      avatarUrl: avatarRaw ? String(avatarRaw) : null,
-      verified: !!verifiedRaw,
-    } as EntryRow;
-  })
-  .filter(Boolean) as EntryRow[];
-          })
-          .filter(Boolean) as EntryRow[];
+  id: r?.id ?? undefined,
+  createdAt: r?.createdAt ?? r?.created_at ?? null,
+  handle,
+  name,
+  avatarUrl: avatarRaw ? String(avatarRaw) : null,
+  verified: !!verifiedRaw,
+} as EntryRow;
 
         const clean = dedupeByHandleKeepLatest(mapped);
 
