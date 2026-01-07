@@ -30,11 +30,22 @@ export function upgradeXAvatar(url: string) {
     const u = String(url || '').trim();
     if (!u) return u;
 
-    // Twitter/X patterns often end with: _normal, _bigger, _mini
-    return u
+    // 1️⃣ Upgrade X/Twitter patterns (_normal, _bigger, _mini)
+    const tw = u
       .replace(/_normal(\.(jpg|jpeg|png|webp))/i, '_400x400$1')
       .replace(/_bigger(\.(jpg|jpeg|png|webp))/i, '_400x400$1')
       .replace(/_mini(\.(jpg|jpeg|png|webp))/i, '_400x400$1');
+
+    // 2️⃣ Clerk proxy URLs — add width/height params
+    if (tw.includes('img.clerk.com')) {
+      const parts = new URL(tw);
+      // fallback to 256 if none provided
+      parts.searchParams.set('img_width', '256');
+      parts.searchParams.set('img_height', '256');
+      return parts.toString();
+    }
+
+    return tw;
   } catch {
     return url;
   }
