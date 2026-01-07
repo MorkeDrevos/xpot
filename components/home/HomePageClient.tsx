@@ -1134,7 +1134,34 @@ function HomeInner() {
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
       <Stage latestWinner={latestWinner} />
 
-      {/* rest unchanged */}
+            <section className="mt-10">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PremiumCard className="p-6 sm:p-7" halo>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Official</p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-50">Verify the mint</h3>
+            <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+              Always verify the contract before trading. XPOT is on Solana and the mint is publicly auditable.
+            </p>
+            <div className="mt-4">
+              <RoyalContractBar mint={XPOT_CA} />
+            </div>
+          </PremiumCard>
+
+          <PremiumCard className="p-6 sm:p-7" halo>
+            <TradeOnJupiterCard mint={XPOT_CA} />
+          </PremiumCard>
+        </div>
+
+        <div className="mt-6">
+          <PremiumCard className="p-6 sm:p-7" halo>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">FAQ</p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-50">How it works</h3>
+            <div className="mt-4">
+              <Accordion items={faq} />
+            </div>
+          </PremiumCard>
+        </div>
+      </section>
       <XpotFooter />
     </XpotPageShell>
   );
