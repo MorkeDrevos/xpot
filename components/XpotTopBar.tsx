@@ -252,35 +252,37 @@ export default function XpotTopBar({
                   <XpotLogo variant="light" width={420} height={120} priority className="h-[64px] w-auto object-contain" />
                 </Link>
 
-                <div className="flex items-center gap-2">
+                {/* ✅ FIX: add a touch more right padding so the last button isn’t hugging the edge */}
+                <div className="flex items-center gap-2 pr-1">
                   <OfficialCAChipMobile />
 
                   {isHub ? (
                     <button
                       type="button"
                       onClick={() => openWallet?.()}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-100"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-100"
                       aria-label="Wallet"
                     >
-                      <Wallet className="h-5 w-5 text-slate-200" />
+                      <Wallet className="h-6 w-6 text-slate-200" />
                     </button>
                   ) : (
                     <Link
                       href={FINAL_DAY_HREF}
-                      className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
+                      className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[13px] font-semibold text-slate-100"
                     >
                       <Hourglass className="h-4 w-4 text-amber-200" />
                       {FINAL_DAY_LABEL}
                     </Link>
                   )}
 
+                  {/* ✅ FIX: 44x44 hit target + slightly bigger icon */}
                   <button
                     type="button"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-200"
                     onClick={() => setMobileOpen(true)}
                     aria-label="Open menu"
                   >
-                    <Menu className="h-5 w-5" />
+                    <Menu className="h-6 w-6" />
                   </button>
                 </div>
               </div>
@@ -357,7 +359,7 @@ function OfficialCAChipMobile() {
       type="button"
       onClick={onCopy}
       className="
-        inline-flex h-10 items-center gap-2
+        inline-flex h-11 items-center gap-2
         rounded-full border border-white/10 bg-white/[0.04]
         px-3 text-[13px] font-semibold text-slate-100
         hover:bg-white/[0.07]
@@ -579,7 +581,7 @@ function PublicNavCenter({
   return (
     <nav className="flex items-center gap-7">
       <NavLink href="/hub">
-        <LayoutGrid className="h-4 w-4 text-slate-300" />
+        <LayoutGrid className="h-4 w-4 text-slate-200" />
         Hub
       </NavLink>
 
@@ -611,7 +613,6 @@ function PublicNavCenter({
 
             <div className="absolute left-1/2 z-[91] mt-3 w-[260px] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl shadow-[0_30px_100px_rgba(0,0,0,0.65)]">
               <div className="p-2">
-                {/* ✅ ORDER: Winners first (strongest social proof) */}
                 <Link
                   href={WINNERS_HREF}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-100 hover:bg-white/[0.06]"
@@ -699,10 +700,9 @@ function PublicRight() {
 
 function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
   return (
-    // ✅ tightened gap so Winners fits cleanly (matches your screenshot layout)
     <nav className="flex items-center gap-6">
       <NavLink href="/hub">
-        <LayoutGrid className="h-4 w-4 text-slate-300" />
+        <LayoutGrid className="h-4 w-4 text-slate-200" />
         Hub
       </NavLink>
 
@@ -711,7 +711,6 @@ function HubNavCenter({ liveIsOpen }: { liveIsOpen: boolean }) {
         <span className="tracking-wide">{FINAL_DAY_LABEL}</span>
       </NavPill>
 
-      {/* ✅ ORDER: Tokenomics -> Winners -> Roadmap -> Health -> X */}
       <NavLink href={TOKENOMICS_HREF}>
         <PieChart className="h-4 w-4 text-emerald-300" />
         Tokenomics
@@ -1204,10 +1203,10 @@ function MobileMenu({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06]"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06]"
             aria-label="Close menu"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
@@ -1261,7 +1260,7 @@ function MobileMenu({
                   onClick={() => onClose()}
                 >
                   <span className="inline-flex items-center gap-2">
-                    <LayoutGrid className="h-4 w-4 text-slate-300" />
+                    <LayoutGrid className="h-4 w-4 text-slate-200" />
                     Hub
                   </span>
                 </Link>
@@ -1277,7 +1276,6 @@ function MobileMenu({
                   </span>
                 </Link>
 
-                {/* ✅ Winners first in mobile nav too */}
                 <Link
                   className="block rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-100"
                   href={WINNERS_HREF}
@@ -1342,7 +1340,6 @@ function MobileMenu({
               </div>
             )}
 
-            {/* ✅ Logout stays in scroll area so it’s reachable, and we close the drawer on tap */}
             {isHub && clerkEnabled && (
               <div className="pt-2">
                 <SignOutButton redirectUrl="/">
