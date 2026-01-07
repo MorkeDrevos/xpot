@@ -227,12 +227,13 @@ export default function JackpotPanel({
       ? ['md:-mr-2 md:pr-2', 'lg:-mr-4 lg:pr-4', 'xl:-mr-6 xl:pr-6', '2xl:-mr-8 2xl:pr-8'].join(' ')
       : '';
 
-  // ✅ Mobile: remove built-in side padding. We add safe-area padding via CSS on the full-bleed wrapper instead.
+  // ✅ FIX: add a little more TOP padding on mobile (pt-6) while keeping sm+ the same
   const panelChrome =
     variant === 'embedded'
-      ? 'w-full max-w-none rounded-2xl bg-slate-950/60 px-0 py-5 sm:px-5 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
-      : 'w-full max-w-none rounded-2xl bg-black/35 px-0 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
+      ? 'w-full max-w-none rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
+      : 'w-full max-w-none rounded-2xl bg-black/35 px-4 pt-6 pb-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
+  // CTA styling (always visible, never "invisible")
   const CTA_PRIMARY =
     'relative inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-[13px] font-semibold ' +
     'bg-amber-200 text-slate-950 ' +
@@ -245,6 +246,7 @@ export default function JackpotPanel({
     'px-5 py-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.06] transition ' +
     'shadow-[0_12px_40px_rgba(0,0,0,0.35)]';
 
+  // capsule
   const capsuleWrap = 'group relative inline-flex w-full max-w-full items-center sm:w-auto';
 
   const capsuleInner = [
@@ -274,19 +276,8 @@ export default function JackpotPanel({
   const isOpen = manualOpen;
 
   return (
-    <section className={['relative xpot-jackpot-fullbleed', panelChrome, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
+    <section className={['relative', panelChrome, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
       <style jsx>{`
-        /* ✅ Full-bleed breakout on mobile only (escapes parent max-width), with safe-area aware side padding */
-        @media (max-width: 639px) {
-          .xpot-jackpot-fullbleed {
-            width: 100vw;
-            margin-left: calc(50% - 50vw);
-            margin-right: calc(50% - 50vw);
-            padding-left: max(10px, env(safe-area-inset-left));
-            padding-right: max(10px, env(safe-area-inset-right));
-          }
-        }
-
         @keyframes xpotSweep {
           0% { transform: translateX(-30%) skewX(-12deg); opacity: 0.0; }
           18% { opacity: 0.58; }
@@ -369,7 +360,7 @@ export default function JackpotPanel({
         )}
 
         {!isHero && variant !== 'embedded' && (
-          <div className="relative z-10 flex items-start justify-between gap-4 px-4 sm:px-0">
+          <div className="relative z-10 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-slate-100">Today&apos;s XPOT</p>
               <p className="mt-1 text-xs text-slate-400">Live value and next draw countdown.</p>
@@ -395,11 +386,6 @@ export default function JackpotPanel({
           ].join(' ')}
           style={{ boxShadow: '0 40px 140px rgba(0,0,0,0.60)' }}
         >
-          {/* ... rest of your component unchanged ... */}
-
-          {/* NOTE: everything below this point remains exactly as in your reverted file */}
-          {/* (kept identical to avoid any regressions) */}
-
           <div
             aria-hidden
             className="pointer-events-none absolute -inset-[2px] rounded-3xl opacity-70"
@@ -545,6 +531,7 @@ export default function JackpotPanel({
                   <p className="mt-2 text-center text-xs text-slate-500 sm:text-left">Live market price feed</p>
                 )}
 
+                {/* ✅ ALWAYS-VISIBLE ACTIONS */}
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <Link href={ROUTE_HUB} className={CTA_PRIMARY} title="Enter today’s XPOT draw">
                     Enter today&apos;s XPOT
@@ -577,8 +564,11 @@ export default function JackpotPanel({
                   <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                     More details
                   </span>
-                  <span className="text-xs text-slate-400">Token info, range, milestones</span>
+
+                  {/* ✅ FIX: hide this on mobile only */}
+                  <span className="hidden text-xs text-slate-400 sm:inline">Token info, range, milestones</span>
                 </span>
+
                 <ChevronDown
                   className={['h-4 w-4 text-slate-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')}
                 />
@@ -586,11 +576,203 @@ export default function JackpotPanel({
 
               <div id="xpot-more-details" className={['xpot-details-body', isHero ? 'xpot-spill-band' : ''].join(' ')}>
                 <div className="mt-3 xpot-details-surface">
-                  {/* unchanged details content */}
-                  {/* ... */}
+                  <div className="mt-1 grid gap-3 sm:grid-cols-2">
+                    <div
+                      className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3"
+                      style={{
+                        background:
+                          'radial-gradient(circle_at_18%_18%, rgba(124,200,255,0.08), transparent 58%), radial-gradient(circle_at_80%_20%, rgba(236,72,153,0.05), transparent 62%), linear-gradient(180deg, rgba(2,6,23,0.35), rgba(15,23,42,0.00))',
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700/60 bg-black/30 shadow-[0_0_0_1px_rgba(0,0,0,0.35),0_10px_22px_rgba(0,0,0,0.35)]">
+                            <XpotLogo variant="mark" width={28} height={28} tone="gold" priority />
+                          </span>
+
+                          <div className="leading-tight">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-200">XPOT token</p>
+                            <p className="text-xs text-slate-300">Winners are paid in XPOT</p>
+                          </div>
+                        </div>
+
+                        <span className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                          <Sparkles className="h-3.5 w-3.5 opacity-90" />
+                          Verified
+                        </span>
+                      </div>
+
+                      <p className="mt-3 text-[11px] text-slate-500">USD value is an estimate only.</p>
+                    </div>
+
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">USD value</p>
+
+                      <p className="mt-1 text-sm text-slate-300">
+                        1 XPOT ≈{' '}
+                        <span className="font-mono text-slate-100">
+                          {priceUsd !== null ? priceUsd.toFixed(8) : '0.00000000'}
+                        </span>
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+                        <span>{observedLabel}</span>
+                        <span className="text-slate-700">•</span>
+                        <span>
+                          Source <span className="font-mono text-slate-200">DexScreener</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Pulse (global 1h)</p>
+                          <div className="mt-1 flex items-baseline gap-2">
+                            <span className="text-sm font-semibold text-slate-100">{globalMomentumText}</span>
+                            <span className="text-[11px] text-slate-500">DexScreener</span>
+                          </div>
+                        </div>
+                        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+                          <TrendingUp className="h-4 w-4 text-slate-200/80" />
+                        </span>
+                      </div>
+
+                      {spark ? (
+                        <div className="mt-2">
+                          <svg width="100%" height="34" viewBox="0 0 560 54" className="block text-slate-300/70">
+                            <polyline
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.0"
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                              points={spark.points}
+                              opacity="0.85"
+                            />
+                          </svg>
+                          <p className="mt-1 text-[11px] text-slate-600">{localSparkLabel}</p>
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-[11px] text-slate-600">Collecting ticks…</p>
+                      )}
+                    </div>
+
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">24h range (observed)</p>
+                          {range24h ? (
+                            <p className="mt-1 text-sm text-slate-100">
+                              <span className="font-mono">{formatUsd(range24h.lowUsd)}</span>{' '}
+                              <span className="text-slate-600">-</span>{' '}
+                              <span className="font-mono">{formatUsd(range24h.highUsd)}</span>
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-sm text-slate-100">-</p>
+                          )}
+                          <p className="mt-2 text-[11px] text-slate-600">{observedLabel}</p>
+                        </div>
+
+                        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-black/25">
+                          <Info className="h-4 w-4 text-slate-200/70" />
+                        </span>
+                      </div>
+
+                      {maxJackpotToday != null ? (
+                        <p className="mt-2 text-[11px] text-slate-600">
+                          Session peak <span className="font-mono text-slate-200">{formatUsd(maxJackpotToday)}</span>
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="relative overflow-hidden rounded-2xl border border-slate-800/70 bg-black/20 px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Next milestone</p>
+                          <p className="mt-1 text-sm text-slate-100">
+                            {nextMilestone ? (
+                              <>
+                                <span className="font-mono">{rightMilestoneLabel}</span>{' '}
+                                <span className="text-[11px] text-slate-500">({Math.round(progressToNext * 100)}%)</span>
+                              </>
+                            ) : (
+                              '-'
+                            )}
+                          </p>
+                        </div>
+
+                        <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/60 bg-black/25">
+                          <Crown className="h-4 w-4 text-slate-200/80" />
+                        </span>
+                      </div>
+
+                      <div className="mt-3">
+                        <div className="relative h-2 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/[0.05]">
+                          <div
+                            className="absolute left-0 top-0 h-full rounded-full shadow-[0_0_18px_rgba(59,167,255,0.12)]"
+                            style={{
+                              width: `${Math.round(progressToNext * 100)}%`,
+                              background: 'linear-gradient(90deg, rgba(236,72,153,0.28), rgba(124,200,255,0.60))',
+                            }}
+                          />
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                          <span className="font-semibold text-slate-200">{leftMilestoneLabel}</span>
+                          <span className="font-mono text-slate-200">{rightMilestoneLabel}</span>
+                        </div>
+
+                        <p className="mt-2 text-[11px] text-slate-600">
+                          Today&apos;s pool is fixed at {JACKPOT_XPOT.toLocaleString()} XPOT.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative z-10 mt-4 overflow-hidden rounded-2xl border border-slate-800/70 bg-black/15 px-4 py-4 sm:px-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-slate-400">
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Context</span>
+
+                          {maxJackpotToday != null && (
+                            <span>
+                              Session peak <span className="font-mono text-slate-100">{formatUsd(maxJackpotToday)}</span>
+                            </span>
+                          )}
+
+                          {range24h && (
+                            <span>
+                              24h <span className="font-mono text-slate-100">{formatUsd(range24h.lowUsd)}</span> -{' '}
+                              <span className="font-mono text-slate-100">{formatUsd(range24h.highUsd)}</span>
+                            </span>
+                          )}
+
+                          <span className="text-slate-500">{observedLabel}</span>
+
+                          <span className="text-slate-500">
+                            Source <span className="font-mono text-slate-200">DexScreener</span>
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-500">
+                          Hold XPOT to qualify. Claim your daily entry in the hub. Winners are published handle-first and
+                          paid on-chain with TX.
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="mt-3 text-[11px] text-slate-500">
+                      Live price - updates every {Math.round(PRICE_POLL_MS / 1000)}s
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
       </div>
