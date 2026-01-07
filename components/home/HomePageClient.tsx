@@ -38,8 +38,7 @@ import CosmicHeroBackdrop from './hero/CosmicHeroBackdrop';
 import BonusVault from './hero/BonusVault';
 import LiveControlRoom from './hero/LiveControlRoom';
 
-// ✅ single shared identity + avatar resolver (fixes name=handle + small avatar issues)
-import { avatarUrlFor, displayName, normalizeHandle, isSameHandle } from '@/lib/xIdentity';
+import { avatarUrlFor, displayName, isSameHandle, normalizeHandle } from '@/lib/xIdentity';
 
 import {
   Accordion,
@@ -68,7 +67,8 @@ const XPOT_JUP_SWAP_URL =
 const XPOT_DEXSCREENER_URL =
   process.env.NEXT_PUBLIC_XPOT_DEXSCREENER_URL || `https://dexscreener.com/solana/${XPOT_CA}`;
 
-const XPOT_SOLSCAN_URL = process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
+const XPOT_SOLSCAN_URL =
+  process.env.NEXT_PUBLIC_XPOT_SOLSCAN_URL || `https://solscan.io/token/${XPOT_CA}`;
 
 const BTN_ROYAL_SECONDARY =
   'inline-flex items-center justify-center rounded-full px-5 py-3 text-[13px] font-semibold ' +
@@ -106,24 +106,24 @@ type EntryRow = {
   handle: string;
   name?: string | null;
   avatarUrl?: string | null;
-  verified?: boolean | null;
+  verified?: boolean;
   createdAt?: string | null;
 };
-
-// ✅ Winners-page style display rule (shared via displayName)
-// Here we want a title + subtitle pair for tooltips/list.
-function displayTitleSubtitle(row: Pick<EntryRow, 'handle' | 'name'>) {
-  const h = normalizeHandle(row.handle) || '@unknown';
-  const dn = displayName(row.name, h); // null if empty or same as handle
-  if (dn) return { title: dn, subtitle: h };
-  return { title: h, subtitle: 'Founding account' };
-}
 
 function safeTimeMs(iso?: string | null) {
   const t = iso ? Date.parse(iso) : NaN;
   return Number.isFinite(t) ? t : 0;
 }
 
+// Title + subtitle for tooltips/list.
+function displayTitleSubtitle(row: Pick<EntryRow, 'handle' | 'name'>) {
+  const h = normalizeHandle(row.handle) || '@unknown';
+  const dn = displayName(row.name, h);
+  if (dn) return { title: dn, subtitle: h };
+  return { title: h, subtitle: 'Account' };
+}
+
+// Keep latest per handle so bubbles don’t repeat the same person endlessly.
 function dedupeByHandleKeepLatest(rows: EntryRow[]) {
   const map = new Map<string, EntryRow>();
 
@@ -144,8 +144,7 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
         name: r?.name ? String(r.name).trim() : r?.name ?? null,
         createdAt: r?.createdAt ?? null,
         avatarUrl: r?.avatarUrl ?? null,
-        verified:
-          typeof r?.verified === 'boolean' ? r.verified : r?.verified === null ? null : !!r?.verified,
+        verified: typeof r?.verified === 'boolean' ? r.verified : !!r?.verified,
       });
     }
   }
@@ -156,11 +155,11 @@ function dedupeByHandleKeepLatest(rows: EntryRow[]) {
 }
 
 /**
- * No more flashing:
+ * Rolling latest entries (NOT “today”).
  * - never clears rows on refresh errors
  * - separate initial load vs refreshing
  */
-function useTodayEntries(limit: number) {
+function useEntriesLatest(limit: number) {
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -196,10 +195,7 @@ function useTodayEntries(limit: number) {
           return;
         }
 
-        if (!res.ok) {
-          // do NOT clear rows (prevents flicker)
-          return;
-        }
+        if (!res.ok) return;
 
         const json: any = await res.json();
         const candidates = Array.isArray(json?.entries) ? json.entries : [];
@@ -242,7 +238,7 @@ function useTodayEntries(limit: number) {
               handle,
               name,
               avatarUrl: avatarRaw ? String(avatarRaw) : null,
-              verified: verifiedRaw === true ? true : verifiedRaw === false ? false : null,
+              verified: verifiedRaw === true ? true : verifiedRaw === false ? false : !!verifiedRaw,
             } as EntryRow;
           })
           .filter(Boolean) as EntryRow[];
@@ -312,7 +308,7 @@ function RoyalContractBar({ mint }: { mint: string }) {
           <span
             className={`
               inline-flex h-7 w-7 items-center justify-center rounded-full
-              border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}
+              border ${GOLD_BORDER_SOFT} bg-white/[0.03]
               shadow-[0_0_22px_rgba(var(--xpot-gold),0.22)]
             `}
           >
@@ -394,17 +390,6 @@ function TradeOnJupiterCard({ mint }: { mint: string }) {
             >
               Trade on Jupiter
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -inset-10 opacity-55 blur-2xl"
-                style={{
-                  background:
-                    'radial-gradient(circle at 20% 35%, rgba(34,211,238,0.10), transparent 60%),' +
-                    'radial-gradient(circle at 78% 30%, rgba(168,85,247,0.08), transparent 62%),' +
-                    'radial-gradient(circle at 45% 70%, rgba(var(--xpot-gold),0.12), transparent 62%)',
-                }}
-              />
             </a>
 
             <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -453,9 +438,7 @@ function AvatarBubble({
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
 
-  // ✅ shared resolver (upgrades X URLs + Clerk proxy sizing + high-res unavatar fallback)
   const img = useMemo(() => avatarUrlFor(handle, row.avatarUrl), [handle, row.avatarUrl]);
-
   const { title, subtitle } = displayTitleSubtitle(row);
 
   return (
@@ -577,15 +560,14 @@ function AvatarBubble({
    Stage (TOP-LEVEL)
 ========================= */
 function Stage({ latestWinner }: { latestWinner: any }) {
-  const { rows: entries, initialLoading, refreshing } = useTodayEntries(24);
+  // Pull more so the stage looks alive
+  const { rows: entries, initialLoading, refreshing } = useEntriesLatest(80);
   const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
   const cleanEntries = useMemo(() => dedupeByHandleKeepLatest(entries), [entries]);
 
-  const uniqCount = useMemo(() => {
-    const s = new Set(cleanEntries.map(e => normalizeHandle(e.handle).toLowerCase()).filter(Boolean));
-    return s.size;
-  }, [cleanEntries]);
+  // Counts (rolling/latest, not “today”)
+  const shownCount = cleanEntries.length;
 
   const winnerHandle = (latestWinner as any)?.handle ?? null;
   const winnerName = (latestWinner as any)?.name ?? null;
@@ -629,7 +611,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   </span>
                 </p>
                 <p className="mt-2 text-[12px] text-slate-400">
-                  {initialLoading ? 'Updating...' : `${uniqCount || 0} unique entrants`}
+                  {initialLoading ? 'Updating...' : `${shownCount} shown`}
                   {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
                 </p>
               </div>
@@ -677,7 +659,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                 </div>
               ) : mode === 'bubbles' ? (
                 <div className="relative z-10 flex flex-wrap items-center justify-center gap-3">
-                  {cleanEntries.slice(0, 18).map((e, idx) => {
+                  {cleanEntries.slice(0, 24).map((e, idx) => {
                     const size = idx === 0 ? 72 : idx < 4 ? 62 : 54;
                     return (
                       <AvatarBubble
@@ -690,15 +672,15 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   })}
 
                   <div className="w-full pt-2 text-center text-[12px] text-slate-400">
-                    <span className="text-slate-200">{uniqCount}</span> today
+                    <span className="text-slate-200">{shownCount}</span> latest
                   </div>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {cleanEntries.slice(0, 10).map(e => {
+                  {cleanEntries.slice(0, 20).map(e => {
                     const h = normalizeHandle(e.handle);
                     const clean = h.replace(/^@/, '');
-                    const img = avatarUrlFor(h, e.avatarUrl); // ✅ shared (hi-res + upgrades)
+                    const img = avatarUrlFor(h, e.avatarUrl);
                     const { title, subtitle } = displayTitleSubtitle(e);
 
                     return (
@@ -724,7 +706,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                       </a>
                     );
                   })}
-                  <div className="pt-1 text-[12px] text-slate-500">Enter via the hub to join today&apos;s list.</div>
+                  <div className="pt-1 text-[12px] text-slate-500">Rolling latest entries (handle-first).</div>
                 </div>
               )}
             </div>
@@ -799,7 +781,7 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                     />
                   ) : (
                     <span className="text-sm font-semibold text-slate-200">
-                      {(winnerHandle || 'w').replace('@', '').slice(0, 1).toUpperCase()}
+                      (w)
                     </span>
                   )}
                 </span>
@@ -933,7 +915,7 @@ function HomeInner() {
                           <span
                             className={[
                               'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.26em]',
-                              `border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`,
+                              `border ${GOLD_BORDER_SOFT} bg-white/[0.03]`,
                               'shadow-[0_0_0_1px_rgba(var(--xpot-gold),0.10),0_18px_60px_rgba(0,0,0,0.55)]',
                             ].join(' ')}
                           >
@@ -971,14 +953,6 @@ function HomeInner() {
                       </div>
 
                       <div className="relative mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 ring-1 ring-white/[0.05]">
-                        <div
-                          className="pointer-events-none absolute -inset-12 opacity-70 blur-2xl"
-                          style={{
-                            background:
-                              'radial-gradient(circle at 18% 40%, rgba(var(--xpot-gold),0.14), transparent 60%),' +
-                              'radial-gradient(circle at 82% 30%, rgba(56,189,248,0.08), transparent 62%)',
-                          }}
-                        />
                         <div className="relative flex flex-wrap items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
@@ -995,7 +969,7 @@ function HomeInner() {
                           <span
                             className={[
                               'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]',
-                              `border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`,
+                              `border ${GOLD_BORDER_SOFT} bg-white/[0.03]`,
                             ].join(' ')}
                           >
                             <Zap className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
@@ -1060,16 +1034,6 @@ function HomeInner() {
                         >
                           Enter the hub
                           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute -inset-10 opacity-60 blur-2xl"
-                            style={{
-                              background:
-                                'radial-gradient(circle at 40% 40%, rgba(var(--xpot-gold),0.22), transparent 60%),' +
-                                'radial-gradient(circle at 78% 30%, rgba(255,255,255,0.10), transparent 62%)',
-                            }}
-                          />
                         </Link>
 
                         <a
