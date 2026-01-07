@@ -404,9 +404,10 @@ export default function LiveActivityModule({
             Entries
           </div>
           <div className="mt-1 text-[12px] text-slate-400">
-            {initialLoading ? 'Updating…' : `${uniqCount} unique entrants`}
-            {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
-          </div>
+  {/* {initialLoading ? 'Updating…' : `${uniqCount} unique entrants`} */}
+  {initialLoading ? 'Updating…' : null}
+  {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
+</div>
         </div>
 
         <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
@@ -458,9 +459,11 @@ export default function LiveActivityModule({
               isWinner={isSameHandle(e.handle, winnerHandle)}
             />
           ))}
-          <div className="ml-auto text-[12px] text-slate-400">
-            <span className="text-slate-200">{uniqCount}</span> today
-          </div>
+          {/*
+<div className="ml-auto text-[12px] text-slate-400">
+  <span className="text-slate-200">{uniqCount}</span> today
+</div>
+*/}
         </div>
       ) : (
         <div className="space-y-2">
