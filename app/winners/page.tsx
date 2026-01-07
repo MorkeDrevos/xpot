@@ -43,12 +43,22 @@ type WinnerRow = {
   label?: string | null;
 };
 
+type KnownAccount = {
+  handle: string;
+  name: string | null;
+  avatarUrl: string | null;
+  verified: boolean | null;
+  followers: number | null;
+  lastSeenAt: string | null;
+  sources: string[];
+};
+
 function shortWallet(addr: string) {
   if (!addr || addr.length < 10) return addr || '—';
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
-// ✅ start-only (what you asked for: show beginning of wallet)
+// ✅ start-only (show beginning of wallet)
 function walletStart(addr?: string | null, take = 8) {
   const a = String(addr ?? '').trim();
   if (!a) return '—';
@@ -271,18 +281,17 @@ function WinnerIdentity({
   const xUrl = toXProfileUrl(h);
 
   // ✅ Fix: never show handle twice.
-  // - Title: name if present, else handle, else wallet start
-  // - Subtitle: handle if title is name, otherwise wallet start (when title == handle)
+  // Title: name -> handle -> walletStart
+  // Subtitle:
+  // - If title is name: show handle (or wallet)
+  // - If title is handle: show walletStart
+  // - Else: show walletStart
   const cleanName = String(name ?? '').trim();
-  const wallet = walletStart(walletAddress, 8);
+  const wShort = walletStart(walletAddress, 8);
 
-  const title = cleanName || h || wallet;
+  const title = cleanName || h || wShort;
 
-  const subtitle = cleanName
-    ? h || wallet
-    : h
-    ? wallet // title is handle, so subtitle becomes wallet start (no duplication)
-    : wallet;
+  const subtitle = cleanName ? h || wShort : h ? wShort : wShort;
 
   const content = (
     <div className="flex items-center gap-3">
@@ -345,6 +354,8 @@ function makeDedupeKey(w: WinnerRow) {
 
 export default function WinnersPage() {
   const [rows, setRows] = useState<WinnerRow[]>([]);
+  const [known, setKnown] = useState<KnownAccount[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -362,6 +373,7 @@ export default function WinnersPage() {
         setError(null);
         setLoading(true);
 
+        // Load winners
         const all: any[] = [];
         let cursor: string | null = null;
 
@@ -423,10 +435,21 @@ export default function WinnersPage() {
         }
 
         setRows(deduped);
+
+        // Load ALL accounts from DB (User + DrawEntry)
+        const ares = await fetch('/api/accounts/all', { cache: 'no-store' });
+        if (ares.ok) {
+          const adata = await ares.json();
+          const list = Array.isArray(adata?.accounts) ? (adata.accounts as KnownAccount[]) : [];
+          setKnown(list);
+        } else {
+          setKnown([]);
+        }
       } catch (e) {
         if (!alive) return;
         setError((e as Error)?.message || 'Failed to load winners.');
         setRows([]);
+        setKnown([]);
       } finally {
         if (alive) setLoading(false);
       }
@@ -498,41 +521,6 @@ export default function WinnersPage() {
     return { main, bonus, total: filteredRows.length };
   }, [filteredRows]);
 
-  // ✅ "All accounts we have" (deduped from loaded rows)
-  const knownAccounts = useMemo(() => {
-    const byKey = new Map<
-      string,
-      { key: string; handle: string | null; name: string | null; avatarUrl: string | null; walletAddress: string | null; lastSeenMs: number }
-    >();
-
-    for (const r of rows) {
-      const h = normalizeHandle(r.handle);
-      const wa = (r.walletAddress ?? '').trim() || null;
-
-      // Prefer handle-based identity. Fallback to wallet.
-      const key = h ? `h:${h.toLowerCase()}` : wa ? `w:${wa}` : null;
-      if (!key) continue;
-
-      const lastSeenMs = safeTimeMs(r.drawDate);
-
-      const existing = byKey.get(key);
-      if (!existing || lastSeenMs > existing.lastSeenMs) {
-        byKey.set(key, {
-          key,
-          handle: h,
-          name: (r.name ?? '').trim() || null,
-          avatarUrl: (r.avatarUrl ?? '').trim() || null,
-          walletAddress: wa,
-          lastSeenMs,
-        });
-      }
-    }
-
-    const arr = Array.from(byKey.values());
-    arr.sort((a, b) => b.lastSeenMs - a.lastSeenMs);
-    return arr;
-  }, [rows]);
-
   const BORDER_SOFT = 'border-slate-700/35';
 
   return (
@@ -571,29 +559,31 @@ export default function WinnersPage() {
                 form.
               </p>
 
-              {/* ✅ Known accounts strip (makes it feel alive while small) */}
-              {!loading && !error && knownAccounts.length > 0 ? (
+              {/* ✅ True DB-wide accounts list */}
+              {!loading && !error && known.length > 0 ? (
                 <div className="mt-4 xpot-card px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Known accounts</p>
                     <span className="inline-flex items-center gap-2 text-xs text-slate-300">
                       <Users className="h-4 w-4 text-slate-400" />
-                      {knownAccounts.length}
+                      {known.length}
                     </span>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {knownAccounts.map(a => {
-                      const title = (a.name ?? '').trim() || a.handle || walletStart(a.walletAddress, 8);
-                      const sub = a.name ? a.handle || walletStart(a.walletAddress, 8) : a.handle ? walletStart(a.walletAddress, 8) : walletStart(a.walletAddress, 8);
-                      const xUrl = toXProfileUrl(a.handle);
+                    {known.map(a => {
+                      const handle = normalizeHandle(a.handle) || a.handle;
+                      const xUrl = toXProfileUrl(handle);
+
+                      const title = (a.name ?? '').trim() || handle;
+                      const subtitle = (a.name ?? '').trim() ? handle : 'Founding account';
 
                       const chip = (
                         <div className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-950/55 px-3 py-2">
                           <div className="relative h-6 w-6 overflow-hidden rounded-full border border-white/10 bg-slate-900/60">
                             {a.avatarUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={a.avatarUrl} alt={sub} className="h-full w-full object-cover" />
+                              <img src={a.avatarUrl} alt={subtitle} className="h-full w-full object-cover" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
                                 <XIcon className="h-3.5 w-3.5" />
@@ -603,14 +593,16 @@ export default function WinnersPage() {
 
                           <div className="min-w-0">
                             <div className="max-w-[180px] truncate text-xs font-semibold text-slate-100">{title}</div>
-                            <div className="max-w-[180px] truncate font-mono text-[11px] text-slate-400">{sub}</div>
+                            <div className="max-w-[180px] truncate font-mono text-[11px] text-slate-400">
+                              {subtitle}
+                            </div>
                           </div>
                         </div>
                       );
 
                       return xUrl ? (
                         <a
-                          key={a.key}
+                          key={a.handle}
                           href={xUrl}
                           target="_blank"
                           rel="noreferrer"
@@ -620,7 +612,7 @@ export default function WinnersPage() {
                           {chip}
                         </a>
                       ) : (
-                        <div key={a.key}>{chip}</div>
+                        <div key={a.handle}>{chip}</div>
                       );
                     })}
                   </div>
