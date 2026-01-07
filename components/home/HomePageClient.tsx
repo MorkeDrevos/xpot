@@ -116,7 +116,8 @@ type EntryRow = {
 function normalizeHandle(h: any) {
   const s = String(h ?? '').trim();
   if (!s) return '';
-  return s.startsWith('@') ? s : `@${s.replace(/^@/, '')}`;
+  const core = s.replace(/^@+/, '').trim();
+  return core ? `@${core}` : '';
 }
 
 function safeTimeMs(iso?: string | null) {
