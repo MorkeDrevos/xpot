@@ -249,10 +249,12 @@ function useTodayEntries(limit: number) {
   })
   .filter(Boolean) as EntryRow[];
 
-        if (alive) {
-          setRows(clean);
-          hasLoadedOnceRef.current = true;
-        }
+        const clean = dedupeByHandleKeepLatest(mapped);
+
+if (alive) {
+  setRows(clean);
+  hasLoadedOnceRef.current = true;
+}
       } catch (e: any) {
         if (e?.name === 'AbortError') return;
         // do NOT clear rows on errors
