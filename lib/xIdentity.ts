@@ -25,23 +25,38 @@ export function displayName(name: any, handle: any) {
 }
 
 // Upgrade common X/Twitter avatar URLs to higher-res when possible.
+// Also upgrade Clerk proxy avatars to request larger variants.
 export function upgradeXAvatar(url: string) {
   try {
     const u = String(url || '').trim();
     if (!u) return u;
 
-    // 1️⃣ Upgrade X/Twitter patterns (_normal, _bigger, _mini)
+    // 1) Upgrade X/Twitter patterns (_normal, _bigger, _mini)
     const tw = u
       .replace(/_normal(\.(jpg|jpeg|png|webp))/i, '_400x400$1')
       .replace(/_bigger(\.(jpg|jpeg|png|webp))/i, '_400x400$1')
       .replace(/_mini(\.(jpg|jpeg|png|webp))/i, '_400x400$1');
 
-    // 2️⃣ Clerk proxy URLs — add width/height params
-    if (tw.includes('img.clerk.com')) {
+    // 2) Clerk image proxy URLs
+    // - img.clerk.com (proxy)
+    // - images.clerk.dev (source)
+    if (tw.includes('img.clerk.com') || tw.includes('images.clerk.dev')) {
       const parts = new URL(tw);
-      // fallback to 256 if none provided
-      parts.searchParams.set('img_width', '256');
-      parts.searchParams.set('img_height', '256');
+
+      // request a larger image (safe to set multiple common param names)
+      const size = '256';
+      parts.searchParams.set('img_width', size);
+      parts.searchParams.set('img_height', size);
+
+      // sometimes supported by CDNs / proxies
+      parts.searchParams.set('width', size);
+      parts.searchParams.set('height', size);
+      parts.searchParams.set('w', size);
+      parts.searchParams.set('h', size);
+
+      // if supported, nicer output
+      parts.searchParams.set('img_format', 'webp');
+
       return parts.toString();
     }
 
