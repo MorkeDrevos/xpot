@@ -1,17 +1,11 @@
+// components/LiveActivityModule.tsx
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Crown, LayoutGrid, List as ListIcon, Users } from 'lucide-react';
 
-// ✅ Use the shared identity + avatar logic everywhere (high-res + upgraded X URLs)
-import {
-  normalizeHandle,
-  displayName,
-  avatarUrlFor,
-  initialsFor,
-  isSameHandle,
-} from '@/lib/xIdentity';
+import { avatarUrlFor, displayName, isSameHandle, normalizeHandle, initialsFor } from '@/lib/xIdentity';
 
 export type EntryRow = {
   id?: string;
@@ -81,8 +75,6 @@ function AvatarTile({
   imgClass: string;
 }) {
   const [failed, setFailed] = useState(false);
-
-  // ✅ one shared resolver (upgrades real X urls + high-res unavatar fallback)
   const src = useMemo(() => avatarUrlFor(handle, avatarUrl), [handle, avatarUrl]);
 
   return (
@@ -124,8 +116,6 @@ function AvatarBubble({
 }) {
   const handle = normalizeHandle(row.handle);
   const clean = handle.replace(/^@/, '');
-
-  // ✅ high-res
   const img = useMemo(() => avatarUrlFor(handle, row.avatarUrl), [handle, row.avatarUrl]);
 
   const title = displayName(row.name, handle) ?? clean ?? 'Unknown';
@@ -332,8 +322,7 @@ export default function LiveActivityModule({
             if (!handle) return null;
 
             const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
-            // store raw name (displayName will be applied where needed too)
-            const name = nameRaw ? String(nameRaw).trim() : null;
+            const name = displayName(nameRaw, handle);
 
             const avatar =
               r?.xAvatarUrl ??
