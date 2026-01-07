@@ -120,6 +120,23 @@ function normalizeHandle(h: any) {
   return core ? `@${core}` : '';
 }
 
+function displayTitleSubtitle(row: Pick<EntryRow, 'handle' | 'name'>) {
+  const h = normalizeHandle(row.handle) || '@unknown';
+
+  const rawName = String(row.name ?? '').trim();
+  const handleCore = h.replace(/^@/, '').toLowerCase();
+
+  // If name is empty OR equals handle (with or without @), treat as missing
+  const nameCore = rawName.replace(/^@+/, '').trim().toLowerCase();
+  const hasRealName = !!rawName && nameCore && nameCore !== handleCore;
+
+  if (hasRealName) {
+    return { title: rawName, subtitle: h };
+  }
+
+  return { title: h, subtitle: 'Founding account' };
+}
+
 function safeTimeMs(iso?: string | null) {
   const t = iso ? Date.parse(iso) : NaN;
   return Number.isFinite(t) ? t : 0;
