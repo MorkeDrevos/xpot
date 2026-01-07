@@ -644,9 +644,10 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                   </span>
                 </p>
                 <p className="mt-2 text-[12px] text-slate-400">
-                  {initialLoading ? 'Updating...' : `${shownCount} shown`}
-                  {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
-                </p>
+  {/* {initialLoading ? 'Updating...' : `${shownCount} shown`} */}
+  {initialLoading ? 'Updating...' : null}
+  {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
+</p>
               </div>
 
               <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1">
@@ -704,9 +705,11 @@ function Stage({ latestWinner }: { latestWinner: any }) {
                     );
                   })}
 
-                  <div className="w-full pt-2 text-center text-[12px] text-slate-400">
-                    <span className="text-slate-200">{shownCount}</span> latest
-                  </div>
+                  {/*
+<div className="w-full pt-2 text-center text-[12px] text-slate-400">
+  <span className="text-slate-200">{shownCount}</span> latest
+</div>
+*/}
                 </div>
               ) : (
                 <div className="space-y-2">
