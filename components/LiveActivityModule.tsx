@@ -15,8 +15,22 @@ export type EntryRow = {
 };
 
 type LiveActivityModuleProps = {
+  /**
+   * Optional: if you want to mark a specific handle as "winner" in the bubbles hover card
+   * (for example: pass latestWinner.handle from Stage).
+   *
+   * If you do NOT pass this, XPOT badge won't show (still shows verified if present).
+   */
   winnerHandle?: string | null;
+
+  /**
+   * Optional: override polling interval (ms)
+   */
   pollMs?: number;
+
+  /**
+   * Optional: override limit
+   */
   limit?: number;
 };
 
@@ -30,48 +44,6 @@ function normalizeHandle(h: any) {
 function safeTimeMs(iso?: string | null) {
   const t = iso ? Date.parse(iso) : NaN;
   return Number.isFinite(t) ? t : 0;
-}
-
-function cleanFromHandle(handle: string) {
-  return normalizeHandle(handle).replace(/^@/, '');
-}
-
-/**
- * IMPORTANT:
- * Some users set display-name == username (minus @). That is still a valid name.
- * Only drop the "name" if the backend accidentally sent "@handle" as the name.
- */
-function normalizeDisplayName(name: any, handle: string) {
-  const raw = String(name ?? '').trim();
-  if (!raw) return null;
-
-  const h = normalizeHandle(handle);
-  if (raw.startsWith('@') && normalizeHandle(raw).toLowerCase() === h.toLowerCase()) return null;
-
-  return raw;
-}
-
-function pickFirstString(...vals: any[]) {
-  for (const v of vals) {
-    const s = String(v ?? '').trim();
-    if (s) return s;
-  }
-  return '';
-}
-
-function pickFirstNullableString(...vals: any[]) {
-  for (const v of vals) {
-    const s = String(v ?? '').trim();
-    if (s) return s;
-  }
-  return null;
-}
-
-function pickFirstBool(...vals: any[]) {
-  for (const v of vals) {
-    if (typeof v === 'boolean') return v;
-  }
-  return null;
 }
 
 function dedupeByHandleKeepLatest(rows: EntryRow[]) {
@@ -264,6 +236,7 @@ function AvatarBubble({
                   {row.name || clean || 'Unknown'}
                 </div>
 
+                {/* XPOT badge for winners */}
                 {isWinner ? (
                   <span
                     className="
@@ -312,8 +285,7 @@ function EntryRowLine({ e }: { e: EntryRow }) {
 
   return (
     <a
-      href={`https://x.com/${encodeURIComponent(clean)}`
-      }
+      href={`https://x.com/${encodeURIComponent(clean)}`}
       target="_blank"
       rel="noopener noreferrer"
       className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:bg-white/[0.04] transition"
@@ -347,6 +319,7 @@ export default function LiveActivityModule({
   const [rows, setRows] = useState<EntryRow[]>([]);
   const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
+  // separate "first load" from "refreshing" to stop UI flashing
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [disabled, setDisabled] = useState(false);
@@ -382,6 +355,7 @@ export default function LiveActivityModule({
         }
 
         if (!res.ok) {
+          // never clear rows (prevents flicker)
           return;
         }
 
@@ -390,67 +364,22 @@ export default function LiveActivityModule({
 
         const mapped: EntryRow[] = raw
           .map((r: any) => {
-            const handle = normalizeHandle(
-              pickFirstString(
-                r?.handle,
-                r?.xHandle,
-                r?.x_handle,
-                r?.username,
-                r?.screenName,
-                r?.screen_name,
-                r?.user?.handle,
-                r?.user?.xHandle,
-                r?.user?.username
-              )
-            );
+            // ✅ Your DB uses xHandle / xName
+            const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
             if (!handle) return null;
 
-            const nameCandidate = pickFirstNullableString(
-              r?.name,
-              r?.displayName,
-              r?.display_name,
-              r?.fullName,
-              r?.full_name,
-              r?.xName,
-              r?.x_name,
-              r?.profileName,
-              r?.profile_name,
-              r?.user?.name,
-              r?.user?.displayName,
-              r?.user?.display_name,
-              r?.user?.fullName,
-              r?.user?.xName
-            );
-
-            const avatarCandidate = pickFirstNullableString(
-              r?.avatarUrl,
-              r?.avatar_url,
-              r?.profileImageUrl,
-              r?.profile_image_url,
-              r?.imageUrl,
-              r?.image_url,
-              r?.user?.avatarUrl,
-              r?.user?.avatar_url,
-              r?.user?.profileImageUrl,
-              r?.user?.profile_image_url
-            );
-
-            const verifiedCandidate = pickFirstBool(
-              r?.verified,
-              r?.isVerified,
-              r?.is_verified,
-              r?.user?.verified,
-              r?.user?.isVerified,
-              r?.user?.is_verified
-            );
+            const name =
+              (r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null) !== null
+                ? String(r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name).trim()
+                : null;
 
             return {
               id: r?.id ?? undefined,
               handle,
-              name: normalizeDisplayName(nameCandidate, handle),
-              avatarUrl: avatarCandidate,
-              createdAt: r?.createdAt ?? r?.created_at ?? r?.ts ?? r?.time ?? null,
-              verified: verifiedCandidate,
+              name: name || null,
+              avatarUrl: r?.avatarUrl ?? r?.avatar_url ?? r?.user?.avatarUrl ?? r?.user?.avatar_url ?? null,
+              createdAt: r?.createdAt ?? r?.created_at ?? null,
+              verified: r?.verified ?? r?.user?.verified ?? null,
             } as EntryRow;
           })
           .filter(Boolean) as EntryRow[];
