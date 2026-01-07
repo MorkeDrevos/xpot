@@ -1155,235 +1155,34 @@ function HomeInner() {
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
       <Stage latestWinner={latestWinner} />
 
-      <section className="mt-7">
+            <section className="mt-10">
         <div className="grid gap-4 lg:grid-cols-2">
-          <PremiumCard className="p-6 sm:p-7" halo={false}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Contract</p>
-                <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
-                  Always verify the official mint before interacting.
-                </p>
-              </div>
+          <PremiumCard className="p-6 sm:p-7" halo>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">Official</p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-50">Verify the mint</h3>
+            <p className="mt-2 text-[12px] leading-relaxed text-slate-400">
+              Always verify the contract before trading. XPOT is on Solana and the mint is publicly auditable.
+            </p>
+            <div className="mt-4">
               <RoyalContractBar mint={XPOT_CA} />
             </div>
           </PremiumCard>
 
-          <PremiumCard className="p-6 sm:p-7" halo={false}>
+          <PremiumCard className="p-6 sm:p-7" halo>
             <TradeOnJupiterCard mint={XPOT_CA} />
           </PremiumCard>
         </div>
-      </section>
 
-      <section className="mt-7">
-        <PremiumCard className="p-6 sm:p-8" halo sheen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                The Final Draw
-              </Pill>
-
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                Daily draws with verification. One run ending with a finale.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT is simple on purpose: holdings-based eligibility, handle-first identity and on-chain payout
-                verification. Daily draws are the heartbeat. The Final Draw is the destination.
-              </p>
+        <div className="mt-6">
+          <PremiumCard className="p-6 sm:p-7" halo>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">FAQ</p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-50">How it works</h3>
+            <div className="mt-4">
+              <Accordion items={faq} />
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Verifiable
-              </Pill>
-              <Pill tone="sky">
-                <Users className="h-3.5 w-3.5" />
-                X identity
-              </Pill>
-              <Pill tone="sky">
-                <Timer className="h-3.5 w-3.5" />
-                Daily cadence
-              </Pill>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-slate-900/70 bg-slate-950/50 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-300" />
-              <p className="text-sm text-slate-300">
-                Built for serious players: clean rules, public arc and provable outcomes.
-              </p>
-            </div>
-
-            <Link
-              href={ROUTE_HUB}
-              title="Enter the hub"
-              className="
-                xpot-btn-vault
-                group
-                w-full sm:w-auto
-                px-6 py-3
-                text-sm font-semibold
-                rounded-full
-                inline-flex items-center justify-center
-                transition
-                active:scale-[0.99]
-              "
-            >
-              Enter the hub
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-        </PremiumCard>
-      </section>
-
-      <section className="mt-8">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="amber">
-              <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-              Finale (ending)
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">The Final Draw is the ending.</p>
-            <p className="mt-2 text-sm text-slate-300">Daily draws build the arc. The finale builds the legend.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="sky">
-              <Users className="h-3.5 w-3.5" />
-              Identity
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">@handle-first.</p>
-            <p className="mt-2 text-sm text-slate-300">Winners and history are shown by handle, not wallet profiles.</p>
-          </PremiumCard>
-
-          <PremiumCard className="p-5 sm:p-6" halo={false}>
-            <Pill tone="emerald">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Verification
-            </Pill>
-            <p className="mt-3 text-lg font-semibold text-slate-50">Paid on-chain in XPOT.</p>
-            <p className="mt-2 text-sm text-slate-300">Anyone can verify outcomes in an explorer.</p>
           </PremiumCard>
         </div>
       </section>
-
-      <section className="mt-8">
-        <PremiumCard className="p-6 sm:p-8" halo sheen>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="sky">
-                <Blocks className="h-3.5 w-3.5" />
-                Built to scale
-              </Pill>
-
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">
-                A daily engine with an ending, not a one-off giveaway.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                XPOT stays minimal where it matters and expandable where it counts. The system can grow with modules and
-                sponsor pools while keeping the same primitive and the same verification.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Fair by design
-              </Pill>
-              <Pill tone="sky">
-                <Globe className="h-3.5 w-3.5" />
-                Global-friendly
-              </Pill>
-              <Pill tone="amber">
-                <Crown className={`h-3.5 w-3.5 ${GOLD_TEXT}`} />
-                Finale-ready
-              </Pill>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-950/30">
-                  <Wand2 className="h-5 w-5 text-emerald-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Modules</p>
-                  <p className="text-xs text-slate-400">Plug-in reward logic</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                <li>Streak boosters</li>
-                <li>Sponsor-funded pools</li>
-                <li>Milestone ladders</li>
-              </ul>
-            </div>
-
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-sky-500/25 bg-sky-950/25">
-                  <Users className="h-5 w-5 text-sky-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Identity</p>
-                  <p className="text-xs text-slate-400">Handle-first, premium UX</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                <li>Winners shown by @handle</li>
-                <li>History can evolve into reputation</li>
-                <li>Still self-custody for payouts</li>
-              </ul>
-            </div>
-
-            <div className="rounded-[26px] border border-slate-900/70 bg-slate-950/55 p-5">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${GOLD_BORDER_SOFT} ${GOLD_BG_WASH}`}
-                >
-                  <Crown className={`h-5 w-5 ${GOLD_TEXT}`} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-100">Finale</p>
-                  <p className="text-xs text-slate-400">A run that ends</p>
-                </div>
-              </div>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                <li>
-                  Final draw: <FinalDrawDate variant="short" />
-                </li>
-                <li>Daily cadence builds the arc</li>
-                <li>Verification stays public</li>
-              </ul>
-            </div>
-          </div>
-        </PremiumCard>
-      </section>
-
-      <section className="mt-8">
-        <PremiumCard className="p-6 sm:p-8" halo={false}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <Pill tone="emerald">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Clarity
-              </Pill>
-              <h2 className="mt-3 text-balance text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                Homepage is the story. Hub is the action. The Final Draw is the destination.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <Accordion items={faq} />
-          </div>
-        </PremiumCard>
-      </section>
-
       <XpotFooter />
     </XpotPageShell>
   );
