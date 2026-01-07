@@ -227,10 +227,13 @@ export default function JackpotPanel({
       ? ['md:-mr-2 md:pr-2', 'lg:-mr-4 lg:pr-4', 'xl:-mr-6 xl:pr-6', '2xl:-mr-8 2xl:pr-8'].join(' ')
       : '';
 
+  // ✅ MOBILE WIDEN: bleed into page shell padding on phones (snap back on sm+)
+  const mobileWiden = variant !== 'embedded' ? '-mx-3 sm:mx-0' : '';
+
   const panelChrome =
     variant === 'embedded'
       ? 'w-full max-w-none rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
-      : 'w-full max-w-none rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
+      : 'w-full max-w-none rounded-2xl bg-black/35 px-3 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
   // CTA styling (always visible, never "invisible")
   const CTA_PRIMARY =
@@ -275,7 +278,7 @@ export default function JackpotPanel({
   const isOpen = manualOpen;
 
   return (
-    <section className={['relative', panelChrome, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
+    <section className={['relative', panelChrome, mobileWiden, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
       <style jsx>{`
         @keyframes xpotSweep {
           0% { transform: translateX(-30%) skewX(-12deg); opacity: 0.0; }
