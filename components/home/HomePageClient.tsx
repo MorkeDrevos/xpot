@@ -210,17 +210,44 @@ function useTodayEntries(limit: number) {
         const candidates = Array.isArray(json?.entries) ? json.entries : [];
 
         const mapped: EntryRow[] = candidates
-          .map((r: any) => {
-            const handle = normalizeHandle(r?.handle);
-            if (!handle) return null;
-            return {
-              id: r?.id ?? undefined,
-              createdAt: r?.createdAt ?? null,
-              handle,
-              name: r?.name ?? null,
-              avatarUrl: r?.avatarUrl ?? null,
-              verified: !!r?.verified,
-            } as EntryRow;
+  .map((r: any) => {
+    // ✅ DB/API uses xHandle + xName
+    const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
+    if (!handle) return null;
+
+    const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
+    const name = nameRaw ? String(nameRaw).trim() : null;
+
+    const avatarRaw =
+      r?.avatarUrl ??
+      r?.avatar_url ??
+      r?.profileImageUrl ??
+      r?.profile_image_url ??
+      r?.user?.avatarUrl ??
+      r?.user?.avatar_url ??
+      r?.user?.profileImageUrl ??
+      r?.user?.profile_image_url ??
+      null;
+
+    const verifiedRaw =
+      r?.verified ??
+      r?.isVerified ??
+      r?.is_verified ??
+      r?.user?.verified ??
+      r?.user?.isVerified ??
+      r?.user?.is_verified ??
+      null;
+
+    return {
+      id: r?.id ?? undefined,
+      createdAt: r?.createdAt ?? r?.created_at ?? null,
+      handle,
+      name,
+      avatarUrl: avatarRaw ? String(avatarRaw) : null,
+      verified: !!verifiedRaw,
+    } as EntryRow;
+  })
+  .filter(Boolean) as EntryRow[];
           })
           .filter(Boolean) as EntryRow[];
 
