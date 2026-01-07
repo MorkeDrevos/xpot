@@ -232,10 +232,6 @@ export default function JackpotPanel({
       ? 'w-full max-w-none rounded-2xl bg-slate-950/60 px-5 py-5 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]'
       : 'w-full max-w-none rounded-2xl bg-black/35 px-4 py-5 sm:px-6 sm:py-6 ring-1 ring-white/[0.05] shadow-[0_30px_120px_rgba(0,0,0,0.50)]';
 
-  // ✅ Phone width fix: bleed past parent padding on small screens (keeps design identical from sm: up)
-  // Most layouts use px-4 on the page container, so -mx-4 cancels it and makes the panel visually wider.
-  const phoneBleed = variant !== 'embedded' ? '-mx-4 sm:mx-0' : '';
-
   // CTA styling (always visible, never "invisible")
   const CTA_PRIMARY =
     'relative inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-[13px] font-semibold ' +
@@ -279,7 +275,7 @@ export default function JackpotPanel({
   const isOpen = manualOpen;
 
   return (
-    <section className={['relative', panelChrome, phoneBleed, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
+    <section className={['relative', panelChrome, heroSpill, isHero ? '-mt-3 sm:-mt-5' : ''].join(' ')}>
       <style jsx>{`
         @keyframes xpotSweep {
           0% { transform: translateX(-30%) skewX(-12deg); opacity: 0.0; }
@@ -423,7 +419,7 @@ export default function JackpotPanel({
 
           <div className="relative flex flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex w-full justify-center sm:w-auto sm:justify-start">
-              <div className="group relative inline-flex w-full max-w-full items-center sm:w-auto">
+              <div className={capsuleWrap}>
                 <div className={capsuleInner}>
                   <span className={capsuleTag}>
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-300 xpot-dot" />
