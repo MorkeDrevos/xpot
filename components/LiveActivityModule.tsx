@@ -14,33 +14,9 @@ export type EntryRow = {
   verified?: boolean | null;
 };
 
-type KnownAccount = {
-  handle: string;
-  name: string | null;
-  avatarUrl: string | null;
-  verified: boolean | null;
-  followers: number | null;
-  lastSeenAt: string | null;
-  sources: string[];
-};
-
 type LiveActivityModuleProps = {
-  /**
-   * Optional: if you want to mark a specific handle as "winner" in the bubbles hover card
-   * (for example: pass latestWinner.handle from Stage).
-   *
-   * If you do NOT pass this, XPOT badge won't show (still shows verified if present).
-   */
   winnerHandle?: string | null;
-
-  /**
-   * Optional: override polling interval (ms)
-   */
   pollMs?: number;
-
-  /**
-   * Optional: override limit for latest entries fetch
-   */
   limit?: number;
 };
 
@@ -49,6 +25,25 @@ function normalizeHandle(h: any) {
   if (!s) return '';
   const core = s.replace(/^@+/, '');
   return core ? `@${core}` : '';
+}
+
+function handleCore(h: any) {
+  return normalizeHandle(h).replace(/^@/, '').trim().toLowerCase();
+}
+
+// ✅ Winners-page style display rule:
+// If name is empty OR same as handle (with/without @, case-insensitive), hide name.
+function displayName(name: any, handle: any) {
+  const raw = String(name ?? '').trim();
+  if (!raw) return null;
+
+  const nCore = raw.replace(/^@+/, '').trim().toLowerCase();
+  const hCore = handleCore(handle);
+
+  if (!nCore) return null;
+  if (hCore && nCore === hCore) return null; // <- prevents handle twice
+
+  return raw;
 }
 
 function safeTimeMs(iso?: string | null) {
@@ -102,20 +97,6 @@ function isSameHandle(a?: string | null, b?: string | null) {
   const bb = normalizeHandle(b).toLowerCase();
   if (!aa || !bb) return false;
   return aa === bb;
-}
-
-// ✅ Same logic as Winners page: never show handle twice
-function displayTitleSubtitle(row: EntryRow) {
-  const h = normalizeHandle(row.handle);
-  const cleanName = String(row.name ?? '').trim();
-  const cleanHandle = h || '@unknown';
-
-  if (cleanName) {
-    return { title: cleanName, subtitle: cleanHandle };
-  }
-
-  // no name -> show handle as title, and a non-handle subtitle
-  return { title: cleanHandle, subtitle: 'Founding account' };
 }
 
 function AvatarTile({
@@ -179,7 +160,7 @@ function AvatarBubble({
   const clean = handle.replace(/^@/, '');
   const img = useMemo(() => avatarUrlFor(handle, row.avatarUrl), [handle, row.avatarUrl]);
 
-  const { title, subtitle } = displayTitleSubtitle(row);
+  const title = displayName(row.name, handle) ?? clean ?? 'Unknown';
 
   return (
     <a
@@ -281,7 +262,7 @@ function AvatarBubble({
                 ) : null}
               </div>
 
-              <div className="truncate text-[12px] text-slate-400">{subtitle}</div>
+              <div className="truncate text-[12px] text-slate-400">{handle || '@unknown'}</div>
               <div className="mt-1 text-[11px] text-slate-500">View on X →</div>
             </div>
           </div>
@@ -306,7 +287,7 @@ function AvatarBubble({
 function EntryRowLine({ e }: { e: EntryRow }) {
   const h = normalizeHandle(e.handle);
   const clean = h.replace(/^@/, '');
-  const { title, subtitle } = displayTitleSubtitle(e);
+  const title = displayName(e.name, h) ?? clean;
 
   return (
     <a
@@ -328,7 +309,7 @@ function EntryRowLine({ e }: { e: EntryRow }) {
 
       <div className="min-w-0">
         <div className="truncate text-[13px] font-semibold text-slate-100">{title}</div>
-        <div className="truncate text-[12px] text-slate-400">{subtitle}</div>
+        <div className="truncate text-[12px] text-slate-400">{h}</div>
       </div>
 
       <span className="ml-auto text-[12px] text-slate-500 group-hover:text-slate-300 transition">View</span>
@@ -342,10 +323,8 @@ export default function LiveActivityModule({
   limit = 24,
 }: LiveActivityModuleProps) {
   const [rows, setRows] = useState<EntryRow[]>([]);
-  const [accounts, setAccounts] = useState<KnownAccount[]>([]);
   const [mode, setMode] = useState<'bubbles' | 'list'>('bubbles');
 
-  // separate "first load" from "refreshing" to stop UI flashing
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [disabled, setDisabled] = useState(false);
@@ -354,31 +333,11 @@ export default function LiveActivityModule({
   const hasLoadedOnceRef = useRef(false);
 
   useEffect(() => {
-    let alive = true;
-
-    async function loadAccountsOnce() {
-      try {
-        const res = await fetch('/api/accounts/all', { cache: 'no-store' });
-        if (!res.ok) return;
-        const json: any = await res.json();
-        const list = Array.isArray(json?.accounts) ? (json.accounts as KnownAccount[]) : [];
-        if (!alive) return;
-        setAccounts(list);
-      } catch {}
-    }
-
-    loadAccountsOnce();
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  useEffect(() => {
     if (disabled) return;
 
     let alive = true;
 
-    async function loadLatestEntries() {
+    async function load() {
       if (!alive || disabled) return;
 
       if (!hasLoadedOnceRef.current) setInitialLoading(true);
@@ -401,8 +360,7 @@ export default function LiveActivityModule({
         }
 
         if (!res.ok) {
-          // never clear rows (prevents flicker)
-          return;
+          return; // never clear (prevents flicker)
         }
 
         const json: any = await res.json();
@@ -413,11 +371,12 @@ export default function LiveActivityModule({
             const handle = normalizeHandle(r?.xHandle ?? r?.handle ?? r?.user?.xHandle ?? r?.user?.handle);
             if (!handle) return null;
 
-            const nameRaw = r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null;
-            const name = nameRaw !== null && nameRaw !== undefined ? String(nameRaw).trim() : null;
+            const name = displayName(
+              r?.xName ?? r?.name ?? r?.user?.xName ?? r?.user?.name ?? null,
+              handle,
+            );
 
-            // ✅ include xAvatarUrl variants
-            const avatarUrl =
+            const avatar =
               r?.xAvatarUrl ??
               r?.avatarUrl ??
               r?.avatar_url ??
@@ -426,13 +385,16 @@ export default function LiveActivityModule({
               r?.user?.avatar_url ??
               null;
 
+            const verified =
+              r?.verified ?? r?.user?.verified ?? r?.isVerified ?? r?.user?.isVerified ?? r?.is_verified ?? null;
+
             return {
               id: r?.id ?? undefined,
               handle,
-              name: name || null,
-              avatarUrl,
+              name,
+              avatarUrl: avatar ? String(avatar) : null,
               createdAt: r?.createdAt ?? r?.created_at ?? null,
-              verified: r?.verified ?? r?.user?.verified ?? null,
+              verified: verified ?? null,
             } as EntryRow;
           })
           .filter(Boolean) as EntryRow[];
@@ -452,8 +414,8 @@ export default function LiveActivityModule({
       }
     }
 
-    loadLatestEntries();
-    const t = window.setInterval(loadLatestEntries, pollMs);
+    load();
+    const t = window.setInterval(load, pollMs);
 
     return () => {
       alive = false;
@@ -464,70 +426,19 @@ export default function LiveActivityModule({
     };
   }, [disabled, pollMs, limit]);
 
-  // ✅ Merge DB-wide accounts with latest entries (prefer latest entry fields when present)
-  const mergedRows = useMemo(() => {
-    const byHandle = new Map<string, EntryRow>();
-
-    // 1) start with all known DB accounts (so it never looks empty)
-    for (const a of accounts ?? []) {
-      const h = normalizeHandle(a?.handle);
-      if (!h) continue;
-
-      byHandle.set(h.toLowerCase(), {
-        id: undefined,
-        handle: h,
-        name: a?.name ?? null,
-        avatarUrl: a?.avatarUrl ?? null,
-        createdAt: a?.lastSeenAt ?? null,
-        verified: a?.verified ?? null,
-      });
-    }
-
-    // 2) overlay latest entries (fresh data wins)
-    for (const e of rows ?? []) {
-      const h = normalizeHandle(e?.handle);
-      if (!h) continue;
-
-      const key = h.toLowerCase();
-      const cur = byHandle.get(key);
-
-      const merged: EntryRow = {
-        id: e?.id ?? cur?.id,
-        handle: h,
-        // prefer entry name if present, else DB name
-        name: (String(e?.name ?? '').trim() ? String(e?.name).trim() : cur?.name) ?? null,
-        // prefer entry avatar if present, else DB avatar
-        avatarUrl: e?.avatarUrl ?? cur?.avatarUrl ?? null,
-        // prefer entry createdAt if present
-        createdAt: e?.createdAt ?? cur?.createdAt ?? null,
-        // prefer entry verified if present, else DB verified
-        verified: typeof e?.verified === 'boolean' ? e.verified : cur?.verified ?? null,
-      };
-
-      byHandle.set(key, merged);
-    }
-
-    const out = Array.from(byHandle.values());
-
-    // Sort: most recently seen first (createdAt/lastSeenAt)
-    out.sort((a, b) => safeTimeMs(b.createdAt ?? null) - safeTimeMs(a.createdAt ?? null));
-
-    return out;
-  }, [accounts, rows]);
-
   const uniqCount = useMemo(() => {
-    const s = new Set(mergedRows.map(r => normalizeHandle(r.handle).toLowerCase()).filter(Boolean));
+    const s = new Set(rows.map(r => normalizeHandle(r.handle).toLowerCase()).filter(Boolean));
     return s.size;
-  }, [mergedRows]);
+  }, [rows]);
 
   const bubbles = useMemo(() => {
-    return mergedRows.slice(0, 12).map((e, idx) => ({
+    return rows.slice(0, 12).map((e, idx) => ({
       e,
       size: idx === 0 ? 56 : idx < 4 ? 48 : 40,
     }));
-  }, [mergedRows]);
+  }, [rows]);
 
-  const showEmpty = !initialLoading && mergedRows.length === 0;
+  const showEmpty = !initialLoading && rows.length === 0;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -538,7 +449,7 @@ export default function LiveActivityModule({
             Entries
           </div>
           <div className="mt-1 text-[12px] text-slate-400">
-            {initialLoading ? 'Updating…' : `${uniqCount} accounts`}
+            {initialLoading ? 'Updating…' : `${uniqCount} unique entrants`}
             {refreshing ? <span className="ml-2 text-slate-500">refreshing</span> : null}
           </div>
         </div>
@@ -593,15 +504,15 @@ export default function LiveActivityModule({
             />
           ))}
           <div className="ml-auto text-[12px] text-slate-400">
-            <span className="text-slate-200">{uniqCount}</span> total
+            <span className="text-slate-200">{uniqCount}</span> today
           </div>
         </div>
       ) : (
         <div className="space-y-2">
-          {mergedRows.slice(0, 10).map(e => (
+          {rows.slice(0, 10).map(e => (
             <EntryRowLine key={(e.id ?? e.handle).toString()} e={e} />
           ))}
-          <div className="pt-1 text-[12px] text-slate-500">All known accounts are shown while XPOT is early.</div>
+          <div className="pt-1 text-[12px] text-slate-500">Claim in the hub to join today’s list.</div>
         </div>
       )}
     </div>
