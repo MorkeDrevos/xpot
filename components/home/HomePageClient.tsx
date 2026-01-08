@@ -1124,7 +1124,9 @@ function HomeInner() {
 
   return (
     <XpotPageShell pageTag="home" fullBleedTop={hero}>
-      <Stage latestWinner={latestWinner} />
+      {/*
+    <Stage latestWinner={latestWinner} />
+    */}
 
       {/* Restored sections */}
       <section className="mt-7">
