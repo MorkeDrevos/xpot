@@ -23,10 +23,10 @@ import {
 const MAX_TODAY_TICKETS = 7;
 const MAX_RECENT_WINNERS = 10;
 
-// ✅ Try both backends on every request
-const API_BASES = ['/api/admin', '/api/ops'] as const;
+// ✅ Prefer /api/ops FIRST (prevents tons of /api/admin 404 spam when admin routes are not deployed)
+const API_BASES = ['/api/ops', '/api/admin'] as const;
 
-// ✅ Your real backend route (you pasted it)
+// ✅ Your real backend route (keep, but we will also try /api/ops equivalent first)
 const ADMIN_PICK_WINNER_API = '/api/admin/draw/pick-winner';
 
 type DrawStatus = 'open' | 'closed' | 'completed';
@@ -149,8 +149,7 @@ function UsdPill({
   size?: 'sm' | 'md';
 }) {
   const value = formatUsd(amount);
-  const base =
-    'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
+  const base = 'inline-flex items-baseline rounded-full bg-emerald-500/10 text-emerald-300 font-semibold';
   const cls = size === 'sm' ? `${base} px-2 py-0.5 text-xs` : `${base} px-3 py-1 text-sm`;
 
   return (
@@ -337,7 +336,6 @@ function normalizeUrl(u: string) {
   if (!s) return '/';
   if (s.startsWith('http://') || s.startsWith('https://')) return s;
   if (s.startsWith('/')) return s;
-  // "api/admin/today" -> "/api/admin/today"
   return `/${s}`;
 }
 
@@ -378,14 +376,8 @@ export default function AdminPage() {
   const [visibleTicketCount, setVisibleTicketCount] = useState(MAX_TODAY_TICKETS);
   const [visibleWinnerCount, setVisibleWinnerCount] = useState(MAX_RECENT_WINNERS);
 
-  const visibleTickets = useMemo(
-    () => tickets.slice(0, visibleTicketCount),
-    [tickets, visibleTicketCount],
-  );
-  const visibleWinners = useMemo(
-    () => winners.slice(0, visibleWinnerCount),
-    [winners, visibleWinnerCount],
-  );
+  const visibleTickets = useMemo(() => tickets.slice(0, visibleTicketCount), [tickets, visibleTicketCount]);
+  const visibleWinners = useMemo(() => winners.slice(0, visibleWinnerCount), [winners, visibleWinnerCount]);
 
   const [countdownText, setCountdownText] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
@@ -427,11 +419,14 @@ export default function AdminPage() {
   // ✅ backend availability banner
   const [apiBanner, setApiBanner] = useState<string | null>(null);
 
+  // ✅ remember which base actually works to avoid repeated 404 spam
+  const [preferredBase, setPreferredBase] = useState<(typeof API_BASES)[number]>(API_BASES[0]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') setIsDevHost(window.location.hostname.startsWith('dev.'));
   }, []);
 
-  // ── Load admin token ────────────────────────
+  // Load admin token
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -442,7 +437,12 @@ export default function AdminPage() {
     }
   }, []);
 
-  // ✅ Authed fetch with status-aware errors
+  function isHttp(err: any, code: number) {
+    const m = String(err?.message || '');
+    return m.startsWith(`HTTP_${code}:`);
+  }
+
+  // Authed fetch with status-aware errors
   async function authedFetch(input: string, init?: RequestInit) {
     if (!adminToken) throw new Error('UNAUTHED: Admin token missing');
 
@@ -474,36 +474,59 @@ export default function AdminPage() {
     return data;
   }
 
-  // ✅ Try BOTH /api/admin and /api/ops for the same path
+  // Try BOTH /api/ops and /api/admin, but prefer whichever has worked
   async function authedFetchAny(path: string, init?: RequestInit) {
-    const p = normalizeUrl(path); // ✅ normalize first
+    const p = normalizeUrl(path);
 
-    const paths: string[] = [];
+    const candidates: string[] = [];
 
+    // If caller already passed /api/... path, try swapping between admin/ops
     if (p.startsWith('/api/')) {
-      paths.push(p);
-      if (p.startsWith('/api/admin/')) paths.push(p.replace('/api/admin/', '/api/ops/'));
-      if (p.startsWith('/api/ops/')) paths.push(p.replace('/api/ops/', '/api/admin/'));
+      // Prefer matching preferredBase first if possible
+      if (preferredBase === '/api/ops') {
+        candidates.push(p.replace(/^\/api\/admin\//, '/api/ops/'));
+        candidates.push(p);
+      } else {
+        candidates.push(p.replace(/^\/api\/ops\//, '/api/admin/'));
+        candidates.push(p);
+      }
+
+      if (p.startsWith('/api/admin/')) candidates.push(p.replace('/api/admin/', '/api/ops/'));
+      if (p.startsWith('/api/ops/')) candidates.push(p.replace('/api/ops/', '/api/admin/'));
     } else {
-      for (const base of API_BASES) paths.push(`${base}${p}`);
+      // Normal relative admin paths like "/today"
+      // Put preferredBase first, then the other
+      const ordered: (typeof API_BASES)[number][] =
+        preferredBase === API_BASES[0] ? [API_BASES[0], API_BASES[1]] : [API_BASES[1], API_BASES[0]];
+
+      for (const base of ordered) candidates.push(`${base}${p}`);
     }
 
     let lastErr: any = null;
-    for (const url of Array.from(new Set(paths))) {
+
+    for (const url of Array.from(new Set(candidates))) {
       try {
-        return await authedFetch(url, init);
+        const data = await authedFetch(url, init);
+
+        // If we succeeded, lock preferredBase to whatever base this URL used
+        if (url.startsWith('/api/ops/')) setPreferredBase('/api/ops');
+        if (url.startsWith('/api/admin/')) setPreferredBase('/api/admin');
+
+        return data;
       } catch (e: any) {
         lastErr = e;
+
         const msg = String(e?.message || '');
+
+        // Auth errors: stop immediately (no point trying other base)
         if (msg.startsWith('HTTP_401:') || msg.startsWith('HTTP_403:')) break;
+
+        // If this base 404s, continue to try the other base
+        // (we do NOT break on 404)
       }
     }
-    throw lastErr || new Error('Request failed');
-  }
 
-  function isHttp(err: any, code: number) {
-    const m = String(err?.message || '');
-    return m.startsWith(`HTTP_${code}:`);
+    throw lastErr || new Error('Request failed');
   }
 
   async function loadOpsMode() {
@@ -564,7 +587,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Manually create today’s draw (dev) ──────
   async function handleCreateTodayDraw() {
     setTodayDrawError(null);
 
@@ -576,18 +598,16 @@ export default function AdminPage() {
     setCreatingDraw(true);
     try {
       const data = await authedFetchAny('/create-today-draw', { method: 'POST' });
-      if (!data || (data as any).ok === false)
-        throw new Error((data as any)?.error || 'Failed to create today’s draw');
+      if (!data || (data as any).ok === false) throw new Error((data as any)?.error || "Failed to create today's draw");
       window.location.reload();
     } catch (err: any) {
       console.error('[XPOT] create today draw error:', err);
-      alert(String(err?.message || 'Unexpected error creating today’s round').replace(/^HTTP_\d+:/, ''));
+      alert(String(err?.message || "Unexpected error creating today's round").replace(/^HTTP_\d+:/, ''));
     } finally {
       setCreatingDraw(false);
     }
   }
 
-  // ── Schedule bonus XPOT ─────────────────────
   async function handleScheduleBonus(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBonusError(null);
@@ -599,12 +619,12 @@ export default function AdminPage() {
     }
 
     if (!todayDraw) {
-      setBonusError('No draw detected for today yet. Create today’s draw first or wait for auto-create.');
+      setBonusError("No draw detected for today yet. Create today's draw first or wait for auto-create.");
       return;
     }
 
     if (todayDraw.status !== 'open') {
-      setBonusError('Today’s draw is not open. Bonus drops can only be scheduled for an open draw.');
+      setBonusError("Today's draw is not open. Bonus drops can only be scheduled for an open draw.");
       return;
     }
 
@@ -632,11 +652,7 @@ export default function AdminPage() {
       })) as { drop?: AdminBonusDrop };
 
       const drop = data?.drop;
-      setBonusSuccess(
-        drop
-          ? `Scheduled ${drop.label} - ${drop.amountXpot.toLocaleString()} XPOT.`
-          : 'Scheduled bonus XPOT.',
-      );
+      setBonusSuccess(drop ? `Scheduled ${drop.label} - ${drop.amountXpot.toLocaleString()} XPOT.` : 'Scheduled bonus XPOT.');
       await refreshUpcomingDrops();
     } catch (err: any) {
       console.error('[ADMIN] schedule bonus error', err);
@@ -651,7 +667,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Cancel scheduled bonus drop ─────────────
   async function handleCancelBonusDrop(dropId: string) {
     setCancelDropError(null);
 
@@ -662,12 +677,9 @@ export default function AdminPage() {
 
     setCancelingDropId(dropId);
     try {
-      const data = await authedFetchAny(`/bonus?id=${encodeURIComponent(dropId)}`, {
-        method: 'POST',
-      });
+      const data = await authedFetchAny(`/bonus?id=${encodeURIComponent(dropId)}`, { method: 'POST' });
 
-      if (data && (data as any).ok === false)
-        throw new Error((data as any).error || 'Failed to cancel drop');
+      if (data && (data as any).ok === false) throw new Error((data as any).error || 'Failed to cancel drop');
 
       setUpcomingDrops(prev => prev.map(d => (d.id === dropId ? { ...d, status: 'CANCELLED' } : d)));
     } catch (err: any) {
@@ -683,7 +695,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Pick main winner (manual override) ───────
   async function handlePickMainWinner() {
     setPickError(null);
     setPickSuccess(null);
@@ -695,12 +706,12 @@ export default function AdminPage() {
 
     setIsPickingWinner(true);
     try {
-      // ✅ Prefer the real route you pasted
+      // Prefer /api/ops first to avoid /api/admin 404 spam
       const candidates = [
-        ADMIN_PICK_WINNER_API,
-        '/api/admin/pick-winner',
         '/api/ops/draw/pick-winner',
         '/api/ops/pick-winner',
+        ADMIN_PICK_WINNER_API,
+        '/api/admin/pick-winner',
       ];
 
       let data: any = null;
@@ -713,7 +724,6 @@ export default function AdminPage() {
           break;
         } catch (e: any) {
           lastErr = e;
-          // if it's 404, keep trying next candidates
         }
       }
 
@@ -739,7 +749,6 @@ export default function AdminPage() {
       const shortAddr = addr ? truncateAddress(addr, 4) : '(no wallet)';
       setPickSuccess(`Main XPOT winner: ${normalized.ticketCode || '(no ticket)'} (${shortAddr})`);
 
-      // Refresh winners list (best effort)
       try {
         const winnersData = await authedFetchAny('/winners');
         setWinners((winnersData as any).winners ?? []);
@@ -748,7 +757,6 @@ export default function AdminPage() {
         setWinners(prev => [normalized, ...prev]);
       }
 
-      // lock the UI draw
       setTodayDraw(prev => (prev ? { ...prev, status: 'closed' } : prev));
     } catch (err: any) {
       setPickError(String(err?.message || 'Failed to pick main XPOT winner').replace(/^HTTP_\d+:/, ''));
@@ -810,7 +818,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Panic reopen draw ───────────────────────
   async function handleReopenDraw() {
     setTodayDrawError(null);
 
@@ -822,8 +829,7 @@ export default function AdminPage() {
     setIsReopeningDraw(true);
     try {
       const data = await authedFetchAny('/reopen-draw', { method: 'POST' });
-      if (!data || (data as any).ok === false)
-        throw new Error((data as any)?.error || 'Failed to reopen draw');
+      if (!data || (data as any).ok === false) throw new Error((data as any)?.error || 'Failed to reopen draw');
       setTodayDraw(prev => (prev ? { ...prev, status: 'open' } : prev));
     } catch (err: any) {
       console.error('[XPOT] reopen draw error:', err);
@@ -833,7 +839,6 @@ export default function AdminPage() {
     }
   }
 
-  // ── Mark winner as paid ─────────────────────
   async function handleMarkAsPaid(winnerId: string) {
     setMarkPaidError(null);
 
@@ -855,8 +860,7 @@ export default function AdminPage() {
         body: JSON.stringify({ winnerId, txUrl }),
       });
 
-      if (data && (data as any).ok === false)
-        throw new Error((data as any).error || 'Failed to mark as paid');
+      if (data && (data as any).ok === false) throw new Error((data as any).error || 'Failed to mark as paid');
 
       setWinners(prev => prev.map(w => (w.id === winnerId ? { ...w, isPaidOut: true, txUrl } : w)));
     } catch (err: any) {
@@ -870,7 +874,6 @@ export default function AdminPage() {
     }
   }
 
-  // ✅ Live draw (fallback + skew)
   async function fetchLiveDrawWithSkew(): Promise<LiveDrawPayload['draw']> {
     const res = await fetch('/api/draw/live', { cache: 'no-store' });
     try {
@@ -930,7 +933,9 @@ export default function AdminPage() {
             label: 'Main XPOT',
           }));
 
-          setApiBanner('Ops/admin API routes are not deployed on this environment. Showing public winner feed as fallback.');
+          setApiBanner(
+            'Ops/admin API routes are not deployed on this environment. Showing public winner feed as fallback.',
+          );
           return mapped;
         } catch {
           return [];
@@ -940,7 +945,7 @@ export default function AdminPage() {
     }
   }
 
-  // ── Load Today, tickets, winners, upcoming ──
+  // Load Today, tickets, winners, upcoming
   useEffect(() => {
     if (!adminToken) return;
 
@@ -976,7 +981,9 @@ export default function AdminPage() {
           if (!cancelled) {
             setTickets([]);
             setTicketsError(null);
-            setApiBanner(prev => prev ?? 'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.');
+            setApiBanner(
+              prev => prev ?? 'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.',
+            );
           }
         } else {
           if (!cancelled) setTicketsError(String(err?.message || 'Failed to load tickets').replace(/^HTTP_\d+:/, ''));
@@ -1007,7 +1014,9 @@ export default function AdminPage() {
           if (!cancelled) {
             setUpcomingDrops([]);
             setUpcomingError(null);
-            setApiBanner(prev => prev ?? 'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.');
+            setApiBanner(
+              prev => prev ?? 'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.',
+            );
           }
         } else {
           if (!cancelled) setUpcomingError(String(err?.message || 'Failed to load upcoming drops').replace(/^HTTP_\d+:/, ''));
@@ -1022,9 +1031,9 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [adminToken]);
+  }, [adminToken, preferredBase]);
 
-  // ── Countdown (today draw closesAt) ─────────
+  // Countdown (today draw closesAt)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -1061,7 +1070,7 @@ export default function AdminPage() {
     return () => window.clearInterval(id);
   }, [todayDraw?.closesAt, serverSkewMs]);
 
-  // ── Next bonus countdown ────────────────────
+  // Next bonus countdown
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -1136,15 +1145,13 @@ export default function AdminPage() {
     setVisibleWinnerCount(prev => Math.min(prev + MAX_RECENT_WINNERS, winners.length));
   }
 
-  // ── Admin token handling ────────────────────
   async function handleUnlock(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!tokenInput.trim()) return;
 
     setIsSavingToken(true);
     try {
-      if (typeof window !== 'undefined')
-        window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
+      if (typeof window !== 'undefined') window.localStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim());
       setAdminToken(tokenInput.trim());
       setTokenAccepted(true);
       setApiBanner(null);
@@ -1196,9 +1203,7 @@ export default function AdminPage() {
           <div className="relative z-10 flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center gap-2 rounded-full bg-slate-950/70 px-3 py-1">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                  Admin key
-                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">Admin key</span>
                 <StatusDot on={tokenAccepted} />
               </span>
 
@@ -1253,9 +1258,7 @@ export default function AdminPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-100">Today's round</p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Live overview of today's XPOT draw, entries, rollovers and prize pool.
-                    </p>
+                    <p className="mt-1 text-xs text-slate-400">Live overview of today's XPOT draw, entries, rollovers and prize pool.</p>
                   </div>
 
                   {todayDraw && (
@@ -1274,7 +1277,9 @@ export default function AdminPage() {
                       {todayDraw && (
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                            todayDraw.status === 'open' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-300'
+                            todayDraw.status === 'open'
+                              ? 'bg-emerald-500/10 text-emerald-300'
+                              : 'bg-slate-800 text-slate-300'
                           }`}
                         >
                           {todayDraw.status.toUpperCase()}
@@ -1390,8 +1395,7 @@ export default function AdminPage() {
 
           {/* Schedule bonus XPOT */}
           {/* ... keep rest of your file unchanged ... */}
-          {/* NOTE: I’m not trimming your UI. Drop-in file assumes you keep the rest exactly as you had it. */}
-          {/* If you want, paste your current file end and I’ll merge the remaining sections 1:1. */}
+          {/* NOTE: This file still contains your placeholders. If you paste the missing sections, I will merge 1:1. */}
         </div>
 
         {/* RIGHT */}
@@ -1403,7 +1407,11 @@ export default function AdminPage() {
           <div className="w-full max-w-md xpot-panel px-6 py-6">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-slate-50">Switch ops mode</p>
-              <button type="button" className={`${BTN_UTILITY} h-8 px-3 text-[11px]`} onClick={() => setModeModalOpen(false)}>
+              <button
+                type="button"
+                className={`${BTN_UTILITY} h-8 px-3 text-[11px]`}
+                onClick={() => setModeModalOpen(false)}
+              >
                 Close
               </button>
             </div>
@@ -1432,7 +1440,12 @@ export default function AdminPage() {
             </div>
 
             <div className="mt-4 flex gap-2">
-              <button type="button" className={`${BTN_UTILITY} flex-1 h-11 text-sm`} onClick={() => setModeModalOpen(false)} disabled={modeSaving}>
+              <button
+                type="button"
+                className={`${BTN_UTILITY} flex-1 h-11 text-sm`}
+                onClick={() => setModeModalOpen(false)}
+                disabled={modeSaving}
+              >
                 Cancel
               </button>
 
