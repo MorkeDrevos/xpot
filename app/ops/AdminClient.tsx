@@ -29,6 +29,20 @@ const API_BASES = ['/api/ops', '/api/admin'] as const;
 // ✅ Your real backend route (keep, but we will also try /api/ops equivalent first)
 const ADMIN_PICK_WINNER_API = '/api/admin/draw/pick-winner';
 
+// ✅ Real deployed routes (from your repo search screenshot)
+const ROUTES = {
+  // Today draw (admin + public fallback)
+  ADMIN_TODAY_DRAW: '/api/admin/draw/today',
+  PUBLIC_TODAY_DRAW: '/api/today',
+
+  // Today tickets (admin + public fallback)
+  ADMIN_TODAY_TICKETS: '/api/admin/draw/today/tickets',
+  PUBLIC_TODAY_TICKETS: '/api/tickets/today',
+
+  // Winners (admin/ops best-effort + public fallback already implemented below)
+  PUBLIC_WINNERS_RECENT: '/api/winners/recent',
+} as const;
+
 type DrawStatus = 'open' | 'closed' | 'completed';
 
 type TodayDraw = {
@@ -890,9 +904,13 @@ export default function AdminPage() {
     return json.draw;
   }
 
+  // ✅ FIXED: use the routes that actually exist:
+  // - /api/admin/draw/today (or /api/ops equivalent if you add it later)
+  // - fallback: /api/today (public)
   async function loadTodayWithFallback() {
+    // 1) Try admin route (authed, and will try ops equivalent first if preferredBase is /api/ops)
     try {
-      const data = await authedFetchAny('/today');
+      const data = await authedFetchAny(ROUTES.ADMIN_TODAY_DRAW);
       const raw = (data as any).today ?? (data as any).draw ?? (data as any) ?? null;
       const t = normalizeTodayDraw(raw);
       if (t) return t;
@@ -900,11 +918,50 @@ export default function AdminPage() {
       if (!isHttp(err, 404) && !isHttp(err, 405)) throw err;
     }
 
+    // 2) Try public route you actually have: /api/today
+    try {
+      const res = await fetch(ROUTES.PUBLIC_TODAY_DRAW, { cache: 'no-store' });
+      if (res.ok) {
+        const j = await res.json();
+        const raw = (j as any).today ?? (j as any).draw ?? (j as any) ?? null;
+        const t = normalizeTodayDraw(raw);
+        if (t) return t;
+      }
+    } catch {
+      // ignore
+    }
+
+    // 3) Final fallback: live draw endpoint
     const live = await fetchLiveDrawWithSkew();
     const mapped = toTodayDrawFromLive(live);
     if (mapped) return mapped;
 
     return null;
+  }
+
+  // ✅ NEW: tickets loader that matches your actual backend routes
+  async function loadTicketsWithFallback(): Promise<AdminTicket[]> {
+    // 1) Admin today tickets
+    try {
+      const data = await authedFetchAny(ROUTES.ADMIN_TODAY_TICKETS);
+      const arr = (data as any).tickets ?? (data as any).entries ?? [];
+      if (Array.isArray(arr)) return arr as AdminTicket[];
+      return [];
+    } catch (err: any) {
+      if (!isHttp(err, 404) && !isHttp(err, 405)) throw err;
+    }
+
+    // 2) Public today tickets
+    try {
+      const res = await fetch(ROUTES.PUBLIC_TODAY_TICKETS, { cache: 'no-store' });
+      if (!res.ok) return [];
+      const j = await res.json();
+      const arr = (j as any).tickets ?? (j as any).entries ?? [];
+      if (Array.isArray(arr)) return arr as AdminTicket[];
+      return [];
+    } catch {
+      return [];
+    }
   }
 
   async function loadWinnersWithFallback() {
@@ -916,7 +973,7 @@ export default function AdminPage() {
     } catch (err: any) {
       if (isHttp(err, 404) || isHttp(err, 405)) {
         try {
-          const res = await fetch(`/api/winners/recent?limit=${MAX_RECENT_WINNERS}`, { cache: 'no-store' });
+          const res = await fetch(`${ROUTES.PUBLIC_WINNERS_RECENT}?limit=${MAX_RECENT_WINNERS}`, { cache: 'no-store' });
           const j = await res.json();
           const rows: PublicWinnerRow[] = (j?.winners ?? []) as any;
 
@@ -973,8 +1030,8 @@ export default function AdminPage() {
       setTicketsLoading(true);
       setTicketsError(null);
       try {
-        const data = await authedFetchAny('/tickets');
-        if (!cancelled) setTickets((data as any).tickets ?? []);
+        const arr = await loadTicketsWithFallback();
+        if (!cancelled) setTickets(arr);
         if (!cancelled) setApiBanner(null);
       } catch (err: any) {
         if (isHttp(err, 404) || isHttp(err, 405)) {
@@ -982,7 +1039,9 @@ export default function AdminPage() {
             setTickets([]);
             setTicketsError(null);
             setApiBanner(
-              prev => prev ?? 'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.',
+              prev =>
+                prev ??
+                'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.',
             );
           }
         } else {
@@ -1015,11 +1074,14 @@ export default function AdminPage() {
             setUpcomingDrops([]);
             setUpcomingError(null);
             setApiBanner(
-              prev => prev ?? 'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.',
+              prev =>
+                prev ??
+                'Ops/admin API routes are not deployed on this environment. Some sections are running in fallback mode.',
             );
           }
         } else {
-          if (!cancelled) setUpcomingError(String(err?.message || 'Failed to load upcoming drops').replace(/^HTTP_\d+:/, ''));
+          if (!cancelled)
+            setUpcomingError(String(err?.message || 'Failed to load upcoming drops').replace(/^HTTP_\d+:/, ''));
         }
       } finally {
         if (!cancelled) setUpcomingLoading(false);
